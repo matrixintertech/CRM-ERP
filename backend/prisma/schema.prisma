@@ -1,0 +1,267 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+
+enum OtpPurpose {
+  LOGIN
+  VERIFY_EMAIL
+  VERIFY_MOBILE
+  RESET_PASSWORD
+}
+
+enum OtpChannel {
+  EMAIL
+  WHATSAPP
+}
+
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  FAILED
+}
+
+
+enum RefreshTokenStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+
+enum LoginStatus {
+  SUCCESS
+  FAILED
+  LOGOUT
+}
+
+
+enum LoginMethod {
+  EMAIL_OTP
+  WHATSAPP_OTP
+}
+
+
+
+
+// USER MODEL START
+model User {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  // Tenant Relation
+  companyId  BigInt?
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  //roleId     BigInt?
+  //employeeId BigInt?
+
+  // Login
+  email  String? @unique
+  mobile String? @unique
+
+  passwordHash String?
+
+  // Profile
+  displayName String?
+
+  profilePhoto String?
+
+  // Verification
+  emailVerified  Boolean @default(false)
+  mobileVerified Boolean @default(false)
+
+  // Status
+  status UserStatus @default(PENDING)
+
+  // Activity
+  lastLoginAt  DateTime?
+  lastActiveAt DateTime?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations (abhi comment me)
+  // company  Company?   @relation(...)
+  // role     Role?      @relation(...)
+  // employee Employee?  @relation(...)
+
+  otps Otp[]
+  refreshTokens RefreshToken[]
+  loginHistory    LoginHistory[]
+
+  @@index([companyId])
+
+  @@index([status])
+  @@map("users")
+}
+
+// USER MODEL END
+
+
+// OTP MODEL 
+model Otp {
+  id       BigInt @id @default(autoincrement())
+  uuid     String @unique @default(uuid()) @db.Uuid
+
+  userId   BigInt?
+  user     User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  receiver String
+
+  otpHash  String
+
+  purpose  OtpPurpose
+
+  channel  OtpChannel
+
+  status   OtpStatus @default(PENDING)
+
+  attemptCount Int @default(0)
+
+  maxAttempts Int @default(5)
+
+  expiresAt DateTime
+
+  verifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([receiver])
+  @@index([purpose])
+  @@index([status])
+
+  @@map("otps")
+}
+
+// OTP MODEL END
+
+
+// REFRESH TOKEN MODEL
+model RefreshToken {
+  id        BigInt @id @default(autoincrement())
+  uuid      String @unique @default(uuid()) @db.Uuid
+
+  userId    BigInt
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String
+
+  deviceId   String?
+  deviceName String?
+
+  ipAddress  String?
+  userAgent  String?
+
+  status RefreshTokenStatus @default(ACTIVE)
+
+  expiresAt DateTime
+
+  lastUsedAt DateTime?
+
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+
+  @@map("refresh_tokens")
+}
+
+// REFRESH TOKEN MODEL END
+
+
+// LOGIN HISTORY MODEL
+model LoginHistory {
+  id        BigInt @id @default(autoincrement())
+  uuid      String @unique @default(uuid()) @db.Uuid
+
+  userId    BigInt?
+  user      User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  loginMethod LoginMethod
+
+  status LoginStatus
+
+  receiver String
+
+  ipAddress String?
+
+  userAgent String?
+
+  deviceId String?
+
+  deviceName String?
+
+  loginAt DateTime?
+
+  logoutAt DateTime?
+
+  failureReason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([receiver])
+  @@index([status])
+
+  @@map("login_history")
+}
+
+// LOGIN HISTORY MODEL END
+
+
+// Company MODULE
+model Company {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  name String
+
+  code String @unique
+
+  email String? @unique
+
+  mobile String? @unique
+
+  logo String?
+
+  status UserStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  users User[]
+
+  @@index([status])
+  @@map("companies")
+}
+// END Company Module
+
+
+
