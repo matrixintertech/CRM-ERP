@@ -10,9 +10,14 @@ import { setupSwagger } from './config/swagger.config';
 
 import { AllExceptionsFilter } from './common/exceptions/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.useGlobalInterceptors(
+  new BigIntInterceptor(),
+);
 
   // ==========================
   // Security

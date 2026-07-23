@@ -9,7 +9,14 @@ import { Request, Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  
   catch(exception: unknown, host: ArgumentsHost): void {
+     
+     console.dir(exception, {
+    depth: null,
+  });
+
+
     const ctx = host.switchToHttp();
 
     const response = ctx.getResponse<Response>();

@@ -11,6 +11,15 @@ import { HealthModule } from './modules/health/health.module';
 // Auth
 import { AuthModule } from './modules/auth/auth.module';
 
+//Company
+import { CompanyModule } from './modules/company/company.module';
+
+//Subscription
+import { SubscriptionPlanModule } from './modules/subscription-plan/subscription-plan.module';
+
+//Company Subscription 
+import { CompanySubscriptionModule } from './modules/company-subscription/company-subscription.module';
+
 
 @Module({
   imports: [
@@ -23,6 +32,9 @@ import { AuthModule } from './modules/auth/auth.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    CompanyModule,
+    SubscriptionPlanModule,
+    CompanySubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

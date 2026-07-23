@@ -20,7 +20,6 @@ enum UserStatus {
   SUSPENDED
 }
 
-
 enum OtpPurpose {
   LOGIN
   VERIFY_EMAIL
@@ -33,7 +32,6 @@ enum OtpChannel {
   WHATSAPP
 }
 
-
 enum OtpStatus {
   PENDING
   VERIFIED
@@ -41,13 +39,11 @@ enum OtpStatus {
   FAILED
 }
 
-
 enum RefreshTokenStatus {
   ACTIVE
   REVOKED
   EXPIRED
 }
-
 
 enum LoginStatus {
   SUCCESS
@@ -55,14 +51,30 @@ enum LoginStatus {
   LOGOUT
 }
 
-
 enum LoginMethod {
   EMAIL_OTP
   WHATSAPP_OTP
 }
 
+enum PlanType {
+  INTERNAL
+  TRIAL
+  PAID
+  LIFETIME
+}
 
+enum BillingCycle {
+  NONE
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+}
 
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+}
 
 // USER MODEL START
 model User {
@@ -70,8 +82,8 @@ model User {
   uuid String @unique @default(uuid()) @db.Uuid
 
   // Tenant Relation
-  companyId  BigInt?
-  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyId BigInt?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   //roleId     BigInt?
   //employeeId BigInt?
 
@@ -107,36 +119,34 @@ model User {
   // role     Role?      @relation(...)
   // employee Employee?  @relation(...)
 
-  otps Otp[]
+  otps          Otp[]
   refreshTokens RefreshToken[]
-  loginHistory    LoginHistory[]
+  loginHistory  LoginHistory[]
 
   @@index([companyId])
-
   @@index([status])
   @@map("users")
 }
 
 // USER MODEL END
 
-
 // OTP MODEL 
 model Otp {
-  id       BigInt @id @default(autoincrement())
-  uuid     String @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  userId   BigInt?
-  user     User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId BigInt?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   receiver String
 
-  otpHash  String
+  otpHash String
 
-  purpose  OtpPurpose
+  purpose OtpPurpose
 
-  channel  OtpChannel
+  channel OtpChannel
 
-  status   OtpStatus @default(PENDING)
+  status OtpStatus @default(PENDING)
 
   attemptCount Int @default(0)
 
@@ -152,28 +162,26 @@ model Otp {
   @@index([receiver])
   @@index([purpose])
   @@index([status])
-
   @@map("otps")
 }
 
 // OTP MODEL END
 
-
 // REFRESH TOKEN MODEL
 model RefreshToken {
-  id        BigInt @id @default(autoincrement())
-  uuid      String @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  userId    BigInt
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId BigInt
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   tokenHash String
 
   deviceId   String?
   deviceName String?
 
-  ipAddress  String?
-  userAgent  String?
+  ipAddress String?
+  userAgent String?
 
   status RefreshTokenStatus @default(ACTIVE)
 
@@ -188,20 +196,18 @@ model RefreshToken {
   @@index([userId])
   @@index([status])
   @@index([expiresAt])
-
   @@map("refresh_tokens")
 }
 
 // REFRESH TOKEN MODEL END
 
-
 // LOGIN HISTORY MODEL
 model LoginHistory {
-  id        BigInt @id @default(autoincrement())
-  uuid      String @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  userId    BigInt?
-  user      User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId BigInt?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   loginMethod LoginMethod
 
@@ -228,12 +234,10 @@ model LoginHistory {
   @@index([userId])
   @@index([receiver])
   @@index([status])
-
   @@map("login_history")
 }
 
 // LOGIN HISTORY MODEL END
-
 
 // Company MODULE
 model Company {
@@ -252,16 +256,78 @@ model Company {
 
   status UserStatus @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  users User[]
+  users                User[]
+  companySubscriptions CompanySubscription[]
 
   @@index([status])
   @@map("companies")
 }
+
 // END Company Module
 
+//Subscription Plan START
 
+model SubscriptionPlan {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
+  name String
+
+  code String @unique
+
+  description String?
+
+  planType PlanType
+
+  billingCycle BillingCycle
+
+  price Decimal @db.Decimal(10, 2)
+
+  trialDays Int @default(0)
+
+  isPublic Boolean @default(true)
+
+  status SubscriptionStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  companySubscriptions CompanySubscription[]
+
+  @@index([status])
+  @@index([planType])
+  @@map("subscription_plans")
+}
+
+// End Subsription Plan
+
+// Company Subscription Start
+model CompanySubscription {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id])
+
+  subscriptionPlanId BigInt
+  subscriptionPlan   SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime?
+
+  status SubscriptionStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([subscriptionPlanId])
+  @@map("company_subscriptions")
+}
+
+//Company Subscription End
