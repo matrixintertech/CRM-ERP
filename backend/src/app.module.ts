@@ -20,6 +20,24 @@ import { SubscriptionPlanModule } from './modules/subscription-plan/subscription
 //Company Subscription 
 import { CompanySubscriptionModule } from './modules/company-subscription/company-subscription.module';
 
+// Onboarding
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+
+//Organisation Module
+import { OrganizationUnitModule } from './modules/organization-unit/organization-unit.module';
+
+//Role Module
+import { RoleModule } from './modules/roles/role.module';
+
+//Permission Module
+import { PermissionModule } from "./modules/permission/permission.module";
+
+//Module Option
+import { ModuleModule } from './modules/module/module.module';
+
+//Subscription
+import { SubscriptionModule } from './modules/subscriptions/subscription.module';
+
 
 @Module({
   imports: [
@@ -35,6 +53,13 @@ import { CompanySubscriptionModule } from './modules/company-subscription/compan
     CompanyModule,
     SubscriptionPlanModule,
     CompanySubscriptionModule,
+    OnboardingModule,
+    OrganizationUnitModule,
+    RoleModule,
+    PermissionModule,
+    ModuleModule,
+    SubscriptionModule
+
   ],
   controllers: [AppController],
   providers: [AppService],

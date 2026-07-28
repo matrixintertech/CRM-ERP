@@ -1,0 +1,155 @@
+.container {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+/* Left Section */
+
+.left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 80px;
+
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    #1d4ed8
+  );
+
+  color: var(--color-white);
+}
+
+.brand {
+  width: 100%;
+  max-width: 520px;
+}
+
+.brand h1 {
+  font-size: 52px;
+  font-weight: 700;
+
+  margin-bottom: 20px;
+}
+
+.brand p {
+  font-size: 20px;
+  line-height: 1.7;
+
+  margin-bottom: 48px;
+
+  opacity: .95;
+}
+
+.brand ul {
+  list-style: none;
+}
+
+.brand li {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 20px;
+
+  font-size: 18px;
+}
+
+/* Right Section */
+
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 60px;
+
+  background: #f8fafc;
+}
+
+.card {
+  width: 100%;
+  max-width: 620px;
+
+  padding: 48px;
+
+  background: var(--color-white);
+
+  border: 1px solid var(--color-border);
+
+  border-radius: 16px;
+
+  box-shadow: var(--shadow-lg);
+}
+
+.card form {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 20px;
+}
+
+.card h2,
+.card h3 {
+  margin: 0;
+
+  font-size: 30px;
+  font-weight: 700;
+
+  color: var(--color-text);
+}
+
+.card p {
+  color: var(--color-text-light);
+
+  line-height: 1.6;
+}
+
+.loginBox {
+  width: 100%;
+  max-width: 650px;
+
+  padding: 56px;
+
+  background: var(--color-white);
+
+  border: 1px solid var(--color-border);
+
+  border-radius: 16px;
+
+  box-shadow: var(--shadow-lg);
+  
+}
+
+.loginBox form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Responsive */
+
+@media (max-width: 992px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .left {
+    display: none;
+  }
+
+  .right {
+    padding: 24px;
+  }
+
+  .card {
+    max-width: 100%;
+    padding: 32px;
+  }
+}

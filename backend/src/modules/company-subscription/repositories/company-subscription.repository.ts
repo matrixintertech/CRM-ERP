@@ -14,44 +14,54 @@ export class CompanySubscriptionRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(
-    data: Prisma.CompanySubscriptionCreateInput,
-  ): Promise<CompanySubscription> {
-    return this.prisma.companySubscription.create({
-      data,
-    });
-  }
+async create(
+  data: Prisma.CompanySubscriptionCreateInput,
+  tx?: Prisma.TransactionClient,
+): Promise<CompanySubscription> {
+  return (
+    tx ?? this.prisma
+  ).companySubscription.create({
+    data,
+  });
+}
 
-  async findCompanyById(
-    id: bigint,
-  ) {
-    return this.prisma.company.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
-  }
+ async findCompanyById(
+  id: bigint,
+  tx?: Prisma.TransactionClient,
+) {
+  return (tx ?? this.prisma).company.findFirst({
+    where: {
+      id,
+      deletedAt: null,
+    },
+  });
+}
 
   async findSubscriptionPlanById(
-    id: bigint,
-  ) {
-    return this.prisma.subscriptionPlan.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
-  }
+  id: bigint,
+  tx?: Prisma.TransactionClient,
+) {
+  return (
+    tx ?? this.prisma
+  ).subscriptionPlan.findFirst({
+    where: {
+      id,
+      deletedAt: null,
+    },
+  });
+}
 
   async findActiveByCompanyId(
-    companyId: bigint,
-  ) {
-    return this.prisma.companySubscription.findFirst({
-      where: {
-        companyId,
-        status: SubscriptionStatus.ACTIVE,
-      },
-    });
-  }
+  companyId: bigint,
+  tx?: Prisma.TransactionClient,
+) {
+  return (
+    tx ?? this.prisma
+  ).companySubscription.findFirst({
+    where: {
+      companyId,
+      status: SubscriptionStatus.ACTIVE,
+    },
+  });
+}
 }

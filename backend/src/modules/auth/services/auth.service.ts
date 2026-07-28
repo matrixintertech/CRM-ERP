@@ -35,7 +35,7 @@ export class AuthService {
      private readonly jwtService: JwtService,
   ) {}
 
-   async sendOtp(dto: SendOtpDto) {
+async sendOtp(dto: SendOtpDto) {
   const user =
     await this.authRepository.findUserByIdentifier(
       dto.receiver,
@@ -53,15 +53,18 @@ const latestOtp =
     OtpPurpose.LOGIN,
   );
 
-  if (
-    latestOtp &&
-    latestOtp.status === OtpStatus.PENDING &&
-    latestOtp.expiresAt > new Date()
-  ) {
-    throw new ConflictException(
-      'OTP already sent. Please wait before requesting a new OTP.',
-    );
-  }
+ if (
+  latestOtp &&
+  latestOtp.status === OtpStatus.PENDING &&
+  latestOtp.expiresAt > new Date()
+) {
+  return {
+    success: true,
+    alreadySent: true,
+    message:
+      "OTP already sent. Please check your email.",
+  };
+}
 
   const otp = OtpUtil.generate();
 
@@ -87,8 +90,10 @@ const latestOtp =
   //console.log('OTP:', otp);
 
   return {
-    message: 'OTP sent successfully.',
-  };
+  success: true,
+  alreadySent: false,
+  message: "OTP sent successfully.",
+};
 }
 
 
@@ -319,8 +324,8 @@ const payload: JwtPayload = {
   companyId: user.companyId
     ? user.companyId.toString()
     : undefined,
+  userType: user.userType,
 };
-
 const accessToken =
   await this.generateAccessToken(payload);
 
@@ -480,6 +485,7 @@ const newPayload: JwtPayload = {
   companyId: user.companyId
     ? user.companyId.toString()
     : undefined,
+  userType: user.userType,
 };
 
 const accessToken =

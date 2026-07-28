@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "UserType" AS ENUM ('PLATFORM_OWNER', 'COMPANY_ADMIN', 'EMPLOYEE', 'VENDOR', 'CLIENT');
+
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "userType" "UserType" NOT NULL DEFAULT 'PLATFORM_OWNER';

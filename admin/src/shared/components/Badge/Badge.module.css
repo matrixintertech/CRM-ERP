@@ -1,0 +1,44 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 80px;
+
+  padding: 4px 12px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.draft {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.suspended {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.default {
+  background: #f3f4f6;
+  color: #374151;
+}

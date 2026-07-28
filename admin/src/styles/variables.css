@@ -1,0 +1,60 @@
+:root {
+  /* Colors */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+
+  --color-secondary: #64748b;
+  --color-secondary-hover: #475569;
+
+  --color-success: #16a34a;
+  --color-success-hover: #15803d;
+
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+
+  --color-warning: #f59e0b;
+
+  --color-white: #ffffff;
+  --color-black: #111827;
+
+  --color-text: #1f2937;
+  --color-text-light: #6b7280;
+
+  --color-border: #e5e7eb;
+
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 10px rgba(0,0,0,.10);
+  --shadow-lg: 0 8px 20px rgba(0,0,0,.12);
+
+  /* Transition */
+  --transition: .2s ease-in-out;
+
+  /* Layout */
+
+--header-height: 64px;
+
+--sidebar-width: 260px;
+
+ --color-sidebar-bg: #1e293b;
+  --color-sidebar-border: #334155;
+
+  --color-sidebar-heading: #94a3b8;
+
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-active: #ffffff;
+
+  --color-sidebar-hover: #334155;
+  --color-sidebar-active: #2563eb;
+
+
+}
+

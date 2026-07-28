@@ -20,6 +20,7 @@ import { CompanySubscriptionRepository } from './repositories/company-subscripti
 
   exports: [
     CompanySubscriptionService,
+    CompanySubscriptionRepository,
   ],
 })
 export class CompanySubscriptionModule {}

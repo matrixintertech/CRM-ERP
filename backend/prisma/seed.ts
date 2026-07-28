@@ -1,14 +1,18 @@
-import { PrismaClient } from '@prisma/client';
-import { seedOwner } from './seeds/owner.seed';
+import { PrismaClient } from "@prisma/client";
+
+import { seedPermissions } from "./seeds/permission.seed";
+import { seedOwner } from "./seeds/owner.seed";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log("🌱 Seeding database...");
+
+  await seedPermissions(prisma);
 
   await seedOwner(prisma);
 
-  console.log('✅ Database seeded successfully.');
+  console.log("✅ Database seeded successfully.");
 }
 
 main()

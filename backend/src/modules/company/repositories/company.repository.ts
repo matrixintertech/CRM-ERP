@@ -9,13 +9,14 @@ export class CompanyRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(
-    data: Prisma.CompanyCreateInput,
-  ): Promise<Company> {
-    return this.prisma.company.create({
-      data,
-    });
-  }
+    async create(
+      data: Prisma.CompanyCreateInput,
+      tx?: Prisma.TransactionClient,
+    ): Promise<Company> {
+      return (tx ?? this.prisma).company.create({
+        data,
+      });
+    }
 
     async findByCode(
     code: string,
@@ -38,7 +39,7 @@ export class CompanyRepository {
     }
 
 
-        async findByMobile(
+  async findByMobile(
     mobile: string,
     ) {
     return this.prisma.company.findUnique({
@@ -49,7 +50,7 @@ export class CompanyRepository {
     }
 
 
-    async findAll(
+  async findAll(
   skip: number,
   take: number,
   search?: string,

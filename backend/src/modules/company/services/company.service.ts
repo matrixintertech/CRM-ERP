@@ -3,6 +3,7 @@ import {
   Injectable,NotFoundException,
 } from '@nestjs/common';
 
+import { Prisma } from '@prisma/client';
 import { CompanyRepository } from '../repositories/company.repository';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { GetCompaniesDto } from '../dto/get-companies.dto';
@@ -14,75 +15,65 @@ export class CompanyService {
     private readonly companyRepository: CompanyRepository,
   ) {}
 
-  async create(
-    dto: CreateCompanyDto,
-  ) {
+async create(
+  dto: CreateCompanyDto,
+  tx?: Prisma.TransactionClient,
+) {
+  // 1. Company Code
+  const companyCode =
+    await this.companyRepository.findByCode(
+      dto.code,
+    );
 
-     try {
-    // 1. Company Code
-    const companyCode =
-      await this.companyRepository.findByCode(
-        dto.code,
+  if (companyCode) {
+    throw new ConflictException(
+      'Company code already exists.',
+    );
+  }
+
+  // 2. Email
+  if (dto.email) {
+    const companyEmail =
+      await this.companyRepository.findByEmail(
+        dto.email,
       );
 
-    if (companyCode) {
+    if (companyEmail) {
       throw new ConflictException(
-        'Company code already exists.',
+        'Company email already exists.',
       );
     }
+  }
 
-    // 2. Email
-    if (dto.email) {
-      const companyEmail =
-        await this.companyRepository.findByEmail(
-          dto.email,
-        );
+  // 3. Mobile
+  if (dto.mobile) {
+    const companyMobile =
+      await this.companyRepository.findByMobile(
+        dto.mobile,
+      );
 
-      if (companyEmail) {
-        throw new ConflictException(
-          'Company email already exists.',
-        );
-      }
+    if (companyMobile) {
+      throw new ConflictException(
+        'Company mobile already exists.',
+      );
     }
+  }
 
-    // 3. Mobile
-    if (dto.mobile) {
-      const companyMobile =
-        await this.companyRepository.findByMobile(
-          dto.mobile,
-        );
-
-      if (companyMobile) {
-        throw new ConflictException(
-          'Company mobile already exists.',
-        );
-      }
-    }
-
-    // 4. Create Company
-    const company =
-      await this.companyRepository.create({
+  // 4. Create Company
+  const company =
+    await this.companyRepository.create(
+      {
         name: dto.name,
         code: dto.code,
         email: dto.email,
         mobile: dto.mobile,
         logo: dto.logo,
-      });
+      },
+      tx,
+    );
 
-    // 5. Response
-    return {
-      message:
-        'Company created successfully.',
-      company,
-    };
-     } catch (error) {
-  console.dir(error, {
-    depth: null,
-  });
-  throw error;
+  return company;
 }
-  }
-
 // Get All Companies
 async findAll(
   dto: GetCompaniesDto,

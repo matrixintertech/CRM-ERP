@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { Prisma } from '@prisma/client';
+
 import { CompanySubscriptionRepository } from '../repositories/company-subscription.repository';
 
 import { CreateCompanySubscriptionDto } from '../dto/create-company-subscription.dto';
@@ -14,48 +16,52 @@ export class CompanySubscriptionService {
     private readonly companySubscriptionRepository: CompanySubscriptionRepository,
   ) {}
 
-  async create(
-    dto: CreateCompanySubscriptionDto,
-  ) {
-    // 1. Company Exists?
-    const company =
-      await this.companySubscriptionRepository.findCompanyById(
-        BigInt(dto.companyId),
-      );
+async create(
+  dto: CreateCompanySubscriptionDto,
+  tx?: Prisma.TransactionClient,
+) {
+  // 1. Company Exists?
+const company =
+  await this.companySubscriptionRepository.findCompanyById(
+    BigInt(dto.companyId),
+    tx,
+  );
+  if (!company) {
+    throw new NotFoundException(
+      'Company not found.',
+    );
+  }
 
-    if (!company) {
-      throw new NotFoundException(
-        'Company not found.',
-      );
-    }
+  // 2. Subscription Plan Exists?
+const subscriptionPlan =
+  await this.companySubscriptionRepository.findSubscriptionPlanById(
+    BigInt(dto.subscriptionPlanId),
+    tx,
+  );
 
-    // 2. Subscription Plan Exists?
-    const subscriptionPlan =
-      await this.companySubscriptionRepository.findSubscriptionPlanById(
-        BigInt(dto.subscriptionPlanId),
-      );
+if (!subscriptionPlan) {
+  throw new NotFoundException(
+    'Subscription plan not found.',
+  );
+}
 
-    if (!subscriptionPlan) {
-      throw new NotFoundException(
-        'Subscription plan not found.',
-      );
-    }
+  // 3. Active Subscription Check
+const activeSubscription =
+  await this.companySubscriptionRepository.findActiveByCompanyId(
+    BigInt(dto.companyId),
+    tx,
+  );
 
-    // 3. Active Subscription Check
-    const activeSubscription =
-      await this.companySubscriptionRepository.findActiveByCompanyId(
-        BigInt(dto.companyId),
-      );
+if (activeSubscription) {
+  throw new ConflictException(
+    'Company already has an active subscription.',
+  );
+}
 
-    if (activeSubscription) {
-      throw new ConflictException(
-        'Company already has an active subscription.',
-      );
-    }
-
-    // 4. Create Subscription
-    const companySubscription =
-      await this.companySubscriptionRepository.create({
+  // 4. Create Subscription
+  const companySubscription =
+    await this.companySubscriptionRepository.create(
+      {
         company: {
           connect: {
             id: BigInt(dto.companyId),
@@ -75,13 +81,10 @@ export class CompanySubscriptionService {
         endDate: dto.endDate
           ? new Date(dto.endDate)
           : null,
-      });
+      },
+      tx,
+    );
 
-    // 5. Response
-    return {
-      message:
-        'Company subscription assigned successfully.',
-      companySubscription,
-    };
-  }
+  return companySubscription;
+}
 }

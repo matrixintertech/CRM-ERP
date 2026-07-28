@@ -1,0 +1,57 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 16px;
+
+  margin-top: 20px;
+}
+
+.info {
+  font-size: 14px;
+  color: var(--color-text-light);
+}
+
+.pages {
+  display: flex;
+  gap: 8px;
+}
+
+.pages button {
+  min-width: 36px;
+
+  height: 36px;
+
+  border: 1px solid
+    var(--color-border);
+
+  background: var(--color-white);
+
+  border-radius: var(
+    --radius-md
+  );
+
+  cursor: pointer;
+
+  transition: var(
+    --transition
+  );
+}
+
+.pages button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pages button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.active {
+  background: var(
+    --color-primary
+  ) !important;
+
+  color: var(--color-white);
+}

@@ -9,37 +9,32 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { UserType } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { UserTypeGuard } from '../../auth/guards/user-type.guard';
 
 import { CompanyService } from '../services/company.service';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { GetCompaniesDto } from '../dto/get-companies.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
+import { CreateCompanyAdminDto } from '../dto/create-company-admin.dto';
+
+import { UserTypes } from '../../auth/decorators/user-types.decorator';
+
+import { CompanyAdminService } from '../services/company-admin.service';
 
 @ApiTags('Company')
   @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard,  UserTypeGuard)
 @Controller('companies')
 export class CompanyController {
   constructor(
     private readonly companyService: CompanyService,
+     private readonly companyAdminService: CompanyAdminService,
   ) {}
 
 
-
-  @Post()
- 
-  @ApiOperation({
-    summary: 'Create Company',
-  })
-  create(
-    @Body()
-    dto: CreateCompanyDto,
-  ) {
-    return this.companyService.create(
-      dto,
-    );
-  }
+@UserTypes(UserType.PLATFORM_OWNER)
 
 
   @Get()
@@ -97,6 +92,24 @@ delete(
 ) {
   return this.companyService.delete(
     BigInt(id),
+  );
+}
+
+
+@Post(':companyId/admin')
+@ApiOperation({
+  summary: 'Create Company Admin',
+})
+createCompanyAdmin(
+  @Param('companyId')
+  companyId: string,
+
+  @Body()
+  dto: CreateCompanyAdminDto,
+) {
+  return this.companyAdminService.create(
+    BigInt(companyId),
+    dto,
   );
 }
 

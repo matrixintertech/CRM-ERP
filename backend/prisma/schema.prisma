@@ -76,6 +76,28 @@ enum SubscriptionStatus {
   INACTIVE
 }
 
+enum UserType {
+  PLATFORM_OWNER
+  COMPANY_ADMIN
+  EMPLOYEE
+  VENDOR
+  CLIENT
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrganizationUnitType {
+  HEAD_OFFICE
+  REGION
+  BRANCH
+  OFFICE
+}
+
+
+
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -101,6 +123,8 @@ model User {
   // Verification
   emailVerified  Boolean @default(false)
   mobileVerified Boolean @default(false)
+
+  userType UserType @default(PLATFORM_OWNER)
 
   // Status
   status UserStatus @default(PENDING)
@@ -129,6 +153,9 @@ model User {
 }
 
 // USER MODEL END
+
+
+
 
 // OTP MODEL 
 model Otp {
@@ -262,12 +289,49 @@ model Company {
 
   users                User[]
   companySubscriptions CompanySubscription[]
+  organizationUnits    OrganizationUnit[]
+  roles                Role[]
 
   @@index([status])
   @@map("companies")
 }
 
 // END Company Module
+
+//Feature Module Start
+
+model Module {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  name String
+  code String @unique
+
+  description String?
+
+  icon String?
+
+  route String?
+
+  sortOrder Int @default(0)
+
+  isSystem Boolean @default(true)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  subscriptionPlanModules SubscriptionPlanModule[]
+
+  @@index([status])
+  @@map("modules")
+}
+
+//Feature Module End
+
+
 
 //Subscription Plan START
 
@@ -285,26 +349,65 @@ model SubscriptionPlan {
 
   billingCycle BillingCycle
 
-  price Decimal @db.Decimal(10, 2)
+  price Decimal @db.Decimal(10,2)
 
   trialDays Int @default(0)
+
+  durationInDays Int?
+
+  maxUsers Int?
+
+  maxBranches Int?
+
+  maxProjects Int?
+
+  sortOrder Int @default(0)
 
   isPublic Boolean @default(true)
 
   status SubscriptionStatus @default(ACTIVE)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
   companySubscriptions CompanySubscription[]
+  subscriptionPlanModules SubscriptionPlanModule[]
 
   @@index([status])
   @@index([planType])
+  @@index([isPublic])
+
   @@map("subscription_plans")
 }
 
 // End Subsription Plan
+
+
+//Subscription Plan Module Start
+
+model SubscriptionPlanModule {
+  id BigInt @id @default(autoincrement())
+
+  subscriptionPlanId BigInt
+
+  moduleId BigInt
+
+ subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+
+  module Module @relation(fields: [moduleId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([subscriptionPlanId, moduleId])
+
+  @@index([subscriptionPlanId])
+  @@index([moduleId])
+
+  @@map("subscription_plan_modules")
+}
+
+//Subscription Plan Module End
 
 // Company Subscription Start
 model CompanySubscription {
@@ -312,13 +415,16 @@ model CompanySubscription {
   uuid String @unique @default(uuid()) @db.Uuid
 
   companyId BigInt
-  company   Company @relation(fields: [companyId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
 
   subscriptionPlanId BigInt
-  subscriptionPlan   SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+  subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
 
   startDate DateTime
-  endDate   DateTime?
+
+  endDate DateTime?
+
+  amount Decimal? @db.Decimal(10,2)
 
   status SubscriptionStatus @default(ACTIVE)
 
@@ -327,7 +433,124 @@ model CompanySubscription {
 
   @@index([companyId])
   @@index([subscriptionPlanId])
+
   @@map("company_subscriptions")
 }
 
 //Company Subscription End
+
+//Organisation unit schema
+model OrganizationUnit {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id])
+
+  parentId BigInt?
+  parent   OrganizationUnit?  @relation("OrganizationHierarchy", fields: [parentId], references: [id])
+  children OrganizationUnit[] @relation("OrganizationHierarchy")
+
+  type OrganizationUnitType
+
+  name String
+  code String
+
+  email  String?
+  mobile String?
+
+  addressLine1 String?
+  addressLine2 String?
+
+  city    String?
+  state   String?
+  country String?
+  pincode String?
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([parentId])
+  @@index([type])
+}
+
+//End Organisation unit schema
+
+
+// Role Schema
+
+model Role {
+  id          BigInt   @id @default(autoincrement())
+
+  uuid        String   @unique @default(uuid()) @db.Uuid
+
+  companyId   BigInt
+  company     Company  @relation(fields: [companyId], references: [id])
+
+  name        String
+  code        String
+
+  description String?
+
+  isSystem    Boolean  @default(false)
+
+  status      Status   @default(ACTIVE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  rolePermissions RolePermission[]
+
+  @@unique([companyId, code])
+  @@unique([companyId, name])
+
+  @@index([companyId])
+  @@index([status])
+}
+
+// end Role Schema
+
+//Permission Schema Start
+
+model Permission {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+
+  module      String
+  name        String
+  code        String   @unique
+  description String?
+
+  status      Status   @default(ACTIVE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+}
+
+//Permission Schema End
+
+//Role Permission Schema Start
+
+model RolePermission {
+  id           BigInt @id @default(autoincrement())
+
+  roleId       BigInt
+  permissionId BigInt
+
+  role         Role @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+//Role Permission Schema End

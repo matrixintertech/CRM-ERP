@@ -34,21 +34,69 @@ export class JwtStrategy extends PassportStrategy(
     });
   }
 
-   async validate(payload: JwtPayload) {
-  console.log('JWT Payload:', payload);
-
+  async validate(
+  payload: JwtPayload,
+) {
   const user = await this.prisma.user.findUnique({
     where: {
       id: BigInt(payload.sub),
     },
   });
 
-  console.log('User:', user);
-
   if (!user) {
-    throw new UnauthorizedException('User not found.');
+    throw new UnauthorizedException(
+      'User not found.',
+    );
+  }
+
+  // User Active?
+  if (user.status !== 'ACTIVE') {
+    throw new UnauthorizedException(
+      'User is inactive.',
+    );
+  }
+
+  // Company Admin Validation
+  if (user.userType === 'COMPANY_ADMIN') {
+    // Company Exists?
+    const company =
+      await this.prisma.company.findUnique({
+        where: {
+          id: user.companyId!,
+        },
+      });
+
+    if (!company) {
+      throw new UnauthorizedException(
+        'Company not found.',
+      );
+    }
+
+    if (company.status !== 'ACTIVE') {
+      throw new UnauthorizedException(
+        'Company is inactive.',
+      );
+    }
+
+    // Active Subscription?
+    const subscription =
+      await this.prisma.companySubscription.findFirst({
+        where: {
+          companyId: company.id,
+          status: 'ACTIVE',
+        },
+      });
+
+    if (!subscription) {
+      throw new UnauthorizedException(
+        'Company subscription is inactive.',
+      );
+    }
   }
 
   return user;
 }
+
+
+
 }
