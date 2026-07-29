@@ -11,6 +11,9 @@ import RolePermissionPage from "@/modules/role-permission/pages/RolePermissionPa
 import SubscriptionModulePage from "@/modules/subscription/pages/SubscriptionModulePage";
 import ModuleListPage from "@/modules/module/pages/ModuleListPage";
 import SubscriptionPlanListPage from "@/modules/subscription-plan/pages/SubscriptionPlanListPage";
+import StateListPage from "@/modules/master/state/pages/StateListPage";
+import CityListPage from "@/modules/master/city/pages/CityListPage";
+import ClientListPage from "@/modules/client/pages/ClientListPage";
 
 
 
@@ -72,7 +75,22 @@ export const protectedRoutes: AppRoute[] = [
 {
   path: "/subscription-plans",
   element: <SubscriptionPlanListPage />,
-}
+},
+
+{
+  path: "/master/states",
+  element: <StateListPage />,
+},
+
+{
+  path: "/master/cities",
+  element: <CityListPage />,
+},
+
+ {
+    path: "/clients",
+    element: <ClientListPage />,
+  },
 
 
 

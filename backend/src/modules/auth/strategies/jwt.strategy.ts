@@ -23,8 +23,10 @@ export class JwtStrategy extends PassportStrategy(
   constructor(
     private readonly prisma: PrismaService,
   ) {
+   
     super({
       jwtFromRequest:
+      
         ExtractJwt.fromAuthHeaderAsBearerToken(),
 
       ignoreExpiration: false,
@@ -32,16 +34,21 @@ export class JwtStrategy extends PassportStrategy(
       secretOrKey:
         jwtConfig.accessSecret,
     });
+
+     console.log('JWT Secret:', jwtConfig.accessSecret);
   }
 
-  async validate(
+async validate(
   payload: JwtPayload,
 ) {
+  console.log('Payload:', payload);
   const user = await this.prisma.user.findUnique({
     where: {
       id: BigInt(payload.sub),
     },
   });
+
+    console.log('User:', user);
 
   if (!user) {
     throw new UnauthorizedException(

@@ -39,10 +39,25 @@ export const menu: MenuItem[] = [
 
 
   {
-    id: "branches",
-    title: "Branches",
-    path: "/branches",
-  },
+  id: "master",
+  title: "Master",
+  path: "#",
+  children: [
+    {
+      id: "states",
+      title: "States",
+      path: "/master/states",
+    },
+    {
+      id: "cities",
+      title: "Cities",
+      path: "/master/cities",
+    },
+  ],
+},
+
+
+
   {
     id: "hr",
     title: "HR",

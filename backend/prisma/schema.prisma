@@ -291,6 +291,7 @@ model Company {
   companySubscriptions CompanySubscription[]
   organizationUnits    OrganizationUnit[]
   roles                Role[]
+  clients             Client[]
 
   @@index([status])
   @@map("companies")
@@ -554,3 +555,96 @@ model RolePermission {
 }
 
 //Role Permission Schema End
+
+//Master schema
+
+model State {
+  id        BigInt   @id @default(autoincrement())
+  uuid      String   @unique @default(uuid()) @db.Uuid
+  name      String
+  code      String   @unique
+  gstCode   String?
+  status    Status   @default(ACTIVE)
+
+  cities    City[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+   clients  Client[]
+
+  @@index([status])
+}
+
+model City {
+  id        BigInt   @id @default(autoincrement())
+  uuid      String   @unique @default(uuid()) @db.Uuid
+
+  stateId   BigInt
+  state     State    @relation(fields: [stateId], references: [id])
+
+  name      String
+  status    Status   @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+   clients  Client[]
+
+  @@index([stateId])
+  @@index([status])
+
+  @@unique([stateId, name])
+}
+
+//End Master Schema
+
+
+//Client Schema Start
+
+model Client {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+
+  companyId   BigInt
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  stateId     BigInt?
+  state       State?   @relation(fields: [stateId], references: [id])
+
+  cityId      BigInt?
+  city        City?    @relation(fields: [cityId], references: [id])
+
+  name        String
+  code        String
+
+  contactName String
+  mobile      String
+  email       String?
+
+  gstNumber   String?
+  panNumber   String?
+
+  address     String?
+  pincode     String?
+
+  remarks     String?
+
+  status      Status   @default(ACTIVE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+//Client Schema End

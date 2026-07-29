@@ -38,6 +38,15 @@ import { ModuleModule } from './modules/module/module.module';
 //Subscription
 import { SubscriptionModule } from './modules/subscriptions/subscription.module';
 
+//States
+import { StateModule } from "./modules/master/state/state.module";
+
+//City
+import { CityModule } from "./modules/master/city/city.module";
+
+//Client
+import { ClientModule } from './modules/client/client.module';
+
 
 @Module({
   imports: [
@@ -58,7 +67,10 @@ import { SubscriptionModule } from './modules/subscriptions/subscription.module'
     RoleModule,
     PermissionModule,
     ModuleModule,
-    SubscriptionModule
+    SubscriptionModule,
+    StateModule,
+    CityModule,
+    ClientModule
 
   ],
   controllers: [AppController],
