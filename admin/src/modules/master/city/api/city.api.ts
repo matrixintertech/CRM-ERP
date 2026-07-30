@@ -57,13 +57,21 @@ export const cityApi = {
     );
   },
 
-  async getDropdown() {
-    const response = await api.get(
-      "/master/cities/dropdown",
-    );
+  async getDropdown(
+  stateUuid?: string,
+) {
+  const response = await api.get(
+    "/master/cities/dropdown",
+    {
+      params: {
+        stateUuid,
+        status: "ACTIVE",
+      },
+    },
+  );
 
-    return response.data.data as {
-      cities: CityDropdown[];
-    };
-  },
+  return response.data.data as {
+    cities: CityDropdown[];
+  };
+}
 };

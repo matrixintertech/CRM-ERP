@@ -12,6 +12,11 @@ export interface CityOption {
   name: string;
 }
 
+export interface ClientDropdown {
+  uuid: string;
+  name: string;
+}
+
 export interface Client {
   uuid: string;
 

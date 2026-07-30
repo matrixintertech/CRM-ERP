@@ -121,13 +121,97 @@ async create(
     };
   }
 
-  async update(
-    companyId: bigint,
-    uuid: string,
-    dto: UpdateClientDto,
-  ) {
-    throw new Error('Method not implemented.');
+async update(
+  companyId: bigint,
+  uuid: string,
+  dto: UpdateClientDto,
+) {
+  // Check client exists
+  const client = await this.clientRepository.findByUuid(
+    companyId,
+    uuid,
+  );
+
+  if (!client) {
+    throw new NotFoundException(
+      'Client not found.',
+    );
   }
+
+  const {
+    stateUuid,
+    cityUuid,
+    code,
+    ...clientData
+  } = dto;
+
+  // Check duplicate code
+  if (code && code !== client.code) {
+    const existingClient =
+      await this.clientRepository.findByCode(
+        companyId,
+        code,
+      );
+
+    if (
+      existingClient &&
+      existingClient.uuid !== client.uuid
+    ) {
+      throw new ConflictException(
+        'Client code already exists.',
+      );
+    }
+  }
+
+  let stateId: bigint | undefined;
+  let cityId: bigint | undefined;
+
+  if (stateUuid) {
+    const state =
+      await this.stateRepository.findByUuid(
+        stateUuid,
+      );
+
+    if (!state) {
+      throw new NotFoundException(
+        'State not found.',
+      );
+    }
+
+    stateId = state.id;
+  }
+
+  if (cityUuid) {
+    const city =
+      await this.cityRepository.findByUuid(
+        cityUuid,
+      );
+
+    if (!city) {
+      throw new NotFoundException(
+        'City not found.',
+      );
+    }
+
+    cityId = city.id;
+  }
+
+  const updatedClient =
+    await this.clientRepository.update(
+      companyId,
+      uuid,
+      {
+        ...(code && { code }),
+        ...clientData,
+        ...(stateId && { stateId }),
+        ...(cityId && { cityId }),
+      },
+    );
+
+  return {
+    client: updatedClient,
+  };
+}
 
   async remove(
     companyId: bigint,

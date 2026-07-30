@@ -96,8 +96,6 @@ enum OrganizationUnitType {
   OFFICE
 }
 
-
-
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -153,9 +151,6 @@ model User {
 }
 
 // USER MODEL END
-
-
-
 
 // OTP MODEL 
 model Otp {
@@ -291,7 +286,8 @@ model Company {
   companySubscriptions CompanySubscription[]
   organizationUnits    OrganizationUnit[]
   roles                Role[]
-  clients             Client[]
+  clients              Client[]
+  projects             Project[]
 
   @@index([status])
   @@map("companies")
@@ -320,8 +316,8 @@ model Module {
 
   status Status @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   subscriptionPlanModules SubscriptionPlanModule[]
@@ -331,8 +327,6 @@ model Module {
 }
 
 //Feature Module End
-
-
 
 //Subscription Plan START
 
@@ -350,7 +344,7 @@ model SubscriptionPlan {
 
   billingCycle BillingCycle
 
-  price Decimal @db.Decimal(10,2)
+  price Decimal @db.Decimal(10, 2)
 
   trialDays Int @default(0)
 
@@ -368,22 +362,20 @@ model SubscriptionPlan {
 
   status SubscriptionStatus @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  companySubscriptions CompanySubscription[]
+  companySubscriptions    CompanySubscription[]
   subscriptionPlanModules SubscriptionPlanModule[]
 
   @@index([status])
   @@index([planType])
   @@index([isPublic])
-
   @@map("subscription_plans")
 }
 
 // End Subsription Plan
-
 
 //Subscription Plan Module Start
 
@@ -394,17 +386,15 @@ model SubscriptionPlanModule {
 
   moduleId BigInt
 
- subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+  subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
 
   module Module @relation(fields: [moduleId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@unique([subscriptionPlanId, moduleId])
-
   @@index([subscriptionPlanId])
   @@index([moduleId])
-
   @@map("subscription_plan_modules")
 }
 
@@ -416,16 +406,16 @@ model CompanySubscription {
   uuid String @unique @default(uuid()) @db.Uuid
 
   companyId BigInt
-  company Company @relation(fields: [companyId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
 
   subscriptionPlanId BigInt
-  subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
+  subscriptionPlan   SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
 
   startDate DateTime
 
   endDate DateTime?
 
-  amount Decimal? @db.Decimal(10,2)
+  amount Decimal? @db.Decimal(10, 2)
 
   status SubscriptionStatus @default(ACTIVE)
 
@@ -434,7 +424,6 @@ model CompanySubscription {
 
   @@index([companyId])
   @@index([subscriptionPlanId])
-
   @@map("company_subscriptions")
 }
 
@@ -481,35 +470,33 @@ model OrganizationUnit {
 
 //End Organisation unit schema
 
-
 // Role Schema
 
 model Role {
-  id          BigInt   @id @default(autoincrement())
+  id BigInt @id @default(autoincrement())
 
-  uuid        String   @unique @default(uuid()) @db.Uuid
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  companyId   BigInt
-  company     Company  @relation(fields: [companyId], references: [id])
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id])
 
-  name        String
-  code        String
+  name String
+  code String
 
   description String?
 
-  isSystem    Boolean  @default(false)
+  isSystem Boolean @default(false)
 
-  status      Status   @default(ACTIVE)
+  status Status @default(ACTIVE)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   rolePermissions RolePermission[]
 
   @@unique([companyId, code])
   @@unique([companyId, name])
-
   @@index([companyId])
   @@index([status])
 }
@@ -519,19 +506,19 @@ model Role {
 //Permission Schema Start
 
 model Permission {
-  id          BigInt   @id @default(autoincrement())
-  uuid        String   @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
   module      String
   name        String
-  code        String   @unique
+  code        String  @unique
   description String?
 
-  status      Status   @default(ACTIVE)
+  status Status @default(ACTIVE)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   rolePermissions RolePermission[]
 
@@ -543,13 +530,13 @@ model Permission {
 //Role Permission Schema Start
 
 model RolePermission {
-  id           BigInt @id @default(autoincrement())
+  id BigInt @id @default(autoincrement())
 
   roleId       BigInt
   permissionId BigInt
 
-  role         Role @relation(fields: [roleId], references: [id])
-  permission   Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
 
   @@unique([roleId, permissionId])
 }
@@ -559,85 +546,86 @@ model RolePermission {
 //Master schema
 
 model State {
-  id        BigInt   @id @default(autoincrement())
-  uuid      String   @unique @default(uuid()) @db.Uuid
-  name      String
-  code      String   @unique
-  gstCode   String?
-  status    Status   @default(ACTIVE)
+  id      BigInt  @id @default(autoincrement())
+  uuid    String  @unique @default(uuid()) @db.Uuid
+  name    String
+  code    String  @unique
+  gstCode String?
+  status  Status  @default(ACTIVE)
 
-  cities    City[]
+  cities City[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-   clients  Client[]
+  clients  Client[]
+  projects Project[]
 
   @@index([status])
 }
 
 model City {
-  id        BigInt   @id @default(autoincrement())
-  uuid      String   @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  stateId   BigInt
-  state     State    @relation(fields: [stateId], references: [id])
+  stateId BigInt
+  state   State  @relation(fields: [stateId], references: [id])
 
-  name      String
-  status    Status   @default(ACTIVE)
+  name   String
+  status Status @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-   clients  Client[]
-
-  @@index([stateId])
-  @@index([status])
+  clients  Client[]
+  projects Project[]
 
   @@unique([stateId, name])
+  @@index([stateId])
+  @@index([status])
 }
 
 //End Master Schema
 
-
 //Client Schema Start
 
 model Client {
-  id          BigInt   @id @default(autoincrement())
-  uuid        String   @unique @default(uuid()) @db.Uuid
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
 
-  companyId   BigInt
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  stateId     BigInt?
-  state       State?   @relation(fields: [stateId], references: [id])
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id])
 
-  cityId      BigInt?
-  city        City?    @relation(fields: [cityId], references: [id])
+  cityId BigInt?
+  city   City?   @relation(fields: [cityId], references: [id])
 
-  name        String
-  code        String
+  name String
+  code String
 
   contactName String
   mobile      String
   email       String?
 
-  gstNumber   String?
-  panNumber   String?
+  gstNumber String?
+  panNumber String?
 
-  address     String?
-  pincode     String?
+  address String?
+  pincode String?
 
-  remarks     String?
+  remarks String?
 
-  status      Status   @default(ACTIVE)
+  status Status @default(ACTIVE)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
+  projects Project[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -648,3 +636,49 @@ model Client {
 }
 
 //Client Schema End
+
+//Project Schema Start
+
+model Project {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  clientId BigInt
+  client   Client @relation(fields: [clientId], references: [id])
+
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id])
+
+  cityId BigInt?
+  city   City?   @relation(fields: [cityId], references: [id])
+
+  srn  String
+  name String
+
+  address String?
+  pincode String?
+
+  startDate       DateTime?
+  expectedEndDate DateTime?
+
+  remarks String?
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([companyId, srn])
+  @@index([companyId])
+  @@index([clientId])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+//Project Schema End

@@ -57,6 +57,26 @@ export const menu: MenuItem[] = [
 },
 
 
+{
+  id: "crm",
+  title: "CRM",
+  path: "#",
+  children: [
+    {
+      id: "clients",
+      title: "Clients",
+      path: "/clients",
+    },
+
+    {
+      id: "projects",
+      title: "Projects",
+      path: "/projects",
+    },
+  ],
+},
+
+
 
   {
     id: "hr",
@@ -80,11 +100,7 @@ export const menu: MenuItem[] = [
       },
     ],
   },
-  {
-    id: "projects",
-    title: "Projects",
-    path: "/projects",
-  },
+
   {
     id: "inventory",
     title: "Inventory",
@@ -101,8 +117,15 @@ export const menu: MenuItem[] = [
     path: "/reports",
   },
   {
-    id: "settings",
-    title: "Settings",
-    path: "/settings",
-  },
+  id: "settings",
+  title: "Settings",
+  path: "#",
+  children: [
+    {
+      id: "company-profile",
+      title: "Company Profile",
+      path: "/settings/company-profile",
+    },
+  ],
+},
 ];

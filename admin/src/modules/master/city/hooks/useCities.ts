@@ -41,19 +41,16 @@ export const useCities = () => {
     [],
   );
 
-  const fetchDropdownCities =
-    useCallback(async () => {
-      try {
-        const response =
-          await cityApi.getDropdown();
-
-        setDropdownCities(
-          response.cities,
+const fetchDropdownCities = async (
+    stateUuid?: string,
+) => {
+    const data =
+        await cityApi.getDropdown(
+            stateUuid,
         );
-      } catch (error) {
-        console.error(error);
-      }
-    }, []);
+
+    setDropdownCities(data.cities);
+}
 
   const fetchCity = async (
     uuid: string,

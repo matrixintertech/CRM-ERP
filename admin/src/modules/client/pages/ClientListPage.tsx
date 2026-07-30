@@ -8,6 +8,9 @@ import Button from "@/shared/components/Button";
 
 import { useClients } from "../hooks/useClients";
 
+import { useStates } from "../../master/state/hooks/useStates";
+import { useCities } from "../../master/city/hooks/useCities";
+
 import ClientTable from "../components/ClientTable";
 import ClientModal from "../components/ClientModal";
 import ClientDetailsModal from "../components/ClientDetailsModal";
@@ -34,6 +37,8 @@ const initialFormData: CreateClientDto = {
   remarks: "",
 };
 
+
+
 const ClientListPage = () => {
   const {
     loading,
@@ -48,6 +53,17 @@ const ClientListPage = () => {
     update,
     remove,
   } = useClients();
+
+
+    const {
+    dropdown: stateOptions,
+    fetchDropdown: fetchStateDropdown,
+  } = useStates();
+
+const {
+  dropdownCities: cityOptions,
+  fetchDropdownCities: fetchCityDropdown,
+} = useCities();
 
   const [openModal, setOpenModal] =
     useState(false);
@@ -67,6 +83,22 @@ const ClientListPage = () => {
     fetchClients();
   }, []);
 
+
+const handleOpenCreateModal = async () => {
+  await fetchStateDropdown();
+
+  setEditId(null);
+  setFormData(initialFormData);
+
+  setOpenModal(true);
+};
+
+  const handleStateChange = async (
+  stateUuid: string,
+) => {
+  await fetchCityDropdown(stateUuid);
+};
+
   const handleSubmit = async () => {
     if (editId) {
       await update(editId, formData);
@@ -83,52 +115,61 @@ const ClientListPage = () => {
     setFormData(initialFormData);
   };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
-    const client =
-      await fetchClient(uuid);
 
-    if (!client) return;
+const handleEdit = async (uuid: string) => {
+  console.log("1. Edit clicked");
 
-    setEditId(uuid);
+  await fetchStateDropdown();
 
-    setFormData({
-      name: client.name,
-      code: client.code,
+  console.log("2. States loaded");
 
-      contactName:
-        client.contactName,
+  const response = await fetchClient(uuid);
 
-      mobile: client.mobile,
+  console.log("3. Response:", response);
 
-      email:
-        client.email ?? "",
+  if (!response?.client) {
+    console.log("4. Client not found");
+    return;
+  }
 
-      gstNumber:
-        client.gstNumber ?? "",
+  const client = response.client;
 
-      panNumber:
-        client.panNumber ?? "",
+  await fetchCityDropdown(client.state?.uuid);
 
-      stateUuid:
-        client.state?.uuid ?? "",
+  console.log("5. Cities loaded");
 
-      cityUuid:
-        client.city?.uuid ?? "",
+  setEditId(uuid);
 
-      pincode:
-        client.pincode ?? "",
+  const data: CreateClientDto = {
+    name: client.name,
+    code: client.code,
 
-      address:
-        client.address ?? "",
+    contactName: client.contactName,
+    mobile: client.mobile,
 
-      remarks:
-        client.remarks ?? "",
-    });
+    email: client.email ?? "",
 
-    setOpenModal(true);
+    gstNumber: client.gstNumber ?? "",
+    panNumber: client.panNumber ?? "",
+
+    stateUuid: client.state?.uuid ?? "",
+    cityUuid: client.city?.uuid ?? "",
+
+    pincode: client.pincode ?? "",
+    address: client.address ?? "",
+
+    remarks: client.remarks ?? "",
   };
+
+  console.log("6. Setting formData:", data);
+
+  setFormData(data);
+
+  console.log("7. setFormData called");
+
+  setOpenModal(true);
+};
+
 
   return (
     <>
@@ -136,17 +177,7 @@ const ClientListPage = () => {
         title="Clients"
         subtitle="Manage company clients"
         actions={
-          <Button
-            onClick={() => {
-              setEditId(null);
-
-              setFormData(
-                initialFormData,
-              );
-
-              setOpenModal(true);
-            }}
-          >
+            <Button onClick={handleOpenCreateModal}>
             Create Client
           </Button>
         }
@@ -171,22 +202,19 @@ const ClientListPage = () => {
         />
       </Card>
 
-      <ClientModal
-        open={openModal}
-        loading={loading}
-        title={
-          editId
-            ? "Edit Client"
-            : "Create Client"
-        }
-        isEdit={!!editId}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={() =>
-          setOpenModal(false)
-        }
-        onSubmit={handleSubmit}
-      />
+    <ClientModal
+      open={openModal}
+      loading={loading}
+      title={editId ? "Edit Client" : "Create Client"}
+      isEdit={!!editId}
+      formData={formData}
+      setFormData={setFormData}
+      stateOptions={stateOptions}
+      cityOptions={cityOptions}
+      onStateChange={handleStateChange}
+      onClose={() => setOpenModal(false)}
+      onSubmit={handleSubmit}
+    />
 
       <ClientDetailsModal
         open={openDetails}

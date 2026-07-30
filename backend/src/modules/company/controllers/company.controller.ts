@@ -1,7 +1,7 @@
 import {
   Body,
   Controller,
-  Post,Get, Query, Param,Patch, Delete,UseGuards
+  Post,Get, Query, Param,Patch, Delete,UseGuards,Req 
 } from '@nestjs/common';
 
 import {
@@ -18,6 +18,7 @@ import { CreateCompanyDto } from '../dto/create-company.dto';
 import { GetCompaniesDto } from '../dto/get-companies.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
 import { CreateCompanyAdminDto } from '../dto/create-company-admin.dto';
+import { UpdateCompanyProfileDto } from '../dto/update-company-profile.dto';
 
 import { UserTypes } from '../../auth/decorators/user-types.decorator';
 
@@ -46,6 +47,32 @@ findAll(
   dto: GetCompaniesDto,
 ) {
   return this.companyService.findAll(
+    dto,
+  );
+}
+
+@Get('profile')
+async getProfile(
+  @Req() req: Request,
+) {
+  const user = (req as any).user;
+
+  return this.companyService.getProfile(
+    BigInt(user.companyId),
+  );
+}
+
+@Patch('profile')
+async updateProfile(
+  @Req() req: Request,
+
+  @Body()
+  dto: UpdateCompanyProfileDto,
+) {
+  const user = (req as any).user;
+
+  return this.companyService.updateProfile(
+    BigInt(user.companyId),
     dto,
   );
 }
@@ -112,6 +139,9 @@ createCompanyAdmin(
     dto,
   );
 }
+
+
+
 
 
 

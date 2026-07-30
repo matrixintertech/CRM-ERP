@@ -1,12 +1,14 @@
+// src/modules/project/components/ProjectDetailsModal.tsx
+
 import Badge from "@/shared/components/Badge";
 import Modal from "@/shared/components/Modal";
 
-import type { Client } from "../types/client.types";
+import type { Project } from "../types/project.types";
 
 interface Props {
   open: boolean;
   loading: boolean;
-  client: Client | null;
+  project: Project | null;
   onClose: () => void;
 }
 
@@ -43,23 +45,23 @@ const DetailItem = ({
   </div>
 );
 
-const ClientDetailsModal = ({
+const ProjectDetailsModal = ({
   open,
   loading,
-  client,
+  project,
   onClose,
 }: Props) => {
   return (
     <Modal
       open={open}
-      title="Client Details"
+      title="Project Details"
       onClose={onClose}
       size="lg"
     >
       {loading ? (
         <p>Loading...</p>
-      ) : !client ? (
-        <p>No client found.</p>
+      ) : !project ? (
+        <p>No project found.</p>
       ) : (
         <div
           style={{
@@ -87,87 +89,27 @@ const ClientDetailsModal = ({
               }}
             >
               <DetailItem
-                label="Client Name"
-                value={client.name}
+                label="Project Name"
+                value={project.name}
               />
 
               <DetailItem
-                label="Client Code"
-                value={client.code}
+                label="SRN"
+                value={project.srn}
+              />
+
+              <DetailItem
+                label="Client"
+                value={project.client?.name}
               />
 
               <DetailItem
                 label="Status"
                 value={
-                  <Badge status={client.status} />
+                  <Badge
+                    status={project.status}
+                  />
                 }
-              />
-            </div>
-          </section>
-
-          {/* Contact Information */}
-          <section>
-            <h3
-              style={{
-                marginBottom: 16,
-                paddingBottom: 8,
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              Contact Information
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 20,
-              }}
-            >
-              <DetailItem
-                label="Contact Person"
-                value={client.contactName}
-              />
-
-              <DetailItem
-                label="Mobile"
-                value={client.mobile}
-              />
-
-              <DetailItem
-                label="Email"
-                value={client.email}
-              />
-            </div>
-          </section>
-
-          {/* Tax Information */}
-          <section>
-            <h3
-              style={{
-                marginBottom: 16,
-                paddingBottom: 8,
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              Tax Information
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 20,
-              }}
-            >
-              <DetailItem
-                label="GST Number"
-                value={client.gstNumber}
-              />
-
-              <DetailItem
-                label="PAN Number"
-                value={client.panNumber}
               />
             </div>
           </section>
@@ -193,22 +135,65 @@ const ClientDetailsModal = ({
             >
               <DetailItem
                 label="State"
-                value={client.state?.name}
+                value={project.state?.name}
               />
 
               <DetailItem
                 label="City"
-                value={client.city?.name}
+                value={project.city?.name}
               />
 
               <DetailItem
                 label="Pincode"
-                value={client.pincode}
+                value={project.pincode}
               />
 
               <DetailItem
                 label="Address"
-                value={client.address}
+                value={project.address}
+              />
+            </div>
+          </section>
+
+          {/* Project Timeline */}
+          <section>
+            <h3
+              style={{
+                marginBottom: 16,
+                paddingBottom: 8,
+                borderBottom: "1px solid #e5e7eb",
+              }}
+            >
+              Timeline
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 20,
+              }}
+            >
+              <DetailItem
+                label="Start Date"
+                value={
+                  project.startDate
+                    ? new Date(
+                        project.startDate,
+                      ).toLocaleDateString()
+                    : "-"
+                }
+              />
+
+              <DetailItem
+                label="Expected End Date"
+                value={
+                  project.expectedEndDate
+                    ? new Date(
+                        project.expectedEndDate,
+                      ).toLocaleDateString()
+                    : "-"
+                }
               />
             </div>
           </section>
@@ -227,7 +212,7 @@ const ClientDetailsModal = ({
 
             <DetailItem
               label="Remarks"
-              value={client.remarks}
+              value={project.remarks}
             />
           </section>
 
@@ -253,14 +238,14 @@ const ClientDetailsModal = ({
               <DetailItem
                 label="Created At"
                 value={new Date(
-                  client.createdAt,
+                  project.createdAt,
                 ).toLocaleString()}
               />
 
               <DetailItem
                 label="Updated At"
                 value={new Date(
-                  client.updatedAt,
+                  project.updatedAt,
                 ).toLocaleString()}
               />
             </div>
@@ -271,4 +256,4 @@ const ClientDetailsModal = ({
   );
 };
 
-export default ClientDetailsModal;
+export default ProjectDetailsModal;

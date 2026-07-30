@@ -8,6 +8,8 @@ import { CompanyRepository } from '../repositories/company.repository';
 import { CreateCompanyDto } from '../dto/create-company.dto';
 import { GetCompaniesDto } from '../dto/get-companies.dto';
 import { UpdateCompanyDto } from '../dto/update-company.dto';
+import { UpdateCompanyProfileDto } from '../dto/update-company-profile.dto';
+
 
 @Injectable()
 export class CompanyService {
@@ -235,6 +237,34 @@ async delete(
     message:
       'Company deleted successfully.',
   };
+}
+
+
+async getProfile(companyId: bigint) {
+  const company = await this.companyRepository.findProfile(companyId);
+
+  if (!company) {
+    throw new NotFoundException("Company not found.");
+  }
+
+  return company;
+}
+
+
+async updateProfile(
+  companyId: bigint,
+  dto: UpdateCompanyProfileDto,
+) {
+  const company = await this.companyRepository.findProfile(companyId);
+
+  if (!company) {
+    throw new NotFoundException("Company not found.");
+  }
+
+  return this.companyRepository.updateProfile(
+    companyId,
+    dto,
+  );
 }
 
 

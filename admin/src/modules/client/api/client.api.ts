@@ -6,7 +6,9 @@ import type {
   ClientQueryParams,
   CreateClientDto,
   UpdateClientDto,
+  ClientDropdown
 } from '../types/client.types';
+
 
 interface ApiResponse<T> {
   success: boolean;
@@ -67,12 +69,22 @@ export const updateClient = async (
   uuid: string,
   payload: UpdateClientDto,
 ): Promise<Client> => {
-  const { data } = await api.patch<ApiResponse<Client>>(
-    `/clients/${uuid}`,
-    payload,
-  );
+  try {
+    console.log("Update UUID:", uuid);
+    console.log("Update Payload:", payload);
 
-  return data.data;
+    const { data } = await api.patch<ApiResponse<Client>>(
+      `/clients/${uuid}`,
+      payload,
+    );
+
+    return data.data;
+  } catch (error: any) {
+  //    console.log(error.response?.data);
+  // console.log(error.response?.data.errors);
+  // console.log(JSON.stringify(error.response?.data, null, 2));
+  // throw error;
+  }
 };
 
 /**
@@ -82,4 +94,13 @@ export const deleteClient = async (
   uuid: string,
 ): Promise<void> => {
   await api.delete(`/clients/${uuid}`);
+};
+
+
+export const getClientDropdown = async () => {
+  const { data } = await api.get<
+    ApiResponse<ClientDropdown[]>
+  >("/clients/dropdown");
+
+  return data.data;
 };

@@ -14,6 +14,8 @@ import SubscriptionPlanListPage from "@/modules/subscription-plan/pages/Subscrip
 import StateListPage from "@/modules/master/state/pages/StateListPage";
 import CityListPage from "@/modules/master/city/pages/CityListPage";
 import ClientListPage from "@/modules/client/pages/ClientListPage";
+import ProjectListPage from "@/modules/project/pages/ProjectListPage";
+import CompanyProfilePage from "@/modules/company/pages/CompanyProfilePage";
 
 
 
@@ -91,6 +93,17 @@ export const protectedRoutes: AppRoute[] = [
     path: "/clients",
     element: <ClientListPage />,
   },
+
+
+  {
+  path: "/projects",
+  element: <ProjectListPage />,
+},
+
+{
+  path: "/settings/company-profile",
+  element: <CompanyProfilePage />,
+}
 
 
 

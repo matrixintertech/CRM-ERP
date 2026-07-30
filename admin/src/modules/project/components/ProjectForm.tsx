@@ -1,9 +1,9 @@
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import type { CreateClientDto } from "../types/client.types";
+import type { CreateProjectRequest } from "../types/project.types";
 
-import styles from "./ClientForm.module.css";
+import styles from "./ProjectForm.module.css";
 
 interface Option {
   label: string;
@@ -11,12 +11,13 @@ interface Option {
 }
 
 interface Props {
-  formData: CreateClientDto;
+  formData: CreateProjectRequest;
 
   setFormData: React.Dispatch<
-    React.SetStateAction<CreateClientDto>
+    React.SetStateAction<CreateProjectRequest>
   >;
 
+  clientOptions: Option[];
   stateOptions: Option[];
   cityOptions: Option[];
 
@@ -27,114 +28,64 @@ interface Props {
   isEdit?: boolean;
 }
 
-
-
-const ClientForm = ({
+const ProjectForm = ({
   formData,
   setFormData,
+
+  clientOptions,
   stateOptions,
   cityOptions,
+
   onStateChange,
+
   isEdit = false,
 }: Props) => {
+  const mappedClientOptions = clientOptions.map(
+    (item: any) => ({
+      label: item.name,
+      value: item.uuid,
+    }),
+  );
 
-  console.log("ClientForm formData", formData);
+  const mappedStateOptions = stateOptions.map(
+    (item: any) => ({
+      label: item.name,
+      value: item.uuid,
+    }),
+  );
 
-const mappedStateOptions = stateOptions.map((item: any) => ({
-  label: item.name,
-  value: item.uuid,
-}));
-
-const mappedCityOptions = cityOptions.map((item: any) => ({
-  label: item.name,
-  value: item.uuid,
-}));
-
-
-
+  const mappedCityOptions = cityOptions.map(
+    (item: any) => ({
+      label: item.name,
+      value: item.uuid,
+    }),
+  );
 
   return (
     <div className={styles.form}>
+      {/* Client */}
+
+      <Select
+        label="Client"
+        value={formData.clientUuid}
+        options={mappedClientOptions}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            clientUuid: e.target.value,
+          }))
+        }
+      />
+
       {/* Basic Information */}
 
       <Input
-        label="Client Name"
+        label="Project Name"
         value={formData.name}
         onChange={(e) =>
           setFormData((prev) => ({
             ...prev,
             name: e.target.value,
-          }))
-        }
-      />
-
-      <Input
-        label="Client Code"
-        value={formData.code}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            code: e.target.value
-              .toUpperCase()
-              .replace(/\s+/g, ""),
-          }))
-        }
-      />
-
-      <Input
-        label="Contact Person"
-        value={formData.contactName}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            contactName: e.target.value,
-          }))
-        }
-      />
-
-      <Input
-        label="Mobile"
-        value={formData.mobile}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            mobile: e.target.value,
-          }))
-        }
-      />
-
-      <Input
-        label="Email"
-        type="email"
-        value={formData.email ?? ""}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            email: e.target.value,
-          }))
-        }
-      />
-
-      {/* Tax Information */}
-
-      <Input
-        label="GST Number"
-        value={formData.gstNumber ?? ""}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            gstNumber: e.target.value.toUpperCase(),
-          }))
-        }
-      />
-
-      <Input
-        label="PAN Number"
-        value={formData.panNumber ?? ""}
-        onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            panNumber: e.target.value.toUpperCase(),
           }))
         }
       />
@@ -161,7 +112,7 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
       <Select
         label="City"
         value={formData.cityUuid ?? ""}
-         options={mappedCityOptions}
+        options={mappedCityOptions}
         onChange={(e) =>
           setFormData((prev) => ({
             ...prev,
@@ -191,6 +142,34 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
           }))
         }
       />
+
+      {/* Project Timeline */}
+
+      <Input
+        type="date"
+        label="Start Date"
+        value={formData.startDate ?? ""}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            startDate: e.target.value,
+          }))
+        }
+      />
+
+      <Input
+        type="date"
+        label="Expected End Date"
+        value={formData.expectedEndDate ?? ""}
+        onChange={(e) =>
+          setFormData((prev) => ({
+            ...prev,
+            expectedEndDate: e.target.value,
+          }))
+        }
+      />
+
+      {/* Remarks */}
 
       <Input
         label="Remarks"
@@ -231,4 +210,4 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
   );
 };
 
-export default ClientForm;
+export default ProjectForm;

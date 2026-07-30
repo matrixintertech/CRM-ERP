@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Company } from '@prisma/client';
+import { Prisma, Company, UserStatus  } from '@prisma/client';
 
 import { PrismaService } from 'src/database/prisma.service';
 
@@ -241,6 +241,41 @@ async softDelete(
     data: {
       deletedAt: new Date(),
     },
+  });
+}
+
+//Company Profile
+async findProfile(companyId: bigint) {
+  return this.prisma.company.findFirst({
+    where: {
+      id: companyId,
+      deletedAt: null,
+      status: UserStatus.ACTIVE,
+    },
+    select: {
+      uuid: true,
+      name: true,
+      code: true,
+      email: true,
+      mobile: true,
+      logo: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
+
+
+async updateProfile(
+  companyId: bigint,
+  data: Prisma.CompanyUpdateInput,
+) {
+  return this.prisma.company.update({
+    where: {
+      id: companyId,
+    },
+    data,
   });
 }
 

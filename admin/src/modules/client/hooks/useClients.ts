@@ -6,12 +6,14 @@ import {
   createClient,
   deleteClient,
   getClientByUuid,
+  getClientDropdown,
   getClients,
   updateClient,
 } from "../api/client.api";
 
 import type {
   Client,
+  ClientDropdown,
   ClientListResponse,
   ClientQueryParams,
   CreateClientDto,
@@ -50,6 +52,8 @@ export const useClients = () => {
   const [formData, setFormData] =
     useState<CreateClientDto>(initialFormData);
 
+    const [dropdown, setDropdown] = useState<ClientDropdown[]>([]);
+
   const fetchClients = async (
     params?: ClientQueryParams,
   ): Promise<ClientListResponse> => {
@@ -67,13 +71,13 @@ export const useClients = () => {
     }
   };
 
-  const fetchClient = async (uuid: string) => {
-    const data = await getClientByUuid(uuid);
+const fetchClient = async (uuid: string) => {
+  const data = await getClientByUuid(uuid);
 
-    setSelectedClient(data);
+  setSelectedClient(data.client);
 
-    return data;
-  };
+  return data;
+};
 
   const create = async (
     payload: CreateClientDto,
@@ -155,27 +159,38 @@ export const useClients = () => {
     }
   };
 
+  const fetchDropdown = async () => {
+  const data = await getClientDropdown();
+
+  setDropdown(data);
+
+  return data;
+};
+
   const resetForm = () => {
     setFormData(initialFormData);
   };
 
   return {
-    loading,
+  loading,
 
-    clients,
-    total,
-    selectedClient,
+  clients,
+  total,
+  selectedClient,
 
-    formData,
-    setFormData,
+  dropdown,
+  fetchDropdown,
 
-    fetchClients,
-    fetchClient,
+  formData,
+  setFormData,
 
-    create,
-    update,
-    remove,
+  fetchClients,
+  fetchClient,
 
-    resetForm,
-  };
+  create,
+  update,
+  remove,
+
+  resetForm,
+};
 };

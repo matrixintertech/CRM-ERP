@@ -47,6 +47,9 @@ import { CityModule } from "./modules/master/city/city.module";
 //Client
 import { ClientModule } from './modules/client/client.module';
 
+//Project
+import { ProjectModule } from './modules/project/project.module';
+
 
 @Module({
   imports: [
@@ -70,7 +73,8 @@ import { ClientModule } from './modules/client/client.module';
     SubscriptionModule,
     StateModule,
     CityModule,
-    ClientModule
+    ClientModule,
+    ProjectModule
 
   ],
   controllers: [AppController],

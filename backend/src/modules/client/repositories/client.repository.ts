@@ -173,19 +173,19 @@ export class ClientRepository implements IClientRepository {
     });
   }
 
-  async update(
-    companyId: bigint,
-    uuid: string,
-    data: Prisma.ClientUncheckedUpdateInput,
-  ): Promise<ClientWithRelations> {
-    return this.prisma.client.update({
-      where: {
-        uuid,
-      },
-      data,
-      include: this.include,
-    });
-  }
+async update(
+  companyId: bigint,
+  uuid: string,
+  data: Prisma.ClientUncheckedUpdateInput,
+): Promise<ClientWithRelations> {
+  return this.prisma.client.update({
+    where: {
+      uuid,
+    },
+    data,
+    include: this.include,
+  });
+}
 
   async softDelete(
     companyId: bigint,

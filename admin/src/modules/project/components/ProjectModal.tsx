@@ -1,9 +1,11 @@
+
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
-import ClientForm from "./ClientForm";
+import ProjectForm from "./ProjectForm";
 
-import type { CreateClientDto } from "../types/client.types";
+import type { CreateProjectRequest } from "../types/project.types";
 
 interface Option {
   label: string;
@@ -16,12 +18,13 @@ interface Props {
   isEdit: boolean;
   loading: boolean;
 
-  formData: CreateClientDto;
+  formData: CreateProjectRequest;
 
   setFormData: React.Dispatch<
-    React.SetStateAction<CreateClientDto>
+    React.SetStateAction<CreateProjectRequest>
   >;
 
+  clientOptions: Option[];
   stateOptions: Option[];
   cityOptions: Option[];
 
@@ -33,21 +36,23 @@ interface Props {
   onSubmit: () => void;
 }
 
-
-const ClientModal = ({
+const ProjectModal = ({
   title,
   open,
   isEdit,
   loading,
   formData,
   setFormData,
+
+  clientOptions,
   stateOptions,
   cityOptions,
+
   onStateChange,
+
   onClose,
   onSubmit,
 }: Props) => {
-
   return (
     <Modal
       open={open}
@@ -55,9 +60,10 @@ const ClientModal = ({
       onClose={onClose}
       size="lg"
     >
-    <ClientForm
+      <ProjectForm
         formData={formData}
         setFormData={setFormData}
+        clientOptions={clientOptions}
         stateOptions={stateOptions}
         cityOptions={cityOptions}
         onStateChange={onStateChange}
@@ -84,12 +90,12 @@ const ClientModal = ({
           onClick={onSubmit}
         >
           {isEdit
-            ? "Update Client"
-            : "Create Client"}
+            ? "Update Project"
+            : "Create Project"}
         </Button>
       </div>
     </Modal>
   );
 };
 
-export default ClientModal;
+export default ProjectModal;
