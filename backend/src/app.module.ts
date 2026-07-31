@@ -50,6 +50,15 @@ import { ClientModule } from './modules/client/client.module';
 //Project
 import { ProjectModule } from './modules/project/project.module';
 
+//Designation
+import { DesignationModule } from "./modules/designation/designation.module";
+
+//Department
+import { DepartmentModule } from "./modules/department/department.module";
+
+//Employee
+import { EmployeeModule } from "./modules/employee/employee.module";
+
 
 @Module({
   imports: [
@@ -74,7 +83,10 @@ import { ProjectModule } from './modules/project/project.module';
     StateModule,
     CityModule,
     ClientModule,
-    ProjectModule
+    ProjectModule,
+    DesignationModule,
+    DepartmentModule,
+    EmployeeModule
 
   ],
   controllers: [AppController],

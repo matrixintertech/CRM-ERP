@@ -1,0 +1,18 @@
+import { Module } from "@nestjs/common";
+
+import { PrismaModule } from 'src/database/prisma.module';
+
+import { DesignationController } from "./controllers/designation.controller";
+import { DesignationRepository } from "./repositories/designation.repository";
+import { DesignationService } from "./services/designation.service";
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [DesignationController],
+  providers: [
+    DesignationRepository,
+    DesignationService,
+  ],
+  exports: [DesignationRepository],
+})
+export class DesignationModule {}

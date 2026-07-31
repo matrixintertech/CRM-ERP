@@ -16,6 +16,9 @@ import CityListPage from "@/modules/master/city/pages/CityListPage";
 import ClientListPage from "@/modules/client/pages/ClientListPage";
 import ProjectListPage from "@/modules/project/pages/ProjectListPage";
 import CompanyProfilePage from "@/modules/company/pages/CompanyProfilePage";
+import DesignationPage from "@/modules/designation/pages/DesignationPage";
+import DepartmentPage from "@/modules/department/pages/DepartmentPage";
+import EmployeePage from "@/modules/employee/pages/EmployeePage";
 
 
 
@@ -52,7 +55,7 @@ export const protectedRoutes: AppRoute[] = [
 },
 
   {
-    path: "/companies/:companyId/organization",
+    path: "/settings/organization-units",
     element: <OrganizationUnitPage />,
   },
 
@@ -103,9 +106,23 @@ export const protectedRoutes: AppRoute[] = [
 {
   path: "/settings/company-profile",
   element: <CompanyProfilePage />,
+},
+
+{
+  path: "/designations",
+  element: <DesignationPage />,
+},
+
+{
+
+   path: "/departments",
+  element: <DepartmentPage />,
+},
+
+{
+  path: "/employees",
+  element: <EmployeePage />,
 }
-
-
 
   
 ];

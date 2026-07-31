@@ -1,11 +1,12 @@
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import type { OrganizationUnitFormData } from "../types/organization-unit.types";
+import type { OrganizationUnitFormData, OrganizationUnit } from "../types/organization-unit.types";
 
 import styles from "./OrganizationUnitForm.module.css";
 
 interface Props {
+  organizationUnits: OrganizationUnit[];
   formData: OrganizationUnitFormData;
   setFormData: React.Dispatch<
     React.SetStateAction<OrganizationUnitFormData>
@@ -31,17 +32,50 @@ const typeOptions = [
   },
 ];
 
+
+
+const OrganizationUnitForm = ({
+  organizationUnits,
+  formData,
+  setFormData,
+}: Props) => {
+
+
+const allowedParents = organizationUnits.filter((unit) => {
+  switch (formData.type) {
+    case "HEAD_OFFICE":
+      return false;
+
+    case "REGION":
+      return unit.type === "HEAD_OFFICE";
+
+    case "BRANCH":
+      return (
+        unit.type === "HEAD_OFFICE" ||
+        unit.type === "REGION"
+      );
+
+    case "OFFICE":
+      return unit.type === "BRANCH";
+
+    default:
+      return false;
+  }
+});
+
 const parentOptions = [
   {
     label: "None",
     value: "",
   },
+  ...allowedParents.map((unit) => ({
+    label: `${unit.name} (${unit.type.replace("_", " ")})`,
+    value: unit.id.toString(),
+  })),
 ];
 
-const OrganizationUnitForm = ({
-  formData,
-  setFormData,
-}: Props) => {
+
+
   return (
     <div className={styles.form}>
       <Select
@@ -52,6 +86,7 @@ const OrganizationUnitForm = ({
           setFormData({
             ...formData,
             type: e.target.value as any,
+            parentId: undefined, 
           })
         }
       />

@@ -11,15 +11,16 @@ import Button from "@/shared/components/Button";
 import OrganizationUnitModal from "../components/OrganizationUnitModal";
 import { useOrganizationUnits } from "../hooks/useOrganizationUnits";
 
-import type { OrganizationUnitFormData } from "../types/organization-unit.types";
+import type {
+  OrganizationUnit,
+  OrganizationUnitFormData,
+} from "../types/organization-unit.types";
 
 import DataTable from "@/shared/components/DataTable/DataTable";
 
 import type { DataTableColumn } from "@/shared/components/DataTable/types";
 
-import type {
-  OrganizationUnit,
-} from "../types/organization-unit.types";
+
 
 import {
   Eye,
@@ -32,88 +33,100 @@ const OrganizationUnitPage = () => {
 
   const { companyId } = useParams();
 
-  const {
+
+  const defaultForm: OrganizationUnitFormData = {
+    parentId: undefined,
+    type: "HEAD_OFFICE",
+    name: "",
+    code: "",
+    email: "",
+    mobile: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    country: "",
+    pincode: "",
+  };
+
+const {
   loading,
   organizationUnits,
   fetchOrganizationUnits,
+  fetchOrganizationUnit,
   create,
+  update,
 } = useOrganizationUnits();
 
-  useEffect(() => {
-  if (companyId) {
-    fetchOrganizationUnits(
-      companyId,
-    );
-  }
-}, [companyId]);
+useEffect(() => {
+  fetchOrganizationUnits();
+}, []);
 
 
   const [open, setOpen] =
     useState(false);
 
-  const [formData, setFormData] =
-    useState<OrganizationUnitFormData>({
-      companyId: Number(companyId),
+    const [editId, setEditId] =
+  useState<number | null>(null);
 
-      parentId: undefined,
-
-      type: "HEAD_OFFICE",
-
-      name: "",
-
-      code: "",
-
-      email: "",
-
-      mobile: "",
-
-      addressLine1: "",
-
-      addressLine2: "",
-
-      city: "",
-
-      state: "",
-
-      country: "",
-
-      pincode: "",
-    });
+   const [formData, setFormData] = useState(defaultForm);
 
 const handleSubmit = async () => {
   try {
-    await create(formData);
-
-    if (companyId) {
-      await fetchOrganizationUnits(
-        companyId,
-      );
+    if (editId) {
+      await update(editId, {
+        name: formData.name,
+        code: formData.code,
+        email: formData.email,
+        mobile: formData.mobile,
+        addressLine1: formData.addressLine1,
+        addressLine2: formData.addressLine2,
+        city: formData.city,
+        state: formData.state,
+        country: formData.country,
+        pincode: formData.pincode,
+        status: "ACTIVE",
+      });
+    } else {
+      await create(formData);
     }
 
-    setOpen(false);
+    // Refresh list
+    await fetchOrganizationUnits();
 
-    setFormData({
-      companyId: Number(companyId),
-      parentId: undefined,
-      type: "HEAD_OFFICE",
-      name: "",
-      code: "",
-      email: "",
-      mobile: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      country: "",
-      pincode: "",
-    });
+    // Reset form
+    setOpen(false);
+    setEditId(null);
+    setFormData(defaultForm);
   } catch (error: any) {
-    console.log(
-      error.response?.data,
-    );
+    console.error(error.response?.data || error);
   }
 };
 
+const handleEdit = async (id: number) => {
+  const unit = await fetchOrganizationUnit(id);
+
+  if (!unit) return;
+
+  setEditId(id);
+
+  setFormData({
+    parentId: unit.parentId ?? undefined,
+    type: unit.type,
+    name: unit.name,
+    code: unit.code,
+    email: unit.email,
+    mobile: unit.mobile,
+    addressLine1: unit.addressLine1,
+    addressLine2: unit.addressLine2,
+    city: unit.city,
+    state: unit.state,
+    country: unit.country,
+    pincode: unit.pincode,
+  });
+
+  setOpen(true);
+};
 
 const columns: DataTableColumn<OrganizationUnit>[] =
   [
@@ -172,10 +185,13 @@ const columns: DataTableColumn<OrganizationUnit>[] =
             <Eye size={16} />
           </Button>
 
-          <Button size="sm">
-            <SquarePen
-              size={16}
-            />
+          <Button
+            size="sm"
+            onClick={() =>
+              handleEdit(row.id)
+            }
+          >
+            <SquarePen size={16} />
           </Button>
 
           <Button
@@ -212,10 +228,12 @@ const columns: DataTableColumn<OrganizationUnit>[] =
               Back
             </Button>
 
-            <Button
-              onClick={() =>
-                setOpen(true)
-              }
+             <Button
+              onClick={() => {
+                setEditId(null);
+                setFormData(defaultForm);
+                setOpen(true);
+              }}
             >
               Add Unit
             </Button>
@@ -237,13 +255,22 @@ const columns: DataTableColumn<OrganizationUnit>[] =
 </Card>
 
       <OrganizationUnitModal
+        title={
+          editId
+            ? "Edit Organization Unit"
+            : "Create Organization Unit"
+        }
+        isEdit={!!editId}
         open={open}
         loading={loading}
+        organizationUnits={organizationUnits}
         formData={formData}
         setFormData={setFormData}
-        onClose={() =>
-          setOpen(false)
-        }
+        onClose={() => {
+          setOpen(false);
+          setEditId(null);
+          setFormData(defaultForm);
+        }}
         onSubmit={handleSubmit}
       />
     </>

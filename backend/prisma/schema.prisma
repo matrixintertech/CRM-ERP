@@ -96,6 +96,19 @@ enum OrganizationUnitType {
   OFFICE
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  FREELANCER
+}
+
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -288,6 +301,9 @@ model Company {
   roles                Role[]
   clients              Client[]
   projects             Project[]
+  designations         Designation[]
+  departments          Department[]
+  employees            Employee[]
 
   @@index([status])
   @@map("companies")
@@ -462,6 +478,8 @@ model OrganizationUnit {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  employees Employee[]
 
   @@index([companyId])
   @@index([parentId])
@@ -682,3 +700,130 @@ model Project {
 }
 
 //Project Schema End
+
+//Designation Schema Start
+
+model Designation {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  name String
+  code String
+
+  description String?
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  employees Employee[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@map("designations")
+}
+
+//Designaion Schema End
+
+//Department Schema Start
+
+model Department {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  name        String
+  code        String
+  description String?
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  employees Employee[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@map("departments")
+}
+
+//Department Schema End
+
+//Employee Schema Start
+
+model Employee {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  employeeCode String @db.VarChar(30)
+
+  firstName   String  @db.VarChar(100)
+  lastName    String? @db.VarChar(100)
+  displayName String? @db.VarChar(200)
+
+  email  String? @db.VarChar(150)
+  mobile String  @db.VarChar(20)
+
+  gender Gender?
+
+  organizationUnitId BigInt?
+  departmentId       BigInt?
+  designationId      BigInt?
+
+  managerId BigInt?
+
+  joiningDate DateTime?
+
+  employmentType EmploymentType @default(FULL_TIME)
+
+  avatarUrl String?
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  organizationUnit OrganizationUnit? @relation(fields: [organizationUnitId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  designation Designation? @relation(fields: [designationId], references: [id])
+
+  manager Employee? @relation("EmployeeManager", fields: [managerId], references: [id])
+
+  subordinates Employee[] @relation("EmployeeManager")
+
+  @@unique([companyId, employeeCode])
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([organizationUnitId])
+  @@index([managerId])
+  @@index([status])
+  @@map("employees")
+}
+
+//Employee Schema End

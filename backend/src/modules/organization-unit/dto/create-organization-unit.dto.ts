@@ -10,11 +10,6 @@ import {
 } from 'class-validator';
 
 export class CreateOrganizationUnitDto {
-  @ApiProperty({
-    example: 1,
-  })
-  @IsNumber()
-  companyId: number;
 
   @ApiPropertyOptional({
     example: 1,

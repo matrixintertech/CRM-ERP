@@ -14,14 +14,15 @@ export class OrganizationUnitService {
     private readonly organizationUnitRepository: OrganizationUnitRepository,
   ) {}
 
-  async create(
-    dto: CreateOrganizationUnitDto,
-  ) {
+async create(
+  companyId: number,
+  dto: CreateOrganizationUnitDto,
+) {
     // 1. Company Exists?
-    const company =
-      await this.organizationUnitRepository.findCompanyById(
-        BigInt(dto.companyId),
-      );
+   const company =
+     await this.organizationUnitRepository.findCompanyById(
+    BigInt(companyId),
+  );
 
     if (!company) {
       throw new NotFoundException(
@@ -31,8 +32,9 @@ export class OrganizationUnitService {
 
     // 2. Parent Exists? (Optional)
     if (dto.parentId) {
-      const parent =
+     const parent =
         await this.organizationUnitRepository.findParentById(
+          BigInt(companyId),
           BigInt(dto.parentId),
         );
 
@@ -45,9 +47,10 @@ export class OrganizationUnitService {
 
     // 3. Code Exists?
     const code =
-      await this.organizationUnitRepository.findByCode(
-        dto.code,
-      );
+  await this.organizationUnitRepository.findByCode(
+    BigInt(companyId),
+    dto.code,
+  );
 
     if (code) {
       throw new ConflictException(
@@ -56,10 +59,11 @@ export class OrganizationUnitService {
     }
 
     // 4. Name Exists?
-    const name =
-      await this.organizationUnitRepository.findByName(
-        dto.name,
-      );
+   const name =
+  await this.organizationUnitRepository.findByName(
+    BigInt(companyId),
+    dto.name,
+  );
 
     if (name) {
       throw new ConflictException(
@@ -73,7 +77,7 @@ export class OrganizationUnitService {
         {
           company: {
             connect: {
-              id: BigInt(dto.companyId),
+              id: BigInt(companyId),
             },
           },
 
@@ -147,11 +151,15 @@ async findAll(
 }
 
 
-async findOne(id: number) {
-  const organizationUnit =
-    await this.organizationUnitRepository.findById(
-      BigInt(id),
-    );
+async findOne(
+  companyId: number,
+  id: number,
+) {
+ const organizationUnit =
+  await this.organizationUnitRepository.findById(
+    BigInt(companyId),
+    BigInt(id),
+  );
 
   if (!organizationUnit) {
     throw new NotFoundException(
@@ -168,11 +176,13 @@ async findOne(id: number) {
 
 
 async update(
+  companyId: number,
   id: number,
   dto: UpdateOrganizationUnitDto,
 ) {
   const organizationUnit =
     await this.organizationUnitRepository.findById(
+      BigInt(companyId),
       BigInt(id),
     );
 
@@ -182,19 +192,38 @@ async update(
     );
   }
 
+  // Code duplicate check
   if (
     dto.code &&
-    dto.code !==
-      organizationUnit.code
+    dto.code !== organizationUnit.code
   ) {
     const code =
       await this.organizationUnitRepository.findByCode(
+        BigInt(companyId),
         dto.code,
       );
 
     if (code) {
       throw new ConflictException(
         'Organization unit code already exists.',
+      );
+    }
+  }
+
+  // Name duplicate check
+  if (
+    dto.name &&
+    dto.name !== organizationUnit.name
+  ) {
+    const name =
+      await this.organizationUnitRepository.findByName(
+        BigInt(companyId),
+        dto.name,
+      );
+
+    if (name) {
+      throw new ConflictException(
+        'Organization unit name already exists.',
       );
     }
   }
@@ -206,12 +235,16 @@ async update(
 }
 
 
-async delete(id: number) {
+async delete(
+  companyId: number,
+  id: number,
+) {
   // 1. Exists?
   const organizationUnit =
-    await this.organizationUnitRepository.findById(
-      BigInt(id),
-    );
+  await this.organizationUnitRepository.findById(
+    BigInt(companyId),
+    BigInt(id),
+  );
 
   if (!organizationUnit) {
     throw new NotFoundException(
@@ -220,10 +253,11 @@ async delete(id: number) {
   }
 
   // 2. Child Exists?
-  const child =
-    await this.organizationUnitRepository.findChildren(
-      BigInt(id),
-    );
+const child =
+  await this.organizationUnitRepository.findChildren(
+    BigInt(companyId),
+    BigInt(id),
+  );
 
   if (child) {
     throw new ConflictException(

@@ -37,11 +37,13 @@ export class OrganizationUnitRepository {
 }
 
 async findById(
+  companyId: bigint,
   id: bigint,
 ) {
   return this.prisma.organizationUnit.findFirst({
     where: {
       id,
+      companyId,
       deletedAt: null,
     },
   });
@@ -62,10 +64,12 @@ async update(
 
 
 async findChildren(
+  companyId: bigint,
   parentId: bigint,
 ) {
   return this.prisma.organizationUnit.findFirst({
     where: {
+      companyId,
       parentId,
       deletedAt: null,
     },
@@ -98,21 +102,25 @@ async delete(id: bigint) {
 }
 
 async findParentById(
+  companyId: bigint,
   id: bigint,
 ) {
   return this.prisma.organizationUnit.findFirst({
     where: {
       id,
+      companyId,
       deletedAt: null,
     },
   });
 }
 
 async findByCode(
+  companyId: bigint,
   code: string,
 ) {
   return this.prisma.organizationUnit.findFirst({
     where: {
+      companyId,
       code,
       deletedAt: null,
     },
@@ -120,13 +128,50 @@ async findByCode(
 }
 
 async findByName(
+  companyId: bigint,
   name: string,
 ) {
   return this.prisma.organizationUnit.findFirst({
     where: {
+      companyId,
       name,
       deletedAt: null,
     },
   });
 }
+
+async findAllByCompany(
+  companyId: bigint,
+): Promise<OrganizationUnit[]> {
+  return this.prisma.organizationUnit.findMany({
+    where: {
+      companyId,
+      deletedAt: null,
+    },
+    orderBy: [
+      {
+        type: "asc",
+      },
+      {
+        name: "asc",
+      },
+    ],
+  });
+}
+
+
+async findByUuid(
+  companyId: bigint,
+  uuid: string,
+) {
+  return this.prisma.organizationUnit.findFirst({
+    where: {
+      companyId,
+      uuid,
+      deletedAt: null,
+    },
+  });
+}
+
+
 }

@@ -116,7 +116,7 @@ export const menu: MenuItem[] = [
     title: "Reports",
     path: "/reports",
   },
-  {
+ {
   id: "settings",
   title: "Settings",
   path: "#",
@@ -126,6 +126,12 @@ export const menu: MenuItem[] = [
       title: "Company Profile",
       path: "/settings/company-profile",
     },
+    {
+      id: "organization-unit",
+      title: "Organization Unit",
+      path: "/settings/organization-units",
+    },
+    
   ],
 },
 ];
