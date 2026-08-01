@@ -3,10 +3,19 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
 } from "class-validator";
 
 export class CreateDesignationDto {
+  @ApiProperty({
+    description: "Department UUID",
+    example: "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  departmentId: string;
+
   @ApiProperty({
     example: "Project Manager",
     description: "Designation name",

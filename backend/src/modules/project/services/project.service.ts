@@ -1,64 +1,107 @@
 import {
-  ConflictException,
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
+import {
+  UserType,
+} from '@prisma/client';
+
 import { CityRepository } from 'src/modules/master/city/repositories/city.repository';
 import { StateRepository } from 'src/modules/master/state/repositories/state.repository';
 import { ClientRepository } from 'src/modules/client/repositories/client.repository';
+import { CompanyRepository } from 'src/modules/company/repositories/company.repository';
 
 import {
   CreateProjectDto,
-  UpdateProjectDto,
   ProjectQueryDto,
+  UpdateProjectDto,
 } from '../dto';
+
 import { ProjectRepository } from '../repositories/project.repository';
+
+interface AuthUser {
+  id: bigint;
+  companyId: bigint | null;
+  userType: UserType;
+}
 
 @Injectable()
 export class ProjectService {
   constructor(
-    private readonly projectRepository: ProjectRepository,
-    private readonly clientRepository: ClientRepository,
-    private readonly stateRepository: StateRepository,
-    private readonly cityRepository: CityRepository,
+    private readonly projectRepository:
+      ProjectRepository,
+
+    private readonly clientRepository:
+      ClientRepository,
+
+    private readonly stateRepository:
+      StateRepository,
+
+    private readonly cityRepository:
+      CityRepository,
+
+    private readonly companyRepository:
+      CompanyRepository,
   ) {}
 
-  private async generateSRN(
-    companyId: bigint,
-  ): Promise<string> {
-    const year = new Date().getFullYear();
-
-    const total =
-      await this.projectRepository.count(companyId);
-
-    return `SRN-${year}-${String(total + 1).padStart(4, '0')}`;
+  private isPlatformOwner(
+    user: AuthUser,
+  ): boolean {
+    return (
+      user.userType ===
+      UserType.PLATFORM_OWNER
+    );
   }
 
-  async create(
-    companyId: bigint,
-    dto: CreateProjectDto,
-  ) {
-    const {
-      clientUuid,
-      stateUuid,
-      cityUuid,
-      ...projectData
-    } = dto;
-
-    const client =
-      await this.clientRepository.findByUuid(
-        companyId,
-        clientUuid,
-      );
-
-    if (!client) {
-      throw new NotFoundException(
-        'Client not found.',
+  private getUserCompanyId(
+    user: AuthUser,
+  ): bigint {
+    if (!user.companyId) {
+      throw new ForbiddenException(
+        'Company context is missing.',
       );
     }
 
+    return user.companyId;
+  }
+
+  private async resolveCompanyId(
+    user: AuthUser,
+    companyUuid?: string,
+  ): Promise<bigint> {
+    if (!this.isPlatformOwner(user)) {
+      return this.getUserCompanyId(user);
+    }
+
+    if (!companyUuid) {
+      throw new BadRequestException(
+        'Company is required for platform owner.',
+      );
+    }
+
+    const company =
+      await this.companyRepository.findByUuid(
+        companyUuid,
+      );
+
+    if (!company) {
+      throw new NotFoundException(
+        'Company not found.',
+      );
+    }
+
+    return company.id;
+  }
+
+  private async resolveLocationIds(
+    stateUuid?: string,
+    cityUuid?: string,
+  ) {
     let stateId: bigint | undefined;
+    let cityId: bigint | undefined;
 
     if (stateUuid) {
       const state =
@@ -75,8 +118,6 @@ export class ProjectService {
       stateId = state.id;
     }
 
-    let cityId: bigint | undefined;
-
     if (cityUuid) {
       const city =
         await this.cityRepository.findByUuid(
@@ -89,47 +130,149 @@ export class ProjectService {
         );
       }
 
+      if (
+        stateId &&
+        city.stateId !== stateId
+      ) {
+        throw new BadRequestException(
+          'Selected city does not belong to the selected state.',
+        );
+      }
+
       cityId = city.id;
     }
 
-    const srn = await this.generateSRN(
-      companyId,
-    );
-
-    return this.projectRepository.create({
-      companyId,
-      clientId: client.id,
-      srn,
-
-      ...projectData,
-
-      startDate: projectData.startDate
-        ? new Date(projectData.startDate)
-        : undefined,
-
-      expectedEndDate: projectData.expectedEndDate
-        ? new Date(projectData.expectedEndDate)
-        : undefined,
-
-      ...(stateId && { stateId }),
-      ...(cityId && { cityId }),
-    });
+    return {
+      stateId,
+      cityId,
+    };
   }
 
-async findAll(
-  companyId: bigint,
-  query: ProjectQueryDto,
-) {
-  return this.projectRepository.findAll(
-    companyId,
-    query,
-  );
-}
+  private async generateSRN(
+    companyId: bigint,
+  ): Promise<string> {
+    const year =
+      new Date().getFullYear();
+
+    const total =
+      await this.projectRepository.count(
+        companyId,
+      );
+
+    return `SRN-${year}-${String(
+      total + 1,
+    ).padStart(4, '0')}`;
+  }
+
+  async create(
+    user: AuthUser,
+    dto: CreateProjectDto,
+  ) {
+    const {
+      companyUuid,
+      clientUuid,
+      stateUuid,
+      cityUuid,
+      ...projectData
+    } = dto;
+
+    const companyId =
+      await this.resolveCompanyId(
+        user,
+        companyUuid,
+      );
+
+    /*
+     * Client must belong to the selected
+     * or logged-in company.
+     */
+    const client =
+      await this.clientRepository.findByUuid(
+        companyId,
+        clientUuid,
+      );
+
+    if (!client) {
+      throw new NotFoundException(
+        'Client not found for this company.',
+      );
+    }
+
+    const {
+      stateId,
+      cityId,
+    } = await this.resolveLocationIds(
+      stateUuid,
+      cityUuid,
+    );
+
+    const srn =
+      await this.generateSRN(
+        companyId,
+      );
+
+    const project =
+      await this.projectRepository.create({
+        companyId,
+        clientId: client.id,
+        srn,
+
+        ...projectData,
+
+        startDate:
+          projectData.startDate
+            ? new Date(
+                projectData.startDate,
+              )
+            : undefined,
+
+        expectedEndDate:
+          projectData.expectedEndDate
+            ? new Date(
+                projectData.expectedEndDate,
+              )
+            : undefined,
+
+        ...(stateId !== undefined && {
+          stateId,
+        }),
+
+        ...(cityId !== undefined && {
+          cityId,
+        }),
+      });
+
+    return {
+      message:
+        'Project created successfully.',
+      project,
+    };
+  }
+
+  async findAll(
+    user: AuthUser,
+    query: ProjectQueryDto,
+  ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    return this.projectRepository.findAll(
+      companyId,
+      query,
+    );
+  }
 
   async findOne(
-    companyId: bigint,
+    user: AuthUser,
     uuid: string,
   ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
     const project =
       await this.projectRepository.findByUuid(
         companyId,
@@ -147,33 +290,29 @@ async findAll(
     };
   }
 
-
   async findByUuid(
-  companyId: bigint,
-  uuid: string,
-) {
-  const project = await this.projectRepository.findByUuid(
-    companyId,
-    uuid,
-  );
-
-  if (!project) {
-    throw new NotFoundException('Project not found.');
+    user: AuthUser,
+    uuid: string,
+  ) {
+    return this.findOne(
+      user,
+      uuid,
+    );
   }
 
-  return {
-    project,
-  };
-}
-
   async update(
-    companyId: bigint,
+    user: AuthUser,
     uuid: string,
     dto: UpdateProjectDto,
   ) {
+    const companyFilterId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
     const project =
       await this.projectRepository.findByUuid(
-        companyId,
+        companyFilterId,
         uuid,
       );
 
@@ -190,83 +329,89 @@ async findAll(
       ...projectData
     } = dto;
 
-    let clientId: bigint | undefined;
+    let clientId:
+      | bigint
+      | undefined;
 
     if (clientUuid) {
+      /*
+       * Even platform owner can only select
+       * a client from the project's company.
+       */
       const client =
         await this.clientRepository.findByUuid(
-          companyId,
+          project.companyId,
           clientUuid,
         );
 
       if (!client) {
         throw new NotFoundException(
-          'Client not found.',
+          'Client not found for this project company.',
         );
       }
 
       clientId = client.id;
     }
 
-    let stateId: bigint | undefined;
+    const {
+      stateId,
+      cityId,
+    } = await this.resolveLocationIds(
+      stateUuid,
+      cityUuid,
+    );
 
-    if (stateUuid) {
-      const state =
-        await this.stateRepository.findByUuid(
-          stateUuid,
-        );
+    const updatedProject =
+      await this.projectRepository.update(
+        companyFilterId,
+        uuid,
+        {
+          ...projectData,
 
-      if (!state) {
-        throw new NotFoundException(
-          'State not found.',
-        );
-      }
+          startDate:
+            projectData.startDate
+              ? new Date(
+                  projectData.startDate,
+                )
+              : undefined,
 
-      stateId = state.id;
-    }
+          expectedEndDate:
+            projectData.expectedEndDate
+              ? new Date(
+                  projectData.expectedEndDate,
+                )
+              : undefined,
 
-    let cityId: bigint | undefined;
+          ...(clientId !== undefined && {
+            clientId,
+          }),
 
-    if (cityUuid) {
-      const city =
-        await this.cityRepository.findByUuid(
-          cityUuid,
-        );
+          ...(stateId !== undefined && {
+            stateId,
+          }),
 
-      if (!city) {
-        throw new NotFoundException(
-          'City not found.',
-        );
-      }
+          ...(cityId !== undefined && {
+            cityId,
+          }),
+        },
+      );
 
-      cityId = city.id;
-    }
-
-   return this.projectRepository.update(
-  companyId,
-  uuid,
-  {
-    ...projectData,
-
-    startDate: projectData.startDate
-      ? new Date(projectData.startDate)
-      : undefined,
-
-    expectedEndDate: projectData.expectedEndDate
-      ? new Date(projectData.expectedEndDate)
-      : undefined,
-
-    ...(clientId && { clientId }),
-    ...(stateId && { stateId }),
-    ...(cityId && { cityId }),
-  },
-);
+    return {
+      message:
+        'Project updated successfully.',
+      project: updatedProject,
+    };
   }
 
   async remove(
-    companyId: bigint,
+    user: AuthUser,
     uuid: string,
   ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
     const project =
       await this.projectRepository.findByUuid(
         companyId,
@@ -289,5 +434,4 @@ async findAll(
         'Project deleted successfully.',
     };
   }
-
 }

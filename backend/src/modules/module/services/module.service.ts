@@ -2,12 +2,13 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
+import { Module } from "@prisma/client";
 
-import { ModuleRepository } from '../repositories/module.repository';
+import { ModuleRepository } from "../repositories/module.repository";
 
-import { CreateModuleDto } from '../dto/create-module.dto';
-import { UpdateModuleDto } from '../dto/update-module.dto';
+import { CreateModuleDto } from "../dto/create-module.dto";
+import { UpdateModuleDto } from "../dto/update-module.dto";
 
 @Injectable()
 export class ModuleService {
@@ -18,36 +19,72 @@ export class ModuleService {
   async create(
     dto: CreateModuleDto,
   ) {
+    const code = dto.code.trim().toUpperCase();
+    const name = dto.name.trim();
+
     const codeExists =
       await this.moduleRepository.findByCode(
-        dto.code,
+        code,
       );
 
     if (codeExists) {
       throw new ConflictException(
-        'Module code already exists.',
+        "Module code already exists.",
       );
     }
 
     const nameExists =
       await this.moduleRepository.findByName(
-        dto.name,
+        name,
       );
 
     if (nameExists) {
       throw new ConflictException(
-        'Module name already exists.',
+        "Module name already exists.",
       );
+    }
+
+    let parent: Module | null = null;
+
+    if (dto.parentId) {
+      parent =
+        await this.moduleRepository.findByUuid(
+          dto.parentId,
+        );
+
+      if (!parent) {
+        throw new NotFoundException(
+          "Parent module not found.",
+        );
+      }
     }
 
     const module =
       await this.moduleRepository.create({
-        ...dto,
+        name,
+        code,
+        description: dto.description,
+        icon: dto.icon,
+        route: dto.route,
+
+        sortOrder: dto.sortOrder,
+        isMenu: dto.isMenu,
+        isVisible: dto.isVisible,
+        isSystem: dto.isSystem,
+        status: dto.status,
+
+        parent: parent
+          ? {
+              connect: {
+                id: parent.id,
+              },
+            }
+          : undefined,
       });
 
     return {
       message:
-        'Module created successfully.',
+        "Module created successfully.",
       module,
     };
   }
@@ -58,7 +95,7 @@ export class ModuleService {
 
     return {
       message:
-        'Modules fetched successfully.',
+        "Modules fetched successfully.",
       modules,
     };
   }
@@ -73,13 +110,13 @@ export class ModuleService {
 
     if (!module) {
       throw new NotFoundException(
-        'Module not found.',
+        "Module not found.",
       );
     }
 
     return {
       message:
-        'Module fetched successfully.',
+        "Module fetched successfully.",
       module,
     };
   }
@@ -88,12 +125,32 @@ export class ModuleService {
     id: number,
     dto: UpdateModuleDto,
   ) {
-    await this.findOne(id);
+    const module =
+      await this.moduleRepository.findById(
+        BigInt(id),
+      );
 
-    if (dto.code) {
+    if (!module) {
+      throw new NotFoundException(
+        "Module not found.",
+      );
+    }
+
+    const code = dto.code
+      ? dto.code.trim().toUpperCase()
+      : undefined;
+
+    const name = dto.name
+      ? dto.name.trim()
+      : undefined;
+
+    if (
+      code &&
+      code !== module.code
+    ) {
       const exists =
         await this.moduleRepository.findByCode(
-          dto.code,
+          code,
         );
 
       if (
@@ -101,15 +158,18 @@ export class ModuleService {
         exists.id !== BigInt(id)
       ) {
         throw new ConflictException(
-          'Module code already exists.',
+          "Module code already exists.",
         );
       }
     }
 
-    if (dto.name) {
+    if (
+      name &&
+      name !== module.name
+    ) {
       const exists =
         await this.moduleRepository.findByName(
-          dto.name,
+          name,
         );
 
       if (
@@ -117,28 +177,90 @@ export class ModuleService {
         exists.id !== BigInt(id)
       ) {
         throw new ConflictException(
-          'Module name already exists.',
+          "Module name already exists.",
         );
       }
     }
 
-    const module =
+    let parent: Module | null = null;
+
+    if (dto.parentId) {
+      parent =
+        await this.moduleRepository.findByUuid(
+          dto.parentId,
+        );
+
+      if (!parent) {
+        throw new NotFoundException(
+          "Parent module not found.",
+        );
+      }
+
+      if (
+        parent.id === BigInt(id)
+      ) {
+        throw new ConflictException(
+          "Module cannot be its own parent.",
+        );
+      }
+    }
+
+    const updatedModule =
       await this.moduleRepository.update(
         BigInt(id),
-        dto,
+        {
+          name,
+          code,
+          description:
+            dto.description,
+          icon: dto.icon,
+          route: dto.route,
+
+          sortOrder:
+            dto.sortOrder,
+          isMenu: dto.isMenu,
+          isVisible:
+            dto.isVisible,
+          isSystem:
+            dto.isSystem,
+          status: dto.status,
+
+          parent: parent
+            ? {
+                connect: {
+                  id: parent.id,
+                },
+              }
+            : undefined,
+        },
       );
 
     return {
       message:
-        'Module updated successfully.',
-      module,
+        "Module updated successfully.",
+      module: updatedModule,
     };
   }
 
   async remove(
     id: number,
   ) {
-    await this.findOne(id);
+    const module =
+      await this.moduleRepository.findById(
+        BigInt(id),
+      );
+
+    if (!module) {
+      throw new NotFoundException(
+        "Module not found.",
+      );
+    }
+
+    if (module.isSystem) {
+      throw new ConflictException(
+        "System module cannot be deleted.",
+      );
+    }
 
     await this.moduleRepository.softDelete(
       BigInt(id),
@@ -146,7 +268,7 @@ export class ModuleService {
 
     return {
       message:
-        'Module deleted successfully.',
+        "Module deleted successfully.",
     };
   }
 }

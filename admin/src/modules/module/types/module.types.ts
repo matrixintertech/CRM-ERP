@@ -17,7 +17,18 @@ export interface Module {
 
   route?: string;
 
+  parent?: {
+    uuid: string;
+    name: string;
+  } | null;
+
+  parentId?: string;
+
   sortOrder: number;
+
+  isMenu: boolean;
+
+  isVisible: boolean;
 
   isSystem: boolean;
 
@@ -33,13 +44,19 @@ export interface ModuleFormData {
 
   code: string;
 
-  description: string;
+  description?: string;
 
-  icon: string;
+  icon?: string;
 
-  route: string;
+  route?: string;
+
+  parentId?: string;
 
   sortOrder: number;
+
+  isMenu: boolean;
+
+  isVisible: boolean;
 
   isSystem: boolean;
 
@@ -58,8 +75,7 @@ export interface ModuleResponse {
   module: Module;
 }
 
-
-interface ModuleFormModalProps {
+export interface ModuleFormModalProps {
   open: boolean;
 
   loading?: boolean;

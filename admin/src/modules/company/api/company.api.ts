@@ -1,24 +1,35 @@
 import api from "@/shared/services/axios";
 
-import type { CreateOnboardingDto } from "../types/company.types";
+import type {
+  CreateOnboardingDto,
+} from "../types/company.types";
+
+interface GetCompaniesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  type?: string;
+}
 
 export const getCompanies = async (
-  page = 1,
-  limit = 10,
+  params: GetCompaniesParams = {},
 ) => {
   const { data } = await api.get(
     "/companies",
     {
       params: {
-        page,
-        limit,
+        page: params.page ?? 1,
+        limit: params.limit ?? 10,
+        search: params.search,
+        status: params.status,
+        type: params.type,
       },
     },
   );
 
   return data.data;
 };
-
 
 export const getCompany = async (
   id: string,
@@ -30,8 +41,6 @@ export const getCompany = async (
   return data.data.company;
 };
 
-
-// Onboarding
 export const createCompanyOnboarding = async (
   payload: CreateOnboardingDto,
 ) => {

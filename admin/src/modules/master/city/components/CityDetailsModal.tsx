@@ -1,7 +1,11 @@
 import Badge from "@/shared/components/Badge";
 import Modal from "@/shared/components/Modal";
 
-import type { City } from "../types/city.types";
+import type {
+  City,
+} from "../types/city.types";
+
+import styles from "./CityDetailsModal.module.css";
 
 interface Props {
   open: boolean;
@@ -9,6 +13,24 @@ interface Props {
   city: City | null;
   onClose: () => void;
 }
+
+const formatDate = (
+  value: string,
+) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleString(
+    "en-IN",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  );
+};
 
 const CityDetailsModal = ({
   open,
@@ -24,41 +46,42 @@ const CityDetailsModal = ({
       size="md"
     >
       {loading ? (
-        <p>Loading...</p>
+        <p className={styles.message}>
+          Loading city details...
+        </p>
       ) : !city ? (
-        <p>No city found.</p>
+        <p className={styles.message}>
+          No city found.
+        </p>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-          }}
-        >
-          <div>
-            <strong>
-              State
-            </strong>
-            <p>{city.state.name}</p>
+        <div className={styles.details}>
+          <div className={styles.item}>
+            <strong>State</strong>
+
+            <p>
+              {city.state?.name ?? "-"}
+            </p>
           </div>
 
-          <div>
-            <strong>
-              City Name
-            </strong>
-            <p>{city.name}</p>
+          <div className={styles.item}>
+            <strong>City Name</strong>
+
+            <p>{city.name || "-"}</p>
           </div>
 
-  
+          <div className={styles.item}>
+            <strong>City Code</strong>
 
-          <div>
-            <strong>
-              Status
-            </strong>
+            <p>{city.code || "-"}</p>
+          </div>
+
+          <div className={styles.item}>
+            <strong>Status</strong>
 
             <div
-              style={{
-                marginTop: 6,
-              }}
+              className={
+                styles.badgeWrapper
+              }
             >
               <Badge
                 status={city.status}
@@ -66,25 +89,23 @@ const CityDetailsModal = ({
             </div>
           </div>
 
-          <div>
-            <strong>
-              Created At
-            </strong>
+          <div className={styles.item}>
+            <strong>Created At</strong>
+
             <p>
-              {new Date(
+              {formatDate(
                 city.createdAt,
-              ).toLocaleString()}
+              )}
             </p>
           </div>
 
-          <div>
-            <strong>
-              Updated At
-            </strong>
+          <div className={styles.item}>
+            <strong>Updated At</strong>
+
             <p>
-              {new Date(
+              {formatDate(
                 city.updatedAt,
-              ).toLocaleString()}
+              )}
             </p>
           </div>
         </div>

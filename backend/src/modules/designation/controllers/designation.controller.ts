@@ -17,10 +17,12 @@ import {
 } from "@nestjs/swagger";
 
 import { AuthGuard } from "@nestjs/passport";
+
 import type { Request } from "express";
 
 import { CreateDesignationDto } from "../dto/create-designation.dto";
 import { UpdateDesignationDto } from "../dto/update-designation.dto";
+
 import { DesignationService } from "../services/designation.service";
 
 @ApiTags("Designation")
@@ -29,7 +31,8 @@ import { DesignationService } from "../services/designation.service";
 @Controller("designations")
 export class DesignationController {
   constructor(
-    private readonly designationService: DesignationService,
+    private readonly designationService:
+      DesignationService,
   ) {}
 
   @Post()
@@ -38,38 +41,42 @@ export class DesignationController {
     @Body() dto: CreateDesignationDto,
   ) {
     return this.designationService.create(
-      Number((req.user as any).companyId),
+      (req.user as any).companyId,
       dto,
     );
   }
 
   @Get()
-  findAll(@Req() req: Request) {
+  findAll(
+    @Req() req: Request,
+  ) {
     return this.designationService.findAll(
-      Number((req.user as any).companyId),
+      (req.user as any).companyId,
     );
   }
 
   @Get(":id")
   findOne(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe)
+    id: number,
   ) {
     return this.designationService.findOne(
-      Number((req.user as any).companyId),
-      id,
+      (req.user as any).companyId,
+      BigInt(id),
     );
   }
 
   @Patch(":id")
   update(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe)
+    id: number,
     @Body() dto: UpdateDesignationDto,
   ) {
     return this.designationService.update(
-      Number((req.user as any).companyId),
-      id,
+      (req.user as any).companyId,
+      BigInt(id),
       dto,
     );
   }
@@ -77,11 +84,12 @@ export class DesignationController {
   @Delete(":id")
   delete(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe)
+    id: number,
   ) {
     return this.designationService.delete(
-      Number((req.user as any).companyId),
-      id,
+      (req.user as any).companyId,
+      BigInt(id),
     );
   }
 }

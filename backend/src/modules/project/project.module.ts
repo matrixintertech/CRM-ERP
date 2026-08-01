@@ -6,12 +6,14 @@ import { ClientRepository } from 'src/modules/client/repositories/client.reposit
 import { CityRepository } from 'src/modules/master/city/repositories/city.repository';
 import { StateRepository } from 'src/modules/master/state/repositories/state.repository';
 
+import { CompanyModule } from 'src/modules/company/company.module';
+
 import { ProjectController } from './controllers/project.controller';
 import { ProjectRepository } from './repositories/project.repository';
 import { ProjectService } from './services/project.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CompanyModule],
 
   controllers: [ProjectController],
 

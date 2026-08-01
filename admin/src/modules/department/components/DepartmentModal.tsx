@@ -3,7 +3,13 @@ import Modal from "@/shared/components/Modal";
 
 import DepartmentForm from "./DepartmentForm";
 
-import type { DepartmentFormData } from "../types/department.types";
+import type {
+  DepartmentFormData,
+} from "../types/department.types";
+
+import type {
+  OrganizationUnit,
+} from "../../organization-unit/types/organization-unit.types";
 
 interface Props {
   title: string;
@@ -12,6 +18,8 @@ interface Props {
   open: boolean;
   loading: boolean;
 
+  organizationUnits: OrganizationUnit[];
+
   formData: DepartmentFormData;
 
   setFormData: React.Dispatch<
@@ -19,7 +27,6 @@ interface Props {
   >;
 
   onClose: () => void;
-
   onSubmit: () => void;
 }
 
@@ -28,11 +35,17 @@ const DepartmentModal = ({
   isEdit,
   open,
   loading,
+  organizationUnits,
   formData,
   setFormData,
   onClose,
   onSubmit,
 }: Props) => {
+  const isSubmitDisabled =
+    !formData.organizationUnitUuid ||
+    !formData.name.trim() ||
+    !formData.code.trim();
+
   return (
     <Modal
       open={open}
@@ -41,6 +54,9 @@ const DepartmentModal = ({
       size="md"
     >
       <DepartmentForm
+        organizationUnits={
+          organizationUnits
+        }
         formData={formData}
         setFormData={setFormData}
       />
@@ -56,12 +72,17 @@ const DepartmentModal = ({
         <Button
           variant="secondary"
           onClick={onClose}
+          disabled={loading}
         >
           Cancel
         </Button>
 
         <Button
           loading={loading}
+          disabled={
+            loading ||
+            isSubmitDisabled
+          }
           onClick={onSubmit}
         >
           {isEdit

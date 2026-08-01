@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
+
 import { notify } from "@/shared/utils/notify";
 
 import {
@@ -12,6 +16,7 @@ import {
 import type {
   Department,
   DepartmentFormData,
+  UpdateDepartmentDto,
 } from "../types/department.types";
 
 export const useDepartment = () => {
@@ -26,37 +31,69 @@ export const useDepartment = () => {
   const [
     selectedDepartment,
     setSelectedDepartment,
-  ] = useState<Department | null>(null);
+  ] =
+    useState<Department | null>(null);
 
   const fetchDepartments =
-    async () => {
+    useCallback(async () => {
       setLoading(true);
 
       try {
         const data =
           await getDepartments();
 
-        setDepartments(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  const fetchDepartment =
-    async (id: string) => {
-      setLoading(true);
-
-      try {
-        const data =
-          await getDepartment(id);
-
-        setSelectedDepartment(data);
+        setDepartments(
+          Array.isArray(data)
+            ? data
+            : [],
+        );
 
         return data;
+      } catch (error: any) {
+        notify.error(
+          error?.response?.data
+            ?.message ??
+            "Failed to load departments.",
+        );
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
+
+  const fetchDepartment =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        setLoading(true);
+
+        try {
+          const data =
+            await getDepartment(
+              uuid,
+            );
+
+          setSelectedDepartment(
+            data,
+          );
+
+          return data;
+        } catch (error: any) {
+          notify.error(
+            error?.response?.data
+              ?.message ??
+              "Failed to load department.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
 
   const create = async (
     payload: DepartmentFormData,
@@ -65,16 +102,21 @@ export const useDepartment = () => {
 
     try {
       const data =
-        await createDepartment(payload);
+        await createDepartment(
+          payload,
+        );
 
       notify.success(
-        "Department created successfully.",
+        data?.message ??
+          "Department created successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to create department.",
+        error?.response?.data
+          ?.message ??
+          "Failed to create department.",
       );
 
       throw error;
@@ -84,26 +126,29 @@ export const useDepartment = () => {
   };
 
   const update = async (
-    id: string,
-    payload: Partial<DepartmentFormData>,
+    uuid: string,
+    payload: UpdateDepartmentDto,
   ) => {
     setLoading(true);
 
     try {
       const data =
         await updateDepartment(
-          id,
+          uuid,
           payload,
         );
 
       notify.success(
-        "Department updated successfully.",
+        data?.message ??
+          "Department updated successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to update department.",
+        error?.response?.data
+          ?.message ??
+          "Failed to update department.",
       );
 
       throw error;
@@ -113,22 +158,36 @@ export const useDepartment = () => {
   };
 
   const remove = async (
-    id: string,
+    uuid: string,
   ) => {
     setLoading(true);
 
     try {
       const data =
-        await deleteDepartment(id);
+        await deleteDepartment(
+          uuid,
+        );
+
+      setDepartments(
+        (previous) =>
+          previous.filter(
+            (department) =>
+              department.uuid !==
+              uuid,
+          ),
+      );
 
       notify.success(
-        "Department deleted successfully.",
+        data?.message ??
+          "Department deleted successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to delete department.",
+        error?.response?.data
+          ?.message ??
+          "Failed to delete department.",
       );
 
       throw error;
@@ -141,17 +200,13 @@ export const useDepartment = () => {
     loading,
 
     departments,
-
     selectedDepartment,
 
     fetchDepartments,
-
     fetchDepartment,
 
     create,
-
     update,
-
     remove,
   };
 };

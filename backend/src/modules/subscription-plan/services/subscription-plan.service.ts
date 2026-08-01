@@ -9,7 +9,6 @@ import {
 import { SubscriptionPlanRepository } from '../repositories/subscription-plan.repository';
 import { SubscriptionPlanModuleRepository } from '../repositories/subscription-plan-module.repository';
 
-
 import { CreateSubscriptionPlanDto } from '../dto/create-subscription-plan.dto';
 import { GetSubscriptionPlansDto } from '../dto/get-subscription-plans.dto';
 import { UpdateSubscriptionPlanDto } from '../dto/update-subscription-plan.dto';
@@ -17,240 +16,259 @@ import { UpdateSubscriptionPlanDto } from '../dto/update-subscription-plan.dto';
 @Injectable()
 export class SubscriptionPlanService {
   constructor(
-    private readonly subscriptionPlanRepository: SubscriptionPlanRepository,
-     private readonly subscriptionPlanModuleRepository: SubscriptionPlanModuleRepository,
+    private readonly subscriptionPlanRepository:
+      SubscriptionPlanRepository,
+
+    private readonly subscriptionPlanModuleRepository:
+      SubscriptionPlanModuleRepository,
   ) {}
 
-  //CREATE PLAN
+  /**
+   * Create subscription plan
+   */
+  async create(
+    dto: CreateSubscriptionPlanDto,
+  ) {
+    try {
+      const {
+        moduleIds = [],
+        ...planData
+      } = dto;
 
-async create(
-  dto: CreateSubscriptionPlanDto,
-) {
-  try {
-    const {
-      moduleIds = [],
-      ...planData
-    } = dto;
+      const existingPlan =
+        await this.subscriptionPlanRepository.findByCode(
+          planData.code,
+        );
 
-    // Duplicate Code
-    const plan =
-      await this.subscriptionPlanRepository.findByCode(
-        planData.code,
-      );
+      if (existingPlan) {
+        throw new ConflictException(
+          'Subscription plan code already exists.',
+        );
+      }
 
-    if (plan) {
-      throw new ConflictException(
-        'Subscription plan code already exists.',
-      );
+      const subscriptionPlan =
+        await this.subscriptionPlanRepository.create(
+          planData,
+        );
+
+      if (moduleIds.length > 0) {
+        await this.subscriptionPlanModuleRepository.createMany(
+          subscriptionPlan.id,
+          moduleIds,
+        );
+      }
+
+      return {
+        message:
+          'Subscription plan created successfully.',
+        subscriptionPlan,
+      };
+    } catch (error) {
+      if (
+        error instanceof
+          Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Subscription plan code already exists.',
+        );
+      }
+
+      throw error;
     }
+  }
 
-    // Create Plan
-    const subscriptionPlan =
-      await this.subscriptionPlanRepository.create(
-        planData,
-      );
+  /**
+   * List subscription plans
+   */
+  async findAll(
+    dto: GetSubscriptionPlansDto,
+  ) {
+    const skip =
+      (dto.page - 1) * dto.limit;
 
-    // Create Module Mapping
-    if (moduleIds.length > 0) {
-      await this.subscriptionPlanModuleRepository.createMany(
-        subscriptionPlan.id,
-        moduleIds,
-      );
-    }
+    const [
+      subscriptionPlans,
+      total,
+    ] = await Promise.all([
+      this.subscriptionPlanRepository.findAll(
+        skip,
+        dto.limit,
+        dto.search,
+      ),
+
+      this.subscriptionPlanRepository.count(
+        dto.search,
+      ),
+    ]);
 
     return {
-      message:
-        'Subscription plan created successfully.',
-      subscriptionPlan,
+      subscriptionPlans,
+
+      pagination: {
+        total,
+        page: dto.page,
+        limit: dto.limit,
+        totalPages: Math.ceil(
+          total / dto.limit,
+        ),
+      },
     };
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      throw new ConflictException(
-        'Subscription plan code already exists.',
-      );
-    }
-
-    throw error;
-  }
-}
-
-
-async findAll(
-  dto: GetSubscriptionPlansDto,
-) {
-  const skip =
-    (dto.page - 1) * dto.limit;
-
-  const subscriptionPlans =
-    await this.subscriptionPlanRepository.findAll(
-      skip,
-      dto.limit,
-      dto.search,
-    );
-
-  const total =
-    await this.subscriptionPlanRepository.count(
-      dto.search,
-    );
-
-  return {
-    subscriptionPlans,
-    pagination: {
-      total,
-      page: dto.page,
-      limit: dto.limit,
-      totalPages: Math.ceil(
-        total / dto.limit,
-      ),
-    },
-  };
-}
-
-
-async findById(
-  id: bigint,
-) {
-  // 1. Find Plan
-  const subscriptionPlan =
-    await this.subscriptionPlanRepository.findById(
-      id,
-    );
-
-  if (!subscriptionPlan) {
-    throw new NotFoundException(
-      'Subscription plan not found.',
-    );
   }
 
-  // 2. Find Selected Modules
-  const selectedModules =
-    await this.subscriptionPlanModuleRepository.findByPlanId(
-      id,
-    );
-
-  // 3. Return Plan + Module Ids + Modules
-  return {
-    subscriptionPlan: {
-      ...subscriptionPlan,
-
-      moduleIds: selectedModules.map(
-        (item) => item.moduleId.toString(),
-      ),
-
-      modules: selectedModules.map(
-        (item) => ({
-          id: item.module.id.toString(),
-          name: item.module.name,
-          code: item.module.code,
-          icon: item.module.icon,
-        }),
-      ),
-    },
-  };
-}
-
-
-async update(
-  id: bigint,
-  dto: UpdateSubscriptionPlanDto,
-) {
-  // 1. Subscription Plan Exists?
-  const subscriptionPlan =
-    await this.subscriptionPlanRepository.findById(
-      id,
-    );
-
-  if (!subscriptionPlan) {
-    throw new NotFoundException(
-      'Subscription plan not found.',
-    );
-  }
-
-  // 2. Duplicate Code
-  if (dto.code) {
-    const existingPlan =
-      await this.subscriptionPlanRepository.findByCodeExceptId(
-        dto.code,
+  /**
+   * Find subscription plan by internal ID
+   */
+  async findById(
+    id: bigint,
+  ) {
+    const subscriptionPlan =
+      await this.subscriptionPlanRepository.findById(
         id,
       );
 
-    if (existingPlan) {
-      throw new ConflictException(
-        'Subscription plan code already exists.',
+    if (!subscriptionPlan) {
+      throw new NotFoundException(
+        'Subscription plan not found.',
       );
+    }
+
+    const selectedModules =
+      await this.subscriptionPlanModuleRepository.findByPlanId(
+        id,
+      );
+
+    return {
+  subscriptionPlan: {
+    ...subscriptionPlan,
+
+    moduleIds: selectedModules.map(
+      (item) => item.module.id.toString(),
+    ),
+
+    modules: selectedModules.map(
+      (item) => ({
+        id: item.module.id.toString(),
+        uuid: item.module.uuid,
+        name: item.module.name,
+        code: item.module.code,
+        icon: item.module.icon,
+        route: item.module.route,
+        sortOrder: item.module.sortOrder,
+        status: item.module.status,
+      }),
+    ),
+  },
+};
+  }
+
+  /**
+   * Update subscription plan
+   */
+  async update(
+    id: bigint,
+    dto: UpdateSubscriptionPlanDto,
+  ) {
+    try {
+      const subscriptionPlan =
+        await this.subscriptionPlanRepository.findById(
+          id,
+        );
+
+      if (!subscriptionPlan) {
+        throw new NotFoundException(
+          'Subscription plan not found.',
+        );
+      }
+
+      if (dto.code) {
+        const existingPlan =
+          await this.subscriptionPlanRepository.findByCodeExceptId(
+            dto.code,
+            id,
+          );
+
+        if (existingPlan) {
+          throw new ConflictException(
+            'Subscription plan code already exists.',
+          );
+        }
+      }
+
+      const {
+        moduleIds,
+        ...planData
+      } = dto;
+
+      const updatedPlan =
+        await this.subscriptionPlanRepository.update(
+          id,
+          planData,
+        );
+
+      /*
+       * Replace module mappings only when moduleIds
+       * is actually present in the update request.
+       *
+       * moduleIds: undefined -> keep existing mappings
+       * moduleIds: []        -> remove all mappings
+       * moduleIds: [...]     -> replace mappings
+       */
+      if (moduleIds !== undefined) {
+        await this.subscriptionPlanModuleRepository.replaceModules(
+          id,
+          moduleIds,
+        );
+      }
+
+      return {
+        message:
+          'Subscription plan updated successfully.',
+        subscriptionPlan: updatedPlan,
+      };
+    } catch (error) {
+      if (
+        error instanceof
+          Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Subscription plan code already exists.',
+        );
+      }
+
+      throw error;
     }
   }
 
-  // 3. Separate Module Ids
-  const {
-    moduleIds = [],
-    ...planData
-  } = dto;
+  /**
+   * Soft delete subscription plan
+   */
+  async delete(
+    id: bigint,
+  ) {
+    const subscriptionPlan =
+      await this.subscriptionPlanRepository.findById(
+        id,
+      );
 
-  // 4. Update Subscription Plan
-  const updatedPlan =
-    await this.subscriptionPlanRepository.update(
+    if (!subscriptionPlan) {
+      throw new NotFoundException(
+        'Subscription plan not found.',
+      );
+    }
+
+    await this.subscriptionPlanModuleRepository.deleteByPlanId(
       id,
-      planData,
     );
 
-  // 5. Update Module Mapping
-  await this.subscriptionPlanModuleRepository.deleteByPlanId(
-    id,
-  );
-
-  if (moduleIds.length > 0) {
-    await this.subscriptionPlanModuleRepository.createMany(
+    await this.subscriptionPlanRepository.softDelete(
       id,
-      moduleIds,
     );
+
+    return {
+      message:
+        'Subscription plan deleted successfully.',
+    };
   }
-
-  // 6. Response
-  return {
-    message:
-      'Subscription plan updated successfully.',
-    subscriptionPlan: updatedPlan,
-  };
-}
-
-
-async delete(
-  id: bigint,
-) {
-  // 1. Check Exists
-  const subscriptionPlan =
-    await this.subscriptionPlanRepository.findById(
-      id,
-    );
-
-  if (!subscriptionPlan) {
-    throw new NotFoundException(
-      'Subscription plan not found.',
-    );
-  }
-
-  // 2. Delete Module Mapping
-  await this.subscriptionPlanModuleRepository.deleteByPlanId(
-    id,
-  );
-
-  // 3. Soft Delete Plan
-  await this.subscriptionPlanRepository.softDelete(
-    id,
-  );
-
-  // 4. Response
-  return {
-    message:
-      'Subscription plan deleted successfully.',
-  };
-}
-
-
-
-
 }

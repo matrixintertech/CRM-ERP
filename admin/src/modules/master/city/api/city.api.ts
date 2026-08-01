@@ -7,71 +7,91 @@ import type {
   CityQueryParams,
 } from "../types/city.types";
 
-export const cityApi = {
-  async getAll(params: CityQueryParams) {
-    const response = await api.get("/master/cities", {
-      params,
-    });
+interface CityListResponse {
+  cities: City[];
+  total: number;
+}
 
-    return response.data.data as {
-      cities: City[];
-      total: number;
-    };
+interface CityDetailsResponse {
+  city: City;
+}
+
+interface CityDropdownResponse {
+  cities: CityDropdown[];
+}
+
+export const cityApi = {
+  async getAll(
+    params: CityQueryParams = {},
+  ): Promise<CityListResponse> {
+    const { data } = await api.get(
+      "/master/cities",
+      {
+        params,
+      },
+    );
+
+    return data.data;
   },
 
-  async getByUuid(uuid: string) {
-    const response = await api.get(
+  async getByUuid(
+    uuid: string,
+  ): Promise<City> {
+    const { data } = await api.get(
       `/master/cities/${uuid}`,
     );
 
-    return response.data.data
-      .state as {
-      city: City;
-    };
+    return (
+      data.data as CityDetailsResponse
+    ).city;
   },
 
-  async create(data: CityFormData) {
-    const response = await api.post(
+  async create(
+    payload: CityFormData,
+  ) {
+    const { data } = await api.post(
       "/master/cities",
-      data,
+      payload,
     );
 
-    return response.data.data;
+    return data;
   },
 
   async update(
     uuid: string,
-    data: Partial<CityFormData>,
+    payload: Partial<CityFormData>,
   ) {
-    const response = await api.patch(
+    const { data } = await api.patch(
       `/master/cities/${uuid}`,
-      data,
+      payload,
     );
 
-    return response.data.data;
+    return data;
   },
 
-  async remove(uuid: string) {
-    await api.delete(
+  async remove(
+    uuid: string,
+  ) {
+    const { data } = await api.delete(
       `/master/cities/${uuid}`,
     );
+
+    return data;
   },
 
   async getDropdown(
-  stateUuid?: string,
-) {
-  const response = await api.get(
-    "/master/cities/dropdown",
-    {
-      params: {
-        stateUuid,
-        status: "ACTIVE",
+    stateUuid?: string,
+  ): Promise<CityDropdownResponse> {
+    const { data } = await api.get(
+      "/master/cities/dropdown",
+      {
+        params: {
+          stateUuid,
+          status: "ACTIVE",
+        },
       },
-    },
-  );
+    );
 
-  return response.data.data as {
-    cities: CityDropdown[];
-  };
-}
+    return data.data;
+  },
 };

@@ -1,7 +1,9 @@
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import type { StateFormData } from "../types/state.types";
+import type {
+  StateFormData,
+} from "../types/state.types";
 
 import styles from "./StateForm.module.css";
 
@@ -17,40 +19,57 @@ const StateForm = ({
   formData,
   setFormData,
 }: Props) => {
+  const handleChange = (
+    name: keyof StateFormData,
+    value: string,
+  ) => {
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
   return (
     <div className={styles.form}>
       <Input
         label="State Name"
         value={formData.name}
+        required
         onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            name: e.target.value,
-          }))
+          handleChange(
+            "name",
+            e.target.value,
+          )
         }
       />
 
       <Input
         label="State Code"
         value={formData.code}
+        required
+        maxLength={10}
         onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            code: e.target.value
+          handleChange(
+            "code",
+            e.target.value
               .toUpperCase()
               .replace(/\s+/g, ""),
-          }))
+          )
         }
       />
 
       <Input
         label="GST Code"
         value={formData.gstCode}
+        maxLength={2}
         onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            gstCode: e.target.value,
-          }))
+          handleChange(
+            "gstCode",
+            e.target.value.replace(
+              /\D/g,
+              "",
+            ),
+          )
         }
       />
 
@@ -68,12 +87,10 @@ const StateForm = ({
           },
         ]}
         onChange={(e) =>
-          setFormData((prev) => ({
-            ...prev,
-            status: e.target.value as
-              | "ACTIVE"
-              | "INACTIVE",
-          }))
+          handleChange(
+            "status",
+            e.target.value,
+          )
         }
       />
     </div>

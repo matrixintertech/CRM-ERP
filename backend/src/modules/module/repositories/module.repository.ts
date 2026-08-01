@@ -20,30 +20,52 @@ export class ModuleRepository {
     });
   }
 
-  findAll() {
-    return this.prisma.module.findMany({
-      where: {
-        deletedAt: null,
+findAll() {
+  return this.prisma.module.findMany({
+    where: {
+      deletedAt: null,
+    },
+    include: {
+      parent: {
+        select: {
+          id: true,
+          uuid: true,
+          name: true,
+        },
       },
-      orderBy: [
-        {
-          sortOrder: 'asc',
-        },
-        {
-          name: 'asc',
-        },
-      ],
-    });
-  }
+    },
+    orderBy: [
+      {
+        sortOrder: "asc",
+      },
+      {
+        name: "asc",
+      },
+    ],
+  });
+}
 
-  findById(id: bigint) {
-    return this.prisma.module.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
-  }
+findById(id: bigint) {
+  return this.prisma.module.findFirst({
+    where: {
+      id,
+      deletedAt: null,
+    },
+    include: {
+      parent: true,
+      children: true,
+    },
+  });
+}
+
+findByUuid(uuid: string) {
+  return this.prisma.module.findFirst({
+    where: {
+      uuid,
+      deletedAt: null,
+    },
+  });
+}
 
   findByCode(code: string) {
     return this.prisma.module.findFirst({
@@ -64,16 +86,20 @@ export class ModuleRepository {
   }
 
   update(
-    id: bigint,
-    data: Prisma.ModuleUpdateInput,
-  ) {
-    return this.prisma.module.update({
-      where: {
-        id,
-      },
-      data,
-    });
-  }
+  id: bigint,
+  data: Prisma.ModuleUpdateInput,
+) {
+  return this.prisma.module.update({
+    where: {
+      id,
+    },
+    data,
+    include: {
+      parent: true,
+      children: true,
+    },
+  });
+}
 
   softDelete(id: bigint) {
     return this.prisma.module.update({
@@ -86,4 +112,20 @@ export class ModuleRepository {
       },
     });
   }
+
+  findParents() {
+  return this.prisma.module.findMany({
+    where: {
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      uuid: true,
+      name: true,
+    },
+    orderBy: {
+      sortOrder: "asc",
+    },
+  });
+}
 }

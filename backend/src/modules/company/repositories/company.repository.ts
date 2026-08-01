@@ -280,5 +280,17 @@ async updateProfile(
 }
 
 
+  async findByUuid(
+  uuid: string,
+) {
+  return this.prisma.company.findFirst({
+    where: {
+      uuid,
+      deletedAt: null,
+    },
+  });
+}
+
+
 
 }

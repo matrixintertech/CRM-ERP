@@ -12,9 +12,6 @@ export class SubscriptionPlanRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  /**
-   * Create Subscription Plan
-   */
   async create(
     data: Prisma.SubscriptionPlanCreateInput,
   ): Promise<SubscriptionPlan> {
@@ -23,12 +20,9 @@ export class SubscriptionPlanRepository {
     });
   }
 
-  /**
-   * Find By ID
-   */
   async findById(
     id: bigint,
-  ) {
+  ): Promise<SubscriptionPlan | null> {
     return this.prisma.subscriptionPlan.findFirst({
       where: {
         id,
@@ -37,12 +31,20 @@ export class SubscriptionPlanRepository {
     });
   }
 
-  /**
-   * Find By Code
-   */
+  async findByUuid(
+    uuid: string,
+  ): Promise<SubscriptionPlan | null> {
+    return this.prisma.subscriptionPlan.findFirst({
+      where: {
+        uuid,
+        deletedAt: null,
+      },
+    });
+  }
+
   async findByCode(
     code: string,
-  ) {
+  ): Promise<SubscriptionPlan | null> {
     return this.prisma.subscriptionPlan.findFirst({
       where: {
         code,
@@ -51,35 +53,28 @@ export class SubscriptionPlanRepository {
     });
   }
 
-  /**
-   * List
-   */
+  async findByCodeExceptId(
+    code: string,
+    id: bigint,
+  ): Promise<SubscriptionPlan | null> {
+    return this.prisma.subscriptionPlan.findFirst({
+      where: {
+        code,
+        deletedAt: null,
+        id: {
+          not: id,
+        },
+      },
+    });
+  }
+
   async findAll(
     skip: number,
     take: number,
     search?: string,
   ) {
     return this.prisma.subscriptionPlan.findMany({
-      where: {
-        deletedAt: null,
-
-        ...(search && {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-            {
-              code: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        }),
-      },
+      where: this.buildWhere(search),
 
       select: {
         id: true,
@@ -91,57 +86,50 @@ export class SubscriptionPlanRepository {
         billingCycle: true,
         price: true,
         trialDays: true,
+        durationInDays: true,
+        maxUsers: true,
+        maxBranches: true,
+        maxProjects: true,
+        sortOrder: true,
         isPublic: true,
         status: true,
         createdAt: true,
+        updatedAt: true,
+
+        _count: {
+          select: {
+            subscriptionPlanModules: true,
+            companySubscriptions: true,
+          },
+        },
       },
 
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
 
       skip,
       take,
     });
   }
 
-  /**
-   * Count
-   */
   async count(
     search?: string,
-  ) {
+  ): Promise<number> {
     return this.prisma.subscriptionPlan.count({
-      where: {
-        deletedAt: null,
-
-        ...(search && {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-            {
-              code: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        }),
-      },
+      where: this.buildWhere(search),
     });
   }
 
-  /**
-   * Update
-   */
   async update(
     id: bigint,
     data: Prisma.SubscriptionPlanUpdateInput,
-  ) {
+  ): Promise<SubscriptionPlan> {
     return this.prisma.subscriptionPlan.update({
       where: {
         id,
@@ -150,45 +138,44 @@ export class SubscriptionPlanRepository {
     });
   }
 
-  /**
-   * Soft Delete
-   */
   async softDelete(
     id: bigint,
-  ) {
+  ): Promise<SubscriptionPlan> {
     return this.prisma.subscriptionPlan.update({
       where: {
         id,
       },
       data: {
         deletedAt: new Date(),
+        status: 'INACTIVE',
       },
     });
   }
 
+  private buildWhere(
+    search?: string,
+  ): Prisma.SubscriptionPlanWhereInput {
+    const normalizedSearch = search?.trim();
 
-
-async findByCodeExceptId(
-  code: string,
-  id: bigint,
-) {
-  return this.prisma.subscriptionPlan.findFirst({
-    where: {
-      code,
+    return {
       deletedAt: null,
-      NOT: {
-        id,
-      },
-    },
-  });
-}
 
-
-
-
-
-
-
-
-  
+      ...(normalizedSearch && {
+        OR: [
+          {
+            name: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+          {
+            code: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
+    };
+  }
 }

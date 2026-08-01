@@ -318,28 +318,34 @@ model Module {
   uuid String @unique @default(uuid()) @db.Uuid
 
   name String
-  code String @unique
+  code String
 
   description String?
 
-  icon String?
-
+  icon  String?
   route String?
 
-  sortOrder Int @default(0)
+  // Module Hierarchy
+  parentId BigInt?
+  parent   Module?  @relation("ModuleHierarchy", fields: [parentId], references: [id])
+  children Module[] @relation("ModuleHierarchy")
 
-  isSystem Boolean @default(true)
+  // UI Settings
+  sortOrder Int     @default(0)
+  isMenu    Boolean @default(true)
+  isVisible Boolean @default(true)
+  isSystem  Boolean @default(false)
 
   status Status @default(ACTIVE)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
   subscriptionPlanModules SubscriptionPlanModule[]
 
+  @@index([parentId])
+  @@index([sortOrder])
   @@index([status])
-  @@map("modules")
 }
 
 //Feature Module End
@@ -424,6 +430,10 @@ model CompanySubscription {
   companyId BigInt
   company   Company @relation(fields: [companyId], references: [id])
 
+  isCurrent Boolean @default(true)
+
+  renewalDate DateTime?
+
   subscriptionPlanId BigInt
   subscriptionPlan   SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
 
@@ -468,8 +478,12 @@ model OrganizationUnit {
   addressLine1 String?
   addressLine2 String?
 
-  city    String?
-  state   String?
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id])
+
+  cityId BigInt?
+  city   City?   @relation(fields: [cityId], references: [id])
+
   country String?
   pincode String?
 
@@ -479,11 +493,14 @@ model OrganizationUnit {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  employees Employee[]
+  departments Department[]
+  employees   Employee[]
 
   @@index([companyId])
   @@index([parentId])
   @@index([type])
+  @@index([stateId])
+  @@index([cityId])
 }
 
 //End Organisation unit schema
@@ -571,7 +588,8 @@ model State {
   gstCode String?
   status  Status  @default(ACTIVE)
 
-  cities City[]
+  cities            City[]
+  organizationUnits OrganizationUnit[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -597,8 +615,9 @@ model City {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  clients  Client[]
-  projects Project[]
+  clients           Client[]
+  projects          Project[]
+  organizationUnits OrganizationUnit[]
 
   @@unique([stateId, name])
   @@index([stateId])
@@ -707,7 +726,8 @@ model Designation {
   id   BigInt @id @default(autoincrement())
   uuid String @unique @default(uuid()) @db.Uuid
 
-  companyId BigInt
+  companyId    BigInt
+  departmentId BigInt
 
   name String
   code String
@@ -721,13 +741,15 @@ model Designation {
   deletedAt DateTime?
 
   // Relations
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
 
   employees Employee[]
 
-  @@unique([companyId, name])
-  @@unique([companyId, code])
+  @@unique([companyId, departmentId, name])
+  @@unique([companyId, departmentId, code])
   @@index([companyId])
+  @@index([departmentId])
   @@index([status])
   @@map("designations")
 }
@@ -740,7 +762,8 @@ model Department {
   id   BigInt @id @default(autoincrement())
   uuid String @unique @default(uuid()) @db.Uuid
 
-  companyId BigInt
+  companyId          BigInt
+  organizationUnitId BigInt
 
   name        String
   code        String
@@ -752,13 +775,16 @@ model Department {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company          Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  organizationUnit OrganizationUnit @relation(fields: [organizationUnitId], references: [id])
 
-  employees Employee[]
+  designations Designation[]
+  employees    Employee[]
 
-  @@unique([companyId, name])
-  @@unique([companyId, code])
+  @@unique([companyId, organizationUnitId, name])
+  @@unique([companyId, organizationUnitId, code])
   @@index([companyId])
+  @@index([organizationUnitId])
   @@index([status])
   @@map("departments")
 }

@@ -3,7 +3,11 @@ import Modal from "@/shared/components/Modal";
 
 import StateForm from "./StateForm";
 
-import type { StateFormData } from "../types/state.types";
+import type {
+  StateFormData,
+} from "../types/state.types";
+
+import styles from "./StateModal.module.css";
 
 interface Props {
   title: string;
@@ -19,7 +23,7 @@ interface Props {
 
   onClose: () => void;
 
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
 }
 
 const StateModal = ({
@@ -32,11 +36,19 @@ const StateModal = ({
   onClose,
   onSubmit,
 }: Props) => {
+  const handleClose = () => {
+    if (loading) {
+      return;
+    }
+
+    onClose();
+  };
+
   return (
     <Modal
       open={open}
       title={title}
-      onClose={onClose}
+      onClose={handleClose}
       size="md"
     >
       <StateForm
@@ -44,25 +56,23 @@ const StateModal = ({
         setFormData={setFormData}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent:
-            "flex-end",
-          gap: 12,
-          marginTop: 24,
-        }}
-      >
+      <div className={styles.actions}>
         <Button
+          type="button"
           variant="secondary"
-          onClick={onClose}
+          disabled={loading}
+          onClick={handleClose}
         >
           Cancel
         </Button>
 
         <Button
+          type="button"
           loading={loading}
-          onClick={onSubmit}
+          disabled={loading}
+          onClick={() => {
+            void onSubmit();
+          }}
         >
           {isEdit
             ? "Update State"

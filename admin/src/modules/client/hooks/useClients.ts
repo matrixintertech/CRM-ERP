@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -23,174 +26,320 @@ import type {
 const initialFormData: CreateClientDto = {
   name: "",
   code: "",
-
   contactName: "",
   mobile: "",
   email: "",
-
   gstNumber: "",
   panNumber: "",
-
   stateUuid: "",
   cityUuid: "",
-
   address: "",
   pincode: "",
-
   remarks: "",
 };
 
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
+  };
+
+  const errors =
+    apiError.response?.data?.errors;
+
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join(", ");
+  }
+
+  return (
+    apiError.response?.data?.message ??
+    fallback
+  );
+};
+
 export const useClients = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [total, setTotal] = useState(0);
+  const [clients, setClients] =
+    useState<Client[]>([]);
 
-  const [selectedClient, setSelectedClient] =
-    useState<Client | null>(null);
+  const [total, setTotal] =
+    useState(0);
 
-  const [loading, setLoading] = useState(false);
+  const [
+    selectedClient,
+    setSelectedClient,
+  ] = useState<Client | null>(null);
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [formData, setFormData] =
-    useState<CreateClientDto>(initialFormData);
+    useState<CreateClientDto>(
+      () => ({
+        ...initialFormData,
+      }),
+    );
 
-    const [dropdown, setDropdown] = useState<ClientDropdown[]>([]);
+  const [dropdown, setDropdown] =
+    useState<ClientDropdown[]>([]);
 
-  const fetchClients = async (
-    params?: ClientQueryParams,
-  ): Promise<ClientListResponse> => {
-    try {
-      setLoading(true);
+  const fetchClients = useCallback(
+    async (
+      params: ClientQueryParams = {},
+    ): Promise<ClientListResponse> => {
+      try {
+        setLoading(true);
 
-      const data = await getClients(params ?? {});
+        const data =
+          await getClients(params);
 
-      setClients(data.clients);
-      setTotal(data.total);
+        setClients(
+          data.clients ?? [],
+        );
 
-      return data;
-    } finally {
-      setLoading(false);
-    }
-  };
+        setTotal(data.total ?? 0);
 
-const fetchClient = async (uuid: string) => {
-  const data = await getClientByUuid(uuid);
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch clients:",
+          error,
+        );
 
-  setSelectedClient(data.client);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load clients.",
+          ),
+        );
 
-  return data;
-};
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-  const create = async (
-    payload: CreateClientDto,
-  ) => {
-    try {
-      setLoading(true);
+  const fetchClient = useCallback(
+    async (
+      uuid: string,
+    ): Promise<Client> => {
+      try {
+        setLoading(true);
 
-      const data = await createClient(payload);
+        const client =
+          await getClientByUuid(uuid);
 
-      notify.success(
-        "Client created successfully.",
-      );
+        setSelectedClient(client);
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to create client.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        return client;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch client:",
+          error,
+        );
 
-  const update = async (
-    uuid: string,
-    payload: UpdateClientDto,
-  ) => {
-    try {
-      setLoading(true);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load client details.",
+          ),
+        );
 
-      const data = await updateClient(
-        uuid,
-        payload,
-      );
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-      notify.success(
-        "Client updated successfully.",
-      );
+  const create = useCallback(
+    async (
+      payload: CreateClientDto,
+    ) => {
+      try {
+        setLoading(true);
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update client.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        const data =
+          await createClient(payload);
 
-  const remove = async (uuid: string) => {
-    try {
-      setLoading(true);
+        notify.success(
+          "Client created successfully.",
+        );
 
-      await deleteClient(uuid);
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to create client:",
+          error,
+        );
 
-      notify.success(
-        "Client deleted successfully.",
-      );
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create client.",
+          ),
+        );
 
-      // Optional: local state se remove bhi kar do
-      setClients((prev) =>
-        prev.filter(
-          (client) => client.uuid !== uuid,
-        ),
-      );
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-      setTotal((prev) =>
-        prev > 0 ? prev - 1 : 0,
-      );
-    } catch (error) {
-      notify.error(
-        "Failed to delete client.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const update = useCallback(
+    async (
+      uuid: string,
+      payload: UpdateClientDto,
+    ) => {
+      try {
+        setLoading(true);
 
-  const fetchDropdown = async () => {
-  const data = await getClientDropdown();
+        const data =
+          await updateClient(
+            uuid,
+            payload,
+          );
 
-  setDropdown(data);
+        notify.success(
+          "Client updated successfully.",
+        );
 
-  return data;
-};
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to update client:",
+          error,
+        );
 
-  const resetForm = () => {
-    setFormData(initialFormData);
-  };
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update client.",
+          ),
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const remove = useCallback(
+    async (uuid: string) => {
+      try {
+        setLoading(true);
+
+        await deleteClient(uuid);
+
+        setClients((previous) =>
+          previous.filter(
+            (client) =>
+              client.uuid !== uuid,
+          ),
+        );
+
+        setTotal((previous) =>
+          Math.max(previous - 1, 0),
+        );
+
+        notify.success(
+          "Client deleted successfully.",
+        );
+      } catch (error: unknown) {
+        console.error(
+          "Failed to delete client:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete client.",
+          ),
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const fetchDropdown =
+    useCallback(async () => {
+      try {
+        const data =
+          await getClientDropdown();
+
+        setDropdown(data);
+
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch client dropdown:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load client dropdown.",
+          ),
+        );
+
+        throw error;
+      }
+    }, []);
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      ...initialFormData,
+    });
+  }, []);
+
+  const clearSelectedClient =
+    useCallback(() => {
+      setSelectedClient(null);
+    }, []);
 
   return {
-  loading,
+    loading,
 
-  clients,
-  total,
-  selectedClient,
+    clients,
+    total,
+    selectedClient,
 
-  dropdown,
-  fetchDropdown,
+    dropdown,
+    fetchDropdown,
 
-  formData,
-  setFormData,
+    formData,
+    setFormData,
 
-  fetchClients,
-  fetchClient,
+    fetchClients,
+    fetchClient,
 
-  create,
-  update,
-  remove,
+    create,
+    update,
+    remove,
 
-  resetForm,
-};
+    resetForm,
+    clearSelectedClient,
+  };
 };

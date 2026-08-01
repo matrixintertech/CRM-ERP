@@ -4,20 +4,22 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Req,
   UseGuards,
 } from "@nestjs/common";
+
 import type { Request } from "express";
 
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+
 import { AuthGuard } from "@nestjs/passport";
 
 import { CreateDepartmentDto } from "../dto/create-department.dto";
@@ -30,84 +32,114 @@ import { DepartmentService } from "../services/department.service";
 @Controller("departments")
 export class DepartmentController {
   constructor(
-    private readonly departmentService: DepartmentService,
+    private readonly departmentService:
+      DepartmentService,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: "Create Department" })
+  @ApiOperation({
+    summary: "Create Department",
+  })
   @ApiResponse({
     status: 201,
-    description: "Department created successfully.",
+    description:
+      "Department created successfully.",
   })
   create(
     @Req() req: Request,
     @Body() dto: CreateDepartmentDto,
   ) {
     return this.departmentService.create(
-      Number((req.user as any).companyId),
+      (req.user as any).companyId,
       dto,
     );
   }
 
   @Get()
-  @ApiOperation({ summary: "Get All Departments" })
+  @ApiOperation({
+    summary: "Get All Departments",
+  })
   @ApiResponse({
     status: 200,
-    description: "Departments fetched successfully.",
+    description:
+      "Departments fetched successfully.",
   })
-  findAll(@Req() req: Request) {
+  findAll(
+    @Req() req: Request,
+  ) {
     return this.departmentService.findAll(
-      Number((req.user as any).companyId),
+      (req.user as any).companyId,
     );
   }
 
-  @Get(":id")
-  @ApiOperation({ summary: "Get Department By Id" })
+  @Get(":uuid")
+  @ApiOperation({
+    summary: "Get Department By UUID",
+  })
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   @ApiResponse({
     status: 200,
-    description: "Department fetched successfully.",
+    description:
+      "Department fetched successfully.",
   })
   findOne(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("uuid") uuid: string,
   ) {
-    return this.departmentService.findOne(
-      Number((req.user as any).companyId),
-      id,
+    return this.departmentService.findByUuid(
+      (req.user as any).companyId,
+      uuid,
     );
   }
 
-  @Patch(":id")
-  @ApiOperation({ summary: "Update Department" })
+  @Patch(":uuid")
+  @ApiOperation({
+    summary: "Update Department",
+  })
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   @ApiResponse({
     status: 200,
-    description: "Department updated successfully.",
+    description:
+      "Department updated successfully.",
   })
   update(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("uuid") uuid: string,
     @Body() dto: UpdateDepartmentDto,
   ) {
-    return this.departmentService.update(
-      Number((req.user as any).companyId),
-      id,
+    return this.departmentService.updateByUuid(
+      (req.user as any).companyId,
+      uuid,
       dto,
     );
   }
 
-  @Delete(":id")
-  @ApiOperation({ summary: "Delete Department" })
+  @Delete(":uuid")
+  @ApiOperation({
+    summary: "Delete Department",
+  })
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   @ApiResponse({
     status: 200,
-    description: "Department deleted successfully.",
+    description:
+      "Department deleted successfully.",
   })
   remove(
     @Req() req: Request,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("uuid") uuid: string,
   ) {
-    return this.departmentService.delete(
-      Number((req.user as any).companyId),
-      id,
+    return this.departmentService.deleteByUuid(
+      (req.user as any).companyId,
+      uuid,
     );
   }
 }

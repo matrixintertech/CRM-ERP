@@ -16,6 +16,8 @@ interface SelectProps
   helperText?: string;
   options: SelectOption[];
   fullWidth?: boolean;
+  placeholder?: string;
+  showPlaceholder?: boolean;
 }
 
 const Select = ({
@@ -24,6 +26,8 @@ const Select = ({
   helperText,
   options,
   fullWidth = true,
+  placeholder = "Select",
+  showPlaceholder = true,
   className = "",
   id,
   ...props
@@ -31,9 +35,7 @@ const Select = ({
   return (
     <div
       className={`${styles.wrapper} ${
-        fullWidth
-          ? styles.fullWidth
-          : ""
+        fullWidth ? styles.fullWidth : ""
       }`}
     >
       {label && (
@@ -48,19 +50,19 @@ const Select = ({
       <select
         id={id}
         className={`${styles.select} ${
-          error
-            ? styles.errorInput
-            : ""
+          error ? styles.errorInput : ""
         } ${className}`}
         {...props}
       >
-        <option value="">
-          Select
-        </option>
+        {showPlaceholder && (
+          <option value="">
+            {placeholder}
+          </option>
+        )}
 
         {options.map((option) => (
           <option
-            key={option.value}
+            key={`${option.label}-${option.value}`}
             value={option.value}
           >
             {option.label}
@@ -74,9 +76,7 @@ const Select = ({
         </small>
       ) : (
         helperText && (
-          <small
-            className={styles.helper}
-          >
+          <small className={styles.helper}>
             {helperText}
           </small>
         )

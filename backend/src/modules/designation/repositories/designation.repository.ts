@@ -1,99 +1,140 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma, Designation } from "@prisma/client";
-import { PrismaService } from 'src/database/prisma.service';
+
+import {
+  Prisma,
+  Designation,
+} from "@prisma/client";
+
+import { PrismaService } from "src/database/prisma.service";
 
 @Injectable()
 export class DesignationRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
-  async create(data: Prisma.DesignationCreateInput): Promise<Designation> {
-    return this.prisma.designation.create({ data });
+  async create(
+    data: Prisma.DesignationCreateInput,
+  ): Promise<Designation> {
+    return this.prisma.designation.create({
+      data,
+    });
   }
 
-  async findAll(companyId: number): Promise<Designation[]> {
+
+  async findAll(
+    companyId: bigint,
+  ): Promise<Designation[]> {
     return this.prisma.designation.findMany({
       where: {
-        companyId: BigInt(companyId),
+        companyId,
         deletedAt: null,
       },
+
+      include: {
+        department: true,
+      },
+
       orderBy: {
         createdAt: "desc",
       },
     });
   }
 
+
   async findById(
-    companyId: number,
-    id: number,
+    companyId: bigint,
+    id: bigint,
   ): Promise<Designation | null> {
     return this.prisma.designation.findFirst({
       where: {
-        id: BigInt(id),
-        companyId: BigInt(companyId),
+        id,
+        companyId,
         deletedAt: null,
+      },
+
+      include: {
+        department: true,
       },
     });
   }
 
+
+  async findByUuid(
+    companyId: bigint,
+    uuid: string,
+  ): Promise<Designation | null> {
+    return this.prisma.designation.findFirst({
+      where: {
+        companyId,
+        uuid,
+        deletedAt: null,
+      },
+
+      include: {
+        department: true,
+      },
+    });
+  }
+
+
   async findByName(
-    companyId: number,
+    companyId: bigint,
+    departmentId: bigint,
     name: string,
   ): Promise<Designation | null> {
     return this.prisma.designation.findFirst({
       where: {
-        companyId: BigInt(companyId),
+        companyId,
+        departmentId,
         name,
         deletedAt: null,
       },
     });
   }
 
+
   async findByCode(
-    companyId: number,
+    companyId: bigint,
+    departmentId: bigint,
     code: string,
   ): Promise<Designation | null> {
     return this.prisma.designation.findFirst({
       where: {
-        companyId: BigInt(companyId),
+        companyId,
+        departmentId,
         code,
         deletedAt: null,
       },
     });
   }
 
+
   async update(
-    id: number,
+    id: bigint,
     data: Prisma.DesignationUpdateInput,
   ): Promise<Designation> {
     return this.prisma.designation.update({
       where: {
-        id: BigInt(id),
+        id,
       },
+
       data,
     });
   }
 
-  async softDelete(id: number): Promise<Designation> {
+
+  async softDelete(
+    id: bigint,
+  ): Promise<Designation> {
     return this.prisma.designation.update({
       where: {
-        id: BigInt(id),
+        id,
       },
+
       data: {
         deletedAt: new Date(),
       },
     });
   }
-
-  async findByUuid(
-  companyId: bigint,
-  uuid: string,
-) {
-  return this.prisma.designation.findFirst({
-    where: {
-      companyId,
-      uuid,
-      deletedAt: null,
-    },
-  });
-}
 }

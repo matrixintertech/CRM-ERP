@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { notify } from "@/shared/utils/notify";
+
 import {
   createModule,
   deleteModule,
@@ -12,125 +14,140 @@ import type {
   ModuleFormData,
 } from "../types/module.types";
 
-import { notify } from "@/shared/utils/notify";
+export const useModule = () => {
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(false);
 
-export const useModules = () => {
-  const [loading, setLoading] =
-    useState(false);
+  const getErrorMessage = (error: any) => {
+    const errors = error?.response?.data?.errors;
 
-  const [modules, setModules] =
-    useState<Module[]>([]);
+    if (Array.isArray(errors) && errors.length > 0) {
+      return errors.join("\n");
+    }
 
-  const loadModules =
-    useCallback(async () => {
+    return (
+      error?.response?.data?.message ??
+      "Something went wrong."
+    );
+  };
+
+  const fetchModules = useCallback(async () => {
+    try {
       setLoading(true);
 
+      const result = await getModules();
+
+      setModules(result);
+    } catch (error: any) {
+      console.error("Failed to fetch modules:", error);
+
+      notify.error(getErrorMessage(error));
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const create = useCallback(
+    async (payload: ModuleFormData) => {
       try {
-        const data =
-          await getModules();
+        setLoading(true);
 
-        setModules(data);
-      } catch {
-        notify.error(
-          "Failed to load modules.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const addModule =
-    async (
-      payload: ModuleFormData,
-    ) => {
-      setLoading(true);
-
-      try {
-        await createModule(
-          payload,
-        );
+        const response = await createModule(payload);
 
         notify.success(
-          "Module created successfully.",
+          response.message ??
+            "Module created successfully.",
         );
 
-        await loadModules();
-      } catch {
-        notify.error(
-          "Failed to create module.",
+        return response;
+      } catch (error: any) {
+        console.error(
+          "Failed to create module:",
+          error,
         );
 
-        throw new Error();
+        notify.error(getErrorMessage(error));
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [],
+  );
 
-  const editModule =
+  const update = useCallback(
     async (
       id: string,
-      payload: ModuleFormData,
+      payload: Partial<ModuleFormData>,
     ) => {
-      setLoading(true);
-
       try {
-        await updateModule(
+        setLoading(true);
+
+        const response = await updateModule(
           id,
           payload,
         );
 
         notify.success(
-          "Module updated successfully.",
+          response.message ??
+            "Module updated successfully.",
         );
 
-        await loadModules();
-      } catch {
-        notify.error(
-          "Failed to update module.",
+        return response;
+      } catch (error: any) {
+        console.error(
+          "Failed to update module:",
+          error,
         );
 
-        throw new Error();
+        notify.error(getErrorMessage(error));
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [],
+  );
 
-  const removeModule =
-    async (
-      id: string,
-    ) => {
-      setLoading(true);
-
+  const remove = useCallback(
+    async (id: string) => {
       try {
-        await deleteModule(id);
+        setLoading(true);
+
+        const response = await deleteModule(id);
 
         notify.success(
-          "Module deleted successfully.",
+          response.message ??
+            "Module deleted successfully.",
         );
 
-        await loadModules();
-      } catch {
-        notify.error(
-          "Failed to delete module.",
+        return response;
+      } catch (error: any) {
+        console.error(
+          "Failed to delete module:",
+          error,
         );
 
-        throw new Error();
+        notify.error(getErrorMessage(error));
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [],
+  );
 
   return {
     loading,
-
     modules,
-
-    loadModules,
-
-    addModule,
-
-    editModule,
-
-    removeModule,
+    fetchModules,
+    create,
+    update,
+    remove,
   };
 };

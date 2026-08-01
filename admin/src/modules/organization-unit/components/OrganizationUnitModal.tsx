@@ -1,3 +1,8 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
@@ -8,6 +13,8 @@ import type {
   OrganizationUnitFormData,
 } from "../types/organization-unit.types";
 
+import styles from "./OrganizationUnitModal.module.css";
+
 interface Props {
   title: string;
   isEdit: boolean;
@@ -17,15 +24,17 @@ interface Props {
 
   organizationUnits: OrganizationUnit[];
 
+  editingUuid?: string | null;
+
   formData: OrganizationUnitFormData;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<OrganizationUnitFormData>
+  setFormData: Dispatch<
+    SetStateAction<OrganizationUnitFormData>
   >;
 
   onClose: () => void;
 
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
 }
 
 const OrganizationUnitModal = ({
@@ -34,42 +43,53 @@ const OrganizationUnitModal = ({
   open,
   loading,
   organizationUnits,
+  editingUuid,
   formData,
   setFormData,
   onClose,
   onSubmit,
 }: Props) => {
+  const handleClose = () => {
+    if (loading) {
+      return;
+    }
+
+    onClose();
+  };
+
   return (
     <Modal
       open={open}
       title={title}
-      onClose={onClose}
+      onClose={handleClose}
       size="lg"
     >
       <OrganizationUnitForm
-        organizationUnits={organizationUnits}
+        organizationUnits={
+          organizationUnits
+        }
+        editingUuid={editingUuid}
         formData={formData}
         setFormData={setFormData}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 12,
-          marginTop: 24,
-        }}
-      >
+      <div className={styles.actions}>
         <Button
+          type="button"
           variant="secondary"
-          onClick={onClose}
+          disabled={loading}
+          onClick={handleClose}
         >
           Cancel
         </Button>
 
         <Button
+          type="button"
           loading={loading}
-          onClick={onSubmit}
+          disabled={loading}
+          onClick={() => {
+            void onSubmit();
+          }}
         >
           {isEdit
             ? "Update Organization Unit"

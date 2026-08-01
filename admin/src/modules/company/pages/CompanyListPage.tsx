@@ -1,29 +1,35 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
 
 import {
-  Eye,
   Building2,
+  Eye,
+  Plus,
   Shield,
 } from "lucide-react";
+
+import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import DataTable from "@/shared/components/DataTable/DataTable";
+import PageHeader from "@/shared/components/PageHeader";
+import Pagination from "@/shared/components/Pagination";
+import SearchInput from "@/shared/components/SearchInput";
+import Select from "@/shared/components/Select";
+
+import type { DataTableColumn } from "@/shared/components/DataTable/types";
 
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 
 import { useCompanies } from "../hooks/useCompanies";
 
-import PageHeader from "@/shared/components/PageHeader";
-import Card from "@/shared/components/Card";
-import Button from "@/shared/components/Button";
-import SearchInput from "@/shared/components/SearchInput";
-import Select from "@/shared/components/Select";
-import Pagination from "@/shared/components/Pagination";
-
-import DataTable from "@/shared/components/DataTable/DataTable";
-
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
-import type { Company } from "../types/company.types";
-
-
+import type {
+  Company,
+} from "../types/company.types";
 
 import styles from "./CompanyListPage.module.css";
 
@@ -60,113 +66,198 @@ const typeOptions = [
 const CompanyListPage = () => {
   const navigate = useNavigate();
 
-const {
-  companies,
-  pagination,
-  loading,
+  const {
+    companies,
+    pagination,
+    loading,
 
-  selectedCompany,
-  detailsLoading,
+    selectedCompany,
+    detailsLoading,
 
-  fetchCompany,
-} = useCompanies();
+    loadCompanies,
+    fetchCompany,
+  } = useCompanies();
 
+  const [openDetails, setOpenDetails] =
+    useState(false);
 
+  const [search, setSearch] =
+    useState("");
 
-const [openDetails, setOpenDetails] =
-  useState(false);
+  const [status, setStatus] =
+    useState("");
 
-const handleView = async (
-  id: string,
-) => {
-  await fetchCompany(id);
+  const [companyType, setCompanyType] =
+    useState("");
 
-  setOpenDetails(true);
-};
+  const [page, setPage] =
+    useState(1);
 
+  const pageSize = 10;
 
-const handleOrganization = (
-  id: string,
-) => {
-  navigate(
-    `/companies/${id}/organization`,
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadCompanies({
+        page,
+        limit: pageSize,
+        search: search.trim() || undefined,
+        status: status || undefined,
+        type: companyType || undefined,
+      });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [
+    page,
+    search,
+    status,
+    companyType,
+    loadCompanies,
+  ]);
+
+  const handleView = async (
+    id: string,
+  ) => {
+    try {
+      await fetchCompany(id);
+      setOpenDetails(true);
+    } catch (error) {
+      console.error(
+        "Failed to load company details:",
+        error,
+      );
+    }
+  };
+
+  const handleOrganization = (
+    id: string,
+  ) => {
+    navigate(
+      `/companies/${id}/organization`,
+    );
+  };
+
+  const handleRoles = (
+    id: string,
+  ) => {
+    navigate(
+      `/companies/${id}/roles`,
+    );
+  };
+
+  const handleSearchChange = (
+    value: string,
+  ) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (
+    value: string,
+  ) => {
+    setStatus(value);
+    setPage(1);
+  };
+
+  const handleTypeChange = (
+    value: string,
+  ) => {
+    setCompanyType(value);
+    setPage(1);
+  };
+
+  const columns = useMemo<
+    DataTableColumn<Company>[]
+  >(
+    () => [
+      {
+        key: "name",
+        title: "Company",
+      },
+      {
+        key: "code",
+        title: "Code",
+      },
+      {
+        key: "email",
+        title: "Email",
+        render: (row) =>
+          row.email || "-",
+      },
+      {
+        key: "mobile",
+        title: "Mobile",
+        render: (row) =>
+          row.mobile || "-",
+      },
+      {
+        key: "status",
+        title: "Status",
+        align: "center",
+        render: (row) => (
+          <span
+            className={
+              row.status === "ACTIVE"
+                ? styles.activeStatus
+                : styles.inactiveStatus
+            }
+          >
+            {row.status}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        title: "Actions",
+        align: "center",
+        render: (row) => (
+          <div
+            className={
+              styles.actions
+            }
+          >
+            <Button
+              size="sm"
+              aria-label={`View ${row.name}`}
+              title="View company"
+              onClick={() =>
+                handleView(row.id)
+              }
+            >
+              <Eye size={16} />
+            </Button>
+
+            <Button
+              size="sm"
+              aria-label={`Open ${row.name} organization`}
+              title="Organization"
+              onClick={() =>
+                handleOrganization(
+                  row.id,
+                )
+              }
+            >
+              <Building2 size={16} />
+            </Button>
+
+            <Button
+              size="sm"
+              aria-label={`Manage ${row.name} roles`}
+              title="Roles"
+              onClick={() =>
+                handleRoles(row.id)
+              }
+            >
+              <Shield size={16} />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [],
   );
-};
-
-const handleRoles = (
-  id: string,
-) => {
-  navigate(
-    `/companies/${id}/roles`,
-  );
-};
-
-
-const columns: DataTableColumn<Company>[] = [
-  {
-    key: "name",
-    title: "Company",
-  },
-  {
-    key: "code",
-    title: "Code",
-  },
-  {
-    key: "email",
-    title: "Email",
-  },
-  {
-    key: "status",
-    title: "Status",
-    align: "center",
-    render: (row) => (
-      <span>{row.status}</span>
-    ),
-  },
-  {
-    key: "actions",
-    title: "Actions",
-    align: "center",
-    render: (row) => (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 8,
-        }}
-      >
-        <Button
-          size="sm"
-          onClick={() =>
-            handleView(row.id)
-          }
-        >
-          <Eye size={16} />
-        </Button>
-
-        <Button
-          size="sm"
-          onClick={() =>
-            handleOrganization(
-              row.id,
-            )
-          }
-        >
-          <Building2 size={16} />
-        </Button>
-
-        <Button
-          size="sm"
-          onClick={() =>
-            handleRoles(row.id)
-          }
-        >
-          <Shield size={16} />
-        </Button>
-      </div>
-    ),
-  },
-];
 
   return (
     <>
@@ -181,6 +272,7 @@ const columns: DataTableColumn<Company>[] = [
               )
             }
           >
+            <Plus size={18} />
             Create Company
           </Button>
         }
@@ -188,52 +280,74 @@ const columns: DataTableColumn<Company>[] = [
 
       <Card>
         <div className={styles.filters}>
-          <SearchInput placeholder="Search company..." />
+          <SearchInput
+            placeholder="Search company..."
+            value={search}
+            onChange={(event) =>
+              handleSearchChange(
+                event.target.value,
+              )
+            }
+          />
 
           <Select
+            value={status}
+            onChange={(event) =>
+              handleStatusChange(
+                event.target.value,
+              )
+            }
+            showPlaceholder={false}
             options={statusOptions}
           />
 
           <Select
+            value={companyType}
+            onChange={(event) =>
+              handleTypeChange(
+                event.target.value,
+              )
+            }
+            showPlaceholder={false}
             options={typeOptions}
           />
         </div>
 
-<DataTable
-  loading={loading}
-  data={companies}
-  columns={columns}
-  keyField="id"
-  showSerialNumber
-  emptyMessage="No companies found."
-/>
-
-        <Pagination
-        page={
-            pagination?.page ?? 1
-        }
-        totalPages={
-            pagination?.totalPages ?? 1
-        }
-        totalRecords={
-            pagination?.total ?? 0
-        }
-        pageSize={
-            pagination?.limit ?? 10
-        }
-        onPageChange={() => {}}
+        <DataTable
+          loading={loading}
+          data={companies}
+          columns={columns}
+          keyField="id"
+          showSerialNumber
+          emptyMessage="No companies found."
         />
 
-      <CompanyDetailsModal
-  open={openDetails}
-  loading={detailsLoading}
-  company={selectedCompany}
-  onClose={() =>
-    setOpenDetails(false)
-  }
-/>
-
+        <Pagination
+          page={
+            pagination?.page ?? page
+          }
+          totalPages={
+            pagination?.totalPages ?? 1
+          }
+          totalRecords={
+            pagination?.total ?? 0
+          }
+          pageSize={
+            pagination?.limit ??
+            pageSize
+          }
+          onPageChange={setPage}
+        />
       </Card>
+
+      <CompanyDetailsModal
+        open={openDetails}
+        loading={detailsLoading}
+        company={selectedCompany}
+        onClose={() =>
+          setOpenDetails(false)
+        }
+      />
     </>
   );
 };

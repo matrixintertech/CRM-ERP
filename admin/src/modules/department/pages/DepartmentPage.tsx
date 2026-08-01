@@ -2,6 +2,7 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "@/shared/components/PageHeader";
@@ -9,7 +10,9 @@ import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import DataTable from "@/shared/components/DataTable/DataTable";
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import {
   Eye,
@@ -18,21 +21,25 @@ import {
 } from "lucide-react";
 
 import DepartmentModal from "../components/DepartmentModal";
+
 import { useDepartment } from "../hooks/useDepartment";
+import { useOrganizationUnits } from "../../organization-unit/hooks/useOrganizationUnits";
 
 import type {
   Department,
   DepartmentFormData,
 } from "../types/department.types";
 
-const DepartmentPage = () => {
-  const navigate = useNavigate();
-
-  const defaultForm: DepartmentFormData = {
+const createDefaultForm =
+  (): DepartmentFormData => ({
+    organizationUnitUuid: "",
     name: "",
     code: "",
     description: "",
-  };
+  });
+
+const DepartmentPage = () => {
+  const navigate = useNavigate();
 
   const {
     loading,
@@ -41,68 +48,160 @@ const DepartmentPage = () => {
     fetchDepartment,
     create,
     update,
+    remove,
   } = useDepartment();
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
+  const {
+    organizationUnits,
+    fetchOrganizationUnits,
+  } = useOrganizationUnits();
 
   const [open, setOpen] =
     useState(false);
 
-  const [editId, setEditId] =
+  const [editUuid, setEditUuid] =
     useState<string | null>(null);
 
   const [formData, setFormData] =
-    useState(defaultForm);
+    useState<DepartmentFormData>(
+      createDefaultForm,
+    );
 
-  const handleSubmit =
-    async () => {
-      try {
-        if (editId) {
-          await update(
-            editId,
-            formData,
-          );
-        } else {
-          await create(formData);
-        }
+  useEffect(() => {
+    void fetchDepartments();
+    void fetchOrganizationUnits();
+  }, [
+    fetchDepartments,
+    fetchOrganizationUnits,
+  ]);
 
-        await fetchDepartments();
+  const resetForm = () => {
+    setEditUuid(null);
+    setFormData(
+      createDefaultForm(),
+    );
+  };
 
-        setOpen(false);
-        setEditId(null);
-        setFormData(defaultForm);
-      } catch (error: any) {
-        console.error(
-          error.response?.data ??
-            error,
+  const handleOpenCreate = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    resetForm();
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const payload: DepartmentFormData = {
+        organizationUnitUuid:
+          formData.organizationUnitUuid,
+
+        name:
+          formData.name.trim(),
+
+        code:
+          formData.code
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, ""),
+
+        description:
+          formData.description?.trim() ||
+          undefined,
+      };
+
+      if (editUuid) {
+        await update(
+          editUuid,
+          payload,
         );
+      } else {
+        await create(payload);
       }
-    };
 
-  const handleEdit =
-    async (id: string) => {
+      await fetchDepartments();
+
+      handleClose();
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
+
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
       const department =
-        await fetchDepartment(id);
+        await fetchDepartment(
+          uuid,
+        );
 
-      if (!department) return;
+      if (!department) {
+        return;
+      }
 
-      setEditId(id);
+      setEditUuid(uuid);
 
       setFormData({
-        name: department.name,
-        code: department.code,
+        organizationUnitUuid:
+          department.organizationUnit
+            ?.uuid ?? "",
+
+        name:
+          department.name,
+
+        code:
+          department.code,
+
         description:
-          department.description ??
-          "",
+          department.description ?? "",
       });
 
       setOpen(true);
-    };
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
 
-  const columns: DataTableColumn<Department>[] =
-    [
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this department?",
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await remove(uuid);
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
+
+  const columns:
+    DataTableColumn<Department>[] = [
+      {
+        key: "organizationUnit",
+        title: "Branch / Office",
+        render: (row) =>
+          row.organizationUnit
+            ?.name ?? "-",
+      },
       {
         key: "name",
         title: "Department",
@@ -114,6 +213,8 @@ const DepartmentPage = () => {
       {
         key: "description",
         title: "Description",
+        render: (row) =>
+          row.description || "-",
       },
       {
         key: "status",
@@ -133,7 +234,14 @@ const DepartmentPage = () => {
               gap: 8,
             }}
           >
-            <Button size="sm">
+            <Button
+              size="sm"
+              onClick={() =>
+                navigate(
+                  `/departments/${row.uuid}`,
+                )
+              }
+            >
               <Eye size={16} />
             </Button>
 
@@ -141,7 +249,7 @@ const DepartmentPage = () => {
               size="sm"
               onClick={() =>
                 handleEdit(
-                  String(row.id),
+                  row.uuid,
                 )
               }
             >
@@ -153,6 +261,11 @@ const DepartmentPage = () => {
             <Button
               size="sm"
               variant="danger"
+              onClick={() =>
+                handleDelete(
+                  row.uuid,
+                )
+              }
             >
               <Trash2
                 size={16}
@@ -167,7 +280,7 @@ const DepartmentPage = () => {
     <>
       <PageHeader
         title="Department"
-        subtitle="Manage company departments"
+        subtitle="Manage organization unit departments"
         actions={
           <div
             style={{
@@ -185,13 +298,9 @@ const DepartmentPage = () => {
             </Button>
 
             <Button
-              onClick={() => {
-                setEditId(null);
-                setFormData(
-                  defaultForm,
-                );
-                setOpen(true);
-              }}
+              onClick={
+                handleOpenCreate
+              }
             >
               Add Department
             </Button>
@@ -202,9 +311,11 @@ const DepartmentPage = () => {
       <Card>
         <DataTable
           loading={loading}
-          data={departments ?? []}
+          data={
+            departments ?? []
+          }
           columns={columns}
-          keyField="id"
+          keyField="uuid"
           showSerialNumber
           emptyMessage="No Departments Found."
         />
@@ -212,25 +323,28 @@ const DepartmentPage = () => {
 
       <DepartmentModal
         title={
-          editId
+          editUuid
             ? "Edit Department"
             : "Create Department"
         }
-        isEdit={!!editId}
+        isEdit={
+          Boolean(editUuid)
+        }
         open={open}
         loading={loading}
         formData={formData}
         setFormData={
           setFormData
         }
-        onClose={() => {
-          setOpen(false);
-          setEditId(null);
-          setFormData(
-            defaultForm,
-          );
-        }}
-        onSubmit={handleSubmit}
+        organizationUnits={
+          organizationUnits
+        }
+        onClose={
+          handleClose
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );

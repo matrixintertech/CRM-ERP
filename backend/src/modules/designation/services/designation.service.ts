@@ -3,25 +3,47 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Status } from "@prisma/client";
+
+import {
+  Status,
+} from "@prisma/client";
 
 import { CreateDesignationDto } from "../dto/create-designation.dto";
 import { UpdateDesignationDto } from "../dto/update-designation.dto";
+
 import { DesignationRepository } from "../repositories/designation.repository";
+import { DepartmentRepository } from "../../department/repositories/department.repository";
 
 @Injectable()
 export class DesignationService {
   constructor(
-    private readonly designationRepository: DesignationRepository,
+    private readonly designationRepository:
+      DesignationRepository,
+
+    private readonly departmentRepository:
+      DepartmentRepository,
   ) {}
 
   async create(
-    companyId: number,
+    companyId: bigint,
     dto: CreateDesignationDto,
   ) {
+    const department =
+      await this.departmentRepository.findByUuid(
+        companyId,
+        dto.departmentId,
+      );
+
+    if (!department) {
+      throw new NotFoundException(
+        "Department not found.",
+      );
+    }
+
     const existingName =
       await this.designationRepository.findByName(
         companyId,
+        department.id,
         dto.name,
       );
 
@@ -34,6 +56,7 @@ export class DesignationService {
     const existingCode =
       await this.designationRepository.findByCode(
         companyId,
+        department.id,
         dto.code,
       );
 
@@ -47,36 +70,52 @@ export class DesignationService {
       await this.designationRepository.create({
         name: dto.name,
         code: dto.code,
-        description: dto.description,
-        status: Status.ACTIVE,
+        description:
+          dto.description,
+
+        status:
+          Status.ACTIVE,
+
         company: {
           connect: {
-            id: BigInt(companyId),
+            id: companyId,
+          },
+        },
+
+        department: {
+          connect: {
+            id: department.id,
           },
         },
       });
 
     return {
-      message: "Designation created successfully.",
+      message:
+        "Designation created successfully.",
       designation,
     };
   }
 
-  async findAll(companyId: number) {
+
+  async findAll(
+    companyId: bigint,
+  ) {
     const designations =
       await this.designationRepository.findAll(
         companyId,
       );
 
     return {
-      message: "Designations fetched successfully.",
+      message:
+        "Designations fetched successfully.",
       designations,
     };
   }
 
+
   async findOne(
-    companyId: number,
-    id: number,
+    companyId: bigint,
+    id: bigint,
   ) {
     const designation =
       await this.designationRepository.findById(
@@ -91,14 +130,16 @@ export class DesignationService {
     }
 
     return {
-      message: "Designation fetched successfully.",
+      message:
+        "Designation fetched successfully.",
       designation,
     };
   }
 
+
   async update(
-    companyId: number,
-    id: number,
+    companyId: bigint,
+    id: bigint,
     dto: UpdateDesignationDto,
   ) {
     const designation =
@@ -113,6 +154,27 @@ export class DesignationService {
       );
     }
 
+    let departmentId =
+      designation.departmentId;
+
+    if (dto.departmentId) {
+      const department =
+        await this.departmentRepository.findByUuid(
+          companyId,
+          dto.departmentId,
+        );
+
+      if (!department) {
+        throw new NotFoundException(
+          "Department not found.",
+        );
+      }
+
+      departmentId =
+        department.id;
+    }
+
+
     if (
       dto.name &&
       dto.name !== designation.name
@@ -120,15 +182,20 @@ export class DesignationService {
       const existingName =
         await this.designationRepository.findByName(
           companyId,
+          departmentId,
           dto.name,
         );
 
-      if (existingName) {
+      if (
+        existingName &&
+        existingName.id !== id
+      ) {
         throw new ConflictException(
           "Designation name already exists.",
         );
       }
     }
+
 
     if (
       dto.code &&
@@ -137,31 +204,55 @@ export class DesignationService {
       const existingCode =
         await this.designationRepository.findByCode(
           companyId,
+          departmentId,
           dto.code,
         );
 
-      if (existingCode) {
+      if (
+        existingCode &&
+        existingCode.id !== id
+      ) {
         throw new ConflictException(
           "Designation code already exists.",
         );
       }
     }
 
+
     const updatedDesignation =
       await this.designationRepository.update(
         id,
-        dto,
+        {
+          name: dto.name,
+          code: dto.code,
+          description:
+            dto.description,
+
+          department:
+            dto.departmentId
+              ? {
+                  connect: {
+                    id: departmentId,
+                  },
+                }
+              : undefined,
+        },
       );
 
+
     return {
-      message: "Designation updated successfully.",
-      designation: updatedDesignation,
+      message:
+        "Designation updated successfully.",
+
+      designation:
+        updatedDesignation,
     };
   }
 
+
   async delete(
-    companyId: number,
-    id: number,
+    companyId: bigint,
+    id: bigint,
   ) {
     const designation =
       await this.designationRepository.findById(
@@ -180,7 +271,8 @@ export class DesignationService {
     );
 
     return {
-      message: "Designation deleted successfully.",
+      message:
+        "Designation deleted successfully.",
     };
   }
 }

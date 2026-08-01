@@ -1,211 +1,456 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 
-import PageHeader from "@/shared/components/PageHeader";
-import Card from "@/shared/components/Card";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import {
+  Eye,
+  Plus,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
+
 import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import DataTable from "@/shared/components/DataTable/DataTable";
+import PageHeader from "@/shared/components/PageHeader";
+
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import OrganizationUnitModal from "../components/OrganizationUnitModal";
+
 import { useOrganizationUnits } from "../hooks/useOrganizationUnits";
 
 import type {
   OrganizationUnit,
   OrganizationUnitFormData,
+  UpdateOrganizationUnitDto,
 } from "../types/organization-unit.types";
 
-import DataTable from "@/shared/components/DataTable/DataTable";
+const createDefaultForm = (
+  companyUuid?: string,
+): OrganizationUnitFormData => ({
+  companyUuid,
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+  parentUuid: undefined,
 
+  type: "HEAD_OFFICE",
 
+  name: "",
+  code: "",
 
-import {
-  Eye,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
+  email: "",
+  mobile: "",
+
+  addressLine1: "",
+  addressLine2: "",
+
+  stateUuid: "",
+  cityUuid: "",
+
+  country: "",
+
+  pincode: "",
+
+  status: "ACTIVE",
+});
 
 const OrganizationUnitPage = () => {
   const navigate = useNavigate();
 
-  const { companyId } = useParams();
+  const {
+    companyId: companyUuid,
+  } = useParams<{
+    companyId: string;
+  }>();
 
-
-  const defaultForm: OrganizationUnitFormData = {
-    parentId: undefined,
-    type: "HEAD_OFFICE",
-    name: "",
-    code: "",
-    email: "",
-    mobile: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    country: "",
-    pincode: "",
-  };
-
-const {
-  loading,
-  organizationUnits,
-  fetchOrganizationUnits,
-  fetchOrganizationUnit,
-  create,
-  update,
-} = useOrganizationUnits();
-
-useEffect(() => {
-  fetchOrganizationUnits();
-}, []);
-
+  const {
+    loading,
+    organizationUnits,
+    fetchOrganizationUnits,
+    fetchOrganizationUnit,
+    create,
+    update,
+    remove,
+  } = useOrganizationUnits();
 
   const [open, setOpen] =
     useState(false);
 
-    const [editId, setEditId] =
-  useState<number | null>(null);
+  const [editUuid, setEditUuid] =
+    useState<string | null>(null);
 
-   const [formData, setFormData] = useState(defaultForm);
+  const [formData, setFormData] =
+    useState<OrganizationUnitFormData>(
+      () =>
+        createDefaultForm(
+          companyUuid,
+        ),
+    );
+
+  useEffect(() => {
+    void fetchOrganizationUnits({
+      companyUuid,
+    });
+  }, [
+    companyUuid,
+    fetchOrganizationUnits,
+  ]);
+
+  const resetForm = () => {
+    setEditUuid(null);
+
+    setFormData(
+      createDefaultForm(
+        companyUuid,
+      ),
+    );
+  };
+
+  const handleOpenCreate = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpen(false);
+    resetForm();
+  };
 
 const handleSubmit = async () => {
   try {
-    if (editId) {
-      await update(editId, {
-        name: formData.name,
-        code: formData.code,
-        email: formData.email,
-        mobile: formData.mobile,
-        addressLine1: formData.addressLine1,
-        addressLine2: formData.addressLine2,
-        city: formData.city,
-        state: formData.state,
-        country: formData.country,
-        pincode: formData.pincode,
-        status: "ACTIVE",
-      });
+    if (editUuid) {
+      const payload: UpdateOrganizationUnitDto = {
+        parentUuid:
+          formData.parentUuid,
+
+        type:
+          formData.type,
+
+        name:
+          formData.name?.trim() ?? "",
+
+        code:
+          formData.code
+            ?.trim()
+            .toUpperCase()
+            .replace(/\s+/g, "") ?? "",
+
+        email:
+          formData.email?.trim() ?? "",
+
+        mobile:
+          formData.mobile?.trim() ?? "",
+
+        addressLine1:
+          formData.addressLine1?.trim() ?? "",
+
+        addressLine2:
+          formData.addressLine2?.trim() ?? "",
+
+        stateUuid:
+          formData.stateUuid ||
+          undefined,
+
+        cityUuid:
+          formData.cityUuid ||
+          undefined,
+
+        country:
+          formData.country?.trim() ?? "",
+
+        pincode:
+          formData.pincode?.trim() ?? "",
+
+        status:
+          formData.status ?? "ACTIVE",
+      };
+
+      await update(
+        editUuid,
+        payload,
+      );
+
     } else {
-      await create(formData);
+      const payload: OrganizationUnitFormData =
+        {
+          ...formData,
+
+          companyUuid,
+
+          name:
+            formData.name?.trim() ?? "",
+
+          code:
+            formData.code
+              ?.trim()
+              .toUpperCase()
+              .replace(/\s+/g, "") ?? "",
+
+          email:
+            formData.email?.trim() ?? "",
+
+          mobile:
+            formData.mobile?.trim() ?? "",
+
+          addressLine1:
+            formData.addressLine1?.trim() ?? "",
+
+          addressLine2:
+            formData.addressLine2?.trim() ?? "",
+
+          stateUuid:
+            formData.stateUuid ||
+            "",
+
+          cityUuid:
+            formData.cityUuid ||
+            "",
+
+          country:
+            formData.country?.trim() ?? "",
+
+          pincode:
+            formData.pincode?.trim() ?? "",
+
+          status:
+            formData.status ?? "ACTIVE",
+        };
+
+      await create(payload);
     }
 
-    // Refresh list
-    await fetchOrganizationUnits();
+    await fetchOrganizationUnits({
+      companyUuid,
+    });
 
-    // Reset form
-    setOpen(false);
-    setEditId(null);
-    setFormData(defaultForm);
-  } catch (error: any) {
-    console.error(error.response?.data || error);
+    handleCloseModal();
+
+  } catch (error) {
+    console.error(
+      "Failed to save organization unit:",
+      error,
+    );
   }
 };
 
-const handleEdit = async (id: number) => {
-  const unit = await fetchOrganizationUnit(id);
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
+      const unit =
+        await fetchOrganizationUnit(
+          uuid,
+        );
 
-  if (!unit) return;
+      if (!unit) {
+        return;
+      }
 
-  setEditId(id);
+      setEditUuid(uuid);
 
-  setFormData({
-    parentId: unit.parentId ?? undefined,
-    type: unit.type,
-    name: unit.name,
-    code: unit.code,
-    email: unit.email,
-    mobile: unit.mobile,
-    addressLine1: unit.addressLine1,
-    addressLine2: unit.addressLine2,
-    city: unit.city,
-    state: unit.state,
-    country: unit.country,
-    pincode: unit.pincode,
-  });
+setFormData({
+  companyUuid,
 
-  setOpen(true);
-};
+  parentUuid:
+    unit.parent?.uuid,
 
-const columns: DataTableColumn<OrganizationUnit>[] =
-  [
-    {
-      key: "name",
-      title: "Organization Unit",
-    },
-    {
-      key: "code",
-      title: "Code",
-    },
-    {
-      key: "type",
-      title: "Type",
-      render: (row) =>
-        row.type
-          .replaceAll("_", " ")
-          .toLowerCase()
-          .replace(
-            /\b\w/g,
-            (c) =>
-              c.toUpperCase(),
-          ),
-    },
-    {
-      key: "city",
-      title: "City",
-    },
-    {
-      key: "state",
-      title: "State",
-    },
-    {
-      key: "mobile",
-      title: "Mobile",
-    },
-    {
-      key: "status",
-      title: "Status",
-      align: "center",
-    },
-    {
-      key: "actions",
-      title: "Actions",
-      align: "center",
-      render: (row) => (
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "center",
-            gap: 8,
-          }}
-        >
-          <Button size="sm">
-            <Eye size={16} />
-          </Button>
+  type:
+    unit.type,
 
-          <Button
-            size="sm"
-            onClick={() =>
-              handleEdit(row.id)
-            }
+  name:
+    unit.name,
+
+  code:
+    unit.code,
+
+  email:
+    unit.email ?? "",
+
+  mobile:
+    unit.mobile ?? "",
+
+  addressLine1:
+    unit.addressLine1 ?? "",
+
+  addressLine2:
+    unit.addressLine2 ?? "",
+
+  stateUuid:
+    unit.state?.uuid ?? "",
+
+  cityUuid:
+    unit.city?.uuid ?? "",
+
+  country:
+    unit.country ?? "",
+
+  pincode:
+    unit.pincode ?? "",
+
+  status:
+    unit.status,
+});
+      setOpen(true);
+    } catch (error) {
+      console.error(
+        "Failed to load organization unit:",
+        error,
+      );
+    }
+  };
+
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this organization unit?",
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await remove(uuid);
+
+      await fetchOrganizationUnits({
+        companyUuid,
+      });
+    } catch (error) {
+      console.error(
+        "Failed to delete organization unit:",
+        error,
+      );
+    }
+  };
+
+  const columns = useMemo<
+    DataTableColumn<OrganizationUnit>[]
+  >(
+    () => [
+      {
+        key: "name",
+        title:
+          "Organization Unit",
+      },
+      {
+        key: "code",
+        title: "Code",
+      },
+      {
+        key: "type",
+        title: "Type",
+        render: (row) =>
+          row.type
+            .replaceAll("_", " ")
+            .toLowerCase()
+            .replace(
+              /\b\w/g,
+              (character) =>
+                character.toUpperCase(),
+            ),
+      },
+      {
+        key: "parent",
+        title: "Parent",
+        render: (row) =>
+          row.parent?.name ?? "-",
+      },
+      {
+  key: "city" as keyof OrganizationUnit,
+  title: "City",
+  render: (row) =>
+    row.city?.name ?? "-",
+},
+{
+  key: "state" as keyof OrganizationUnit,
+  title: "State",
+  render: (row) =>
+    row.state?.name ?? "-",
+},
+      {
+        key: "mobile",
+        title: "Mobile",
+        render: (row) =>
+          row.mobile || "-",
+      },
+      {
+        key: "status",
+        title: "Status",
+        align: "center",
+      },
+      {
+        key: "actions",
+        title: "Actions",
+        align: "center",
+        render: (row) => (
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "center",
+              gap: 8,
+            }}
           >
-            <SquarePen size={16} />
-          </Button>
+            <Button
+              size="sm"
+              aria-label={`View ${row.name}`}
+              onClick={() =>
+                navigate(
+                  `/companies/${companyUuid}/organization/${row.uuid}`,
+                )
+              }
+            >
+              <Eye size={16} />
+            </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-          >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+            <Button
+              size="sm"
+              aria-label={`Edit ${row.name}`}
+              onClick={() =>
+                handleEdit(
+                  row.uuid,
+                )
+              }
+            >
+              <SquarePen
+                size={16}
+              />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="danger"
+              aria-label={`Delete ${row.name}`}
+              onClick={() =>
+                handleDelete(
+                  row.uuid,
+                )
+              }
+            >
+              <Trash2
+                size={16}
+              />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [
+      companyUuid,
+      navigate,
+    ],
+  );
 
   return (
     <>
@@ -222,56 +467,64 @@ const columns: DataTableColumn<OrganizationUnit>[] =
             <Button
               variant="secondary"
               onClick={() =>
-                navigate("/companies")
+                navigate(
+                  "/companies",
+                )
               }
             >
               Back
             </Button>
 
-             <Button
-              onClick={() => {
-                setEditId(null);
-                setFormData(defaultForm);
-                setOpen(true);
-              }}
+            <Button
+              onClick={
+                handleOpenCreate
+              }
             >
+              <Plus size={18} />
               Add Unit
             </Button>
           </div>
         }
       />
 
-<Card>
-  <DataTable
-    loading={loading}
-    data={
-      organizationUnits ?? []
-    }
-    columns={columns}
-    keyField="id"
-    showSerialNumber
-    emptyMessage="No Organization Units Found."
-  />
-</Card>
+      <Card>
+        <DataTable
+          loading={loading}
+          data={
+            organizationUnits ??
+            []
+          }
+          columns={columns}
+          keyField="uuid"
+          showSerialNumber
+          emptyMessage="No organization units found."
+        />
+      </Card>
 
       <OrganizationUnitModal
         title={
-          editId
+          editUuid
             ? "Edit Organization Unit"
             : "Create Organization Unit"
         }
-        isEdit={!!editId}
+        isEdit={Boolean(
+          editUuid,
+        )}
         open={open}
         loading={loading}
-        organizationUnits={organizationUnits}
+        organizationUnits={
+          organizationUnits
+        }
         formData={formData}
-        setFormData={setFormData}
-        onClose={() => {
-          setOpen(false);
-          setEditId(null);
-          setFormData(defaultForm);
-        }}
-        onSubmit={handleSubmit}
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleCloseModal
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );

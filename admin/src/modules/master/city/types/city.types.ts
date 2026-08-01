@@ -1,7 +1,14 @@
+export type CityStatus =
+  | "ACTIVE"
+  | "INACTIVE";
+
 export interface City {
   id: number;
   uuid: string;
+
   name: string;
+
+
   stateUuid: string;
 
   state: {
@@ -9,7 +16,7 @@ export interface City {
     name: string;
   };
 
-  status: "ACTIVE" | "INACTIVE";
+  status: CityStatus;
 
   createdAt: string;
   updatedAt: string;
@@ -17,16 +24,15 @@ export interface City {
 
 export interface CityFormData {
   name: string;
-  code: string;
   stateUuid: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: CityStatus;
 }
 
 export interface CityQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: string;
+  status?: CityStatus;
   stateUuid?: string;
 }
 

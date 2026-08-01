@@ -1,20 +1,26 @@
 import {
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import { PassportStrategy } from '@nestjs/passport';
+import { PassportStrategy } from "@nestjs/passport";
 
 import {
   ExtractJwt,
   Strategy,
-} from 'passport-jwt';
+} from "passport-jwt";
 
-import { jwtConfig } from 'src/config/jwt.config';
+import {
+  UserType,
+} from "@prisma/client";
 
-import { PrismaService } from 'src/database/prisma.service';
+import { jwtConfig } from "src/config/jwt.config";
 
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { PrismaService } from "src/database/prisma.service";
+
+import type {
+  JwtPayload,
+} from "../interfaces/jwt-payload.interface";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(
@@ -23,10 +29,8 @@ export class JwtStrategy extends PassportStrategy(
   constructor(
     private readonly prisma: PrismaService,
   ) {
-   
     super({
       jwtFromRequest:
-      
         ExtractJwt.fromAuthHeaderAsBearerToken(),
 
       ignoreExpiration: false,
@@ -34,76 +38,83 @@ export class JwtStrategy extends PassportStrategy(
       secretOrKey:
         jwtConfig.accessSecret,
     });
-
-     console.log('JWT Secret:', jwtConfig.accessSecret);
   }
 
-async validate(
-  payload: JwtPayload,
-) {
-  console.log('Payload:', payload);
-  const user = await this.prisma.user.findUnique({
-    where: {
-      id: BigInt(payload.sub),
-    },
-  });
-
-    console.log('User:', user);
-
-  if (!user) {
-    throw new UnauthorizedException(
-      'User not found.',
-    );
-  }
-
-  // User Active?
-  if (user.status !== 'ACTIVE') {
-    throw new UnauthorizedException(
-      'User is inactive.',
-    );
-  }
-
-  // Company Admin Validation
-  if (user.userType === 'COMPANY_ADMIN') {
-    // Company Exists?
-    const company =
-      await this.prisma.company.findUnique({
+  async validate(
+    payload: JwtPayload,
+  ) {
+    const user =
+      await this.prisma.user.findUnique({
         where: {
-          id: user.companyId!,
+          id: BigInt(payload.sub),
         },
       });
 
-    if (!company) {
+    if (!user) {
       throw new UnauthorizedException(
-        'Company not found.',
+        "User not found.",
       );
     }
 
-    if (company.status !== 'ACTIVE') {
+    if (user.status !== "ACTIVE") {
       throw new UnauthorizedException(
-        'Company is inactive.',
+        "User is inactive.",
       );
     }
 
-    // Active Subscription?
-    const subscription =
-      await this.prisma.companySubscription.findFirst({
-        where: {
-          companyId: company.id,
-          status: 'ACTIVE',
-        },
-      });
+    const companyUserTypes: UserType[] = [
+      UserType.COMPANY_ADMIN,
+      UserType.EMPLOYEE,
+    ];
 
-    if (!subscription) {
-      throw new UnauthorizedException(
-        'Company subscription is inactive.',
+    const requiresCompany =
+      companyUserTypes.includes(
+        user.userType,
       );
+
+    if (requiresCompany) {
+      if (!user.companyId) {
+        throw new UnauthorizedException(
+          "Company context is missing.",
+        );
+      }
+
+      const company =
+        await this.prisma.company.findFirst({
+          where: {
+            id: user.companyId,
+            deletedAt: null,
+          },
+        });
+
+      if (!company) {
+        throw new UnauthorizedException(
+          "Company not found.",
+        );
+      }
+
+      if (company.status !== "ACTIVE") {
+        throw new UnauthorizedException(
+          "Company is inactive.",
+        );
+      }
+
+      const subscription =
+        await this.prisma.companySubscription.findFirst({
+          where: {
+            companyId: company.id,
+            status: "ACTIVE",
+            isCurrent: true,
+          },
+        });
+
+      if (!subscription) {
+        throw new UnauthorizedException(
+          "Company subscription is inactive.",
+        );
+      }
     }
+
+    return user;
   }
-
-  return user;
-}
-
-
-
 }

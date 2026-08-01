@@ -2,13 +2,12 @@ import api from "@/shared/services/axios";
 
 import type {
   Client,
+  ClientDropdown,
   ClientListResponse,
   ClientQueryParams,
   CreateClientDto,
   UpdateClientDto,
-  ClientDropdown
-} from '../types/client.types';
-
+} from "../types/client.types";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -25,12 +24,11 @@ interface ApiResponse<T> {
 export const getClients = async (
   params: ClientQueryParams,
 ): Promise<ClientListResponse> => {
-  const { data } = await api.get<ApiResponse<ClientListResponse>>(
-    '/clients',
-    {
-      params,
-    },
-  );
+  const { data } = await api.get<
+    ApiResponse<ClientListResponse>
+  >("/clients", {
+    params,
+  });
 
   return data.data;
 };
@@ -41,9 +39,9 @@ export const getClients = async (
 export const getClientByUuid = async (
   uuid: string,
 ): Promise<Client> => {
-  const { data } = await api.get<ApiResponse<Client>>(
-    `/clients/${uuid}`,
-  );
+  const { data } = await api.get<
+    ApiResponse<Client>
+  >(`/clients/${uuid}`);
 
   return data.data;
 };
@@ -54,10 +52,9 @@ export const getClientByUuid = async (
 export const createClient = async (
   payload: CreateClientDto,
 ): Promise<Client> => {
-  const { data } = await api.post<ApiResponse<Client>>(
-    '/clients',
-    payload,
-  );
+  const { data } = await api.post<
+    ApiResponse<Client>
+  >("/clients", payload);
 
   return data.data;
 };
@@ -69,22 +66,11 @@ export const updateClient = async (
   uuid: string,
   payload: UpdateClientDto,
 ): Promise<Client> => {
-  try {
-    console.log("Update UUID:", uuid);
-    console.log("Update Payload:", payload);
+  const { data } = await api.patch<
+    ApiResponse<Client>
+  >(`/clients/${uuid}`, payload);
 
-    const { data } = await api.patch<ApiResponse<Client>>(
-      `/clients/${uuid}`,
-      payload,
-    );
-
-    return data.data;
-  } catch (error: any) {
-  //    console.log(error.response?.data);
-  // console.log(error.response?.data.errors);
-  // console.log(JSON.stringify(error.response?.data, null, 2));
-  // throw error;
-  }
+  return data.data;
 };
 
 /**
@@ -96,11 +82,14 @@ export const deleteClient = async (
   await api.delete(`/clients/${uuid}`);
 };
 
+/**
+ * Client Dropdown
+ */
+export const getClientDropdown =
+  async (): Promise<ClientDropdown[]> => {
+    const { data } = await api.get<
+      ApiResponse<ClientDropdown[]>
+    >("/clients/dropdown");
 
-export const getClientDropdown = async () => {
-  const { data } = await api.get<
-    ApiResponse<ClientDropdown[]>
-  >("/clients/dropdown");
-
-  return data.data;
-};
+    return data.data;
+  };

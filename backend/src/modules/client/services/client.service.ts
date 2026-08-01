@@ -1,119 +1,263 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ConflictException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+} from "@nestjs/common";
+
+import {
+  UserType,
+} from "@prisma/client";
 
 import {
   ClientDropdownDto,
   ClientQueryDto,
   CreateClientDto,
   UpdateClientDto,
-} from '../dto';
+} from "../dto";
 
-import { ClientRepository } from '../repositories/client.repository';
-import { StateRepository } from '../../master/state/repositories/state.repository';
-import { CityRepository } from '../../master/city/repositories/city.repository';
+import { ClientRepository } from "../repositories/client.repository";
+import { StateRepository } from "../../master/state/repositories/state.repository";
+import { CityRepository } from "../../master/city/repositories/city.repository";
+import { CompanyRepository } from "../../company/repositories/company.repository";
 
-
+interface AuthUser {
+  id: bigint;
+  companyId: bigint | null;
+  userType: UserType;
+}
 
 @Injectable()
 export class ClientService {
   constructor(
-    private readonly clientRepository: ClientRepository,
-     private readonly stateRepository: StateRepository,
-    private readonly cityRepository: CityRepository,
+    private readonly clientRepository:
+      ClientRepository,
+
+    private readonly stateRepository:
+      StateRepository,
+
+    private readonly cityRepository:
+      CityRepository,
+
+    private readonly companyRepository:
+      CompanyRepository,
   ) {}
 
-async create(
-  companyId: bigint,
-  dto: CreateClientDto,
-) {
-  const {
-    companyUuid, // ignore for now
-    stateUuid,
-    cityUuid,
-    code,
-    ...clientData
-  } = dto;
-
-  // Check duplicate code
-  if (code) {
-    const existingClient = await this.clientRepository.findByCode(
-      companyId,
-      code,
+  private isPlatformOwner(
+    user: AuthUser,
+  ): boolean {
+    return (
+      user.userType ===
+      UserType.PLATFORM_OWNER
     );
+  }
+
+  private getUserCompanyId(
+    user: AuthUser,
+  ): bigint {
+    if (!user.companyId) {
+      throw new ForbiddenException(
+        "Company context is missing.",
+      );
+    }
+
+    return user.companyId;
+  }
+
+  private async resolveCompanyId(
+    user: AuthUser,
+    companyUuid?: string,
+  ): Promise<bigint> {
+    if (!this.isPlatformOwner(user)) {
+      return this.getUserCompanyId(user);
+    }
+
+    if (!companyUuid) {
+      throw new BadRequestException(
+        "Company is required for platform owner.",
+      );
+    }
+
+    const company =
+      await this.companyRepository.findByUuid(
+        companyUuid,
+      );
+
+    if (!company) {
+      throw new NotFoundException(
+        "Company not found.",
+      );
+    }
+
+    return company.id;
+  }
+
+  private async resolveLocationIds(
+    stateUuid?: string,
+    cityUuid?: string,
+  ) {
+    let stateId: bigint | undefined;
+    let cityId: bigint | undefined;
+
+    if (stateUuid) {
+      const state =
+        await this.stateRepository.findByUuid(
+          stateUuid,
+        );
+
+      if (!state) {
+        throw new NotFoundException(
+          "State not found.",
+        );
+      }
+
+      stateId = state.id;
+    }
+
+    if (cityUuid) {
+      const city =
+        await this.cityRepository.findByUuid(
+          cityUuid,
+        );
+
+      if (!city) {
+        throw new NotFoundException(
+          "City not found.",
+        );
+      }
+
+      if (
+        stateId &&
+        city.stateId !== stateId
+      ) {
+        throw new BadRequestException(
+          "Selected city does not belong to the selected state.",
+        );
+      }
+
+      cityId = city.id;
+    }
+
+    return {
+      stateId,
+      cityId,
+    };
+  }
+
+  async create(
+    user: AuthUser,
+    dto: CreateClientDto,
+  ) {
+    const {
+      companyUuid,
+      stateUuid,
+      cityUuid,
+      code,
+      ...clientData
+    } = dto;
+
+    const companyId =
+      await this.resolveCompanyId(
+        user,
+        companyUuid,
+      );
+
+    const normalizedCode = code
+      .trim()
+      .toUpperCase();
+
+    const existingClient =
+      await this.clientRepository.findByCode(
+        companyId,
+        normalizedCode,
+      );
 
     if (existingClient) {
       throw new ConflictException(
-        'Client code already exists.',
+        "Client code already exists.",
       );
     }
+
+    const {
+      stateId,
+      cityId,
+    } = await this.resolveLocationIds(
+      stateUuid,
+      cityUuid,
+    );
+
+    const client =
+      await this.clientRepository.create({
+        companyId,
+        code: normalizedCode,
+        ...clientData,
+
+        ...(stateId !== undefined && {
+          stateId,
+        }),
+
+        ...(cityId !== undefined && {
+          cityId,
+        }),
+      });
+
+    return {
+      message:
+        "Client created successfully.",
+      client,
+    };
   }
-
-  let stateId: bigint | undefined;
-  let cityId: bigint | undefined;
-
-  if (stateUuid) {
-    const state = await this.stateRepository.findByUuid(stateUuid);
-
-    if (!state) {
-      throw new NotFoundException('State not found.');
-    }
-
-    stateId = state.id;
-  }
-
-  if (cityUuid) {
-    const city = await this.cityRepository.findByUuid(cityUuid);
-
-    if (!city) {
-      throw new NotFoundException('City not found.');
-    }
-
-    cityId = city.id;
-  }
-
-  const client = await this.clientRepository.create({
-    companyId,
-    code,
-    ...clientData,
-    ...(stateId && { stateId }),
-    ...(cityId && { cityId }),
-  });
-
-  return {
-    client,
-  };
-}
 
   async findAll(
-    companyId: bigint,
+    user: AuthUser,
     query: ClientQueryDto,
   ) {
-    return this.clientRepository.findAll(companyId, query);
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    return this.clientRepository.findAll(
+      companyId,
+      query,
+    );
   }
 
   async findDropdown(
-    companyId: bigint,
+    user: AuthUser,
     query: ClientDropdownDto,
   ) {
-    return this.clientRepository.findDropdown(companyId, query);
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    return this.clientRepository.findDropdown(
+      companyId,
+      query,
+    );
   }
 
   async findByUuid(
-    companyId: bigint,
+    user: AuthUser,
     uuid: string,
   ) {
-    const client = await this.clientRepository.findByUuid(
-      companyId,
-      uuid,
-    );
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    const client =
+      await this.clientRepository.findByUuid(
+        companyId,
+        uuid,
+      );
 
     if (!client) {
-      throw new NotFoundException('Client not found.');
+      throw new NotFoundException(
+        "Client not found.",
+      );
     }
 
     return {
@@ -121,105 +265,124 @@ async create(
     };
   }
 
-async update(
-  companyId: bigint,
-  uuid: string,
-  dto: UpdateClientDto,
-) {
-  // Check client exists
-  const client = await this.clientRepository.findByUuid(
-    companyId,
-    uuid,
-  );
+  async update(
+    user: AuthUser,
+    uuid: string,
+    dto: UpdateClientDto,
+  ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
 
-  if (!client) {
-    throw new NotFoundException(
-      'Client not found.',
-    );
-  }
-
-  const {
-    stateUuid,
-    cityUuid,
-    code,
-    ...clientData
-  } = dto;
-
-  // Check duplicate code
-  if (code && code !== client.code) {
-    const existingClient =
-      await this.clientRepository.findByCode(
+    const client =
+      await this.clientRepository.findByUuid(
         companyId,
-        code,
+        uuid,
       );
+
+    if (!client) {
+      throw new NotFoundException(
+        "Client not found.",
+      );
+    }
+
+    const {
+      stateUuid,
+      cityUuid,
+      code,
+      ...clientData
+    } = dto;
+
+    const normalizedCode =
+      code?.trim().toUpperCase();
 
     if (
-      existingClient &&
-      existingClient.uuid !== client.uuid
+      normalizedCode &&
+      normalizedCode !== client.code
     ) {
-      throw new ConflictException(
-        'Client code already exists.',
-      );
-    }
-  }
+      const existingClient =
+        await this.clientRepository.findByCode(
+          client.companyId,
+          normalizedCode,
+        );
 
-  let stateId: bigint | undefined;
-  let cityId: bigint | undefined;
-
-  if (stateUuid) {
-    const state =
-      await this.stateRepository.findByUuid(
-        stateUuid,
-      );
-
-    if (!state) {
-      throw new NotFoundException(
-        'State not found.',
-      );
+      if (
+        existingClient &&
+        existingClient.uuid !==
+          client.uuid
+      ) {
+        throw new ConflictException(
+          "Client code already exists.",
+        );
+      }
     }
 
-    stateId = state.id;
-  }
-
-  if (cityUuid) {
-    const city =
-      await this.cityRepository.findByUuid(
-        cityUuid,
-      );
-
-    if (!city) {
-      throw new NotFoundException(
-        'City not found.',
-      );
-    }
-
-    cityId = city.id;
-  }
-
-  const updatedClient =
-    await this.clientRepository.update(
-      companyId,
-      uuid,
-      {
-        ...(code && { code }),
-        ...clientData,
-        ...(stateId && { stateId }),
-        ...(cityId && { cityId }),
-      },
+    const {
+      stateId,
+      cityId,
+    } = await this.resolveLocationIds(
+      stateUuid,
+      cityUuid,
     );
 
-  return {
-    client: updatedClient,
-  };
-}
+    const updatedClient =
+      await this.clientRepository.update(
+        companyId,
+        uuid,
+        {
+          ...clientData,
 
-  async remove(
-    companyId: bigint,
-    uuid: string,
-  ) {
-    throw new Error('Method not implemented.');
+          ...(normalizedCode && {
+            code: normalizedCode,
+          }),
+
+          ...(stateId !== undefined && {
+            stateId,
+          }),
+
+          ...(cityId !== undefined && {
+            cityId,
+          }),
+        },
+      );
+
+    return {
+      message:
+        "Client updated successfully.",
+      client: updatedClient,
+    };
   }
 
+  async remove(
+    user: AuthUser,
+    uuid: string,
+  ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
 
- 
+    const client =
+      await this.clientRepository.findByUuid(
+        companyId,
+        uuid,
+      );
+
+    if (!client) {
+      throw new NotFoundException(
+        "Client not found.",
+      );
+    }
+
+    await this.clientRepository.softDelete(
+      companyId,
+      uuid,
+    );
+
+    return {
+      message:
+        "Client deleted successfully.",
+    };
+  }
 }

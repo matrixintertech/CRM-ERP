@@ -3,48 +3,70 @@ import api from "@/shared/services/axios";
 import type {
   CreateDepartmentDto,
   UpdateDepartmentDto,
+  Department,
+  DepartmentQueryParams,
 } from "../types/department.types";
+
 
 export const createDepartment = async (
   payload: CreateDepartmentDto,
 ) => {
-  const response = await api.post(
-    "/departments",
-    payload,
-  );
-  return response.data;
+  const { data } =
+    await api.post(
+      "/departments",
+      payload,
+    );
+
+  return data.data;
 };
 
-export const getDepartments = async () => {
-  const response = await api.get("/departments");
-  return response.data.data;
+
+export const getDepartments = async (
+  params?: DepartmentQueryParams,
+): Promise<Department[]> => {
+  const { data } = await api.get(
+    "/departments",
+    {
+      params,
+    },
+  );
+
+  return data.data ?? [];
 };
+
 
 export const getDepartment = async (
-  id: number,
-) => {
-  const response = await api.get(
-    `/departments/${id}`,
+  uuid: string,
+): Promise<Department> => {
+  const { data } = await api.get(
+    `/departments/${uuid}`,
   );
-  return response.data.data;
+
+  return data.data;
 };
+
 
 export const updateDepartment = async (
-  id: number,
+  uuid: string,
   payload: UpdateDepartmentDto,
 ) => {
-  const response = await api.patch(
-    `/departments/${id}`,
-    payload,
-  );
-  return response.data;
+  const { data } =
+    await api.patch(
+      `/departments/${uuid}`,
+      payload,
+    );
+
+  return data;
 };
 
+
 export const deleteDepartment = async (
-  id: number,
+  uuid: string,
 ) => {
-  const response = await api.delete(
-    `/departments/${id}`,
-  );
-  return response.data;
+  const { data } =
+    await api.delete(
+      `/departments/${uuid}`,
+    );
+
+  return data;
 };

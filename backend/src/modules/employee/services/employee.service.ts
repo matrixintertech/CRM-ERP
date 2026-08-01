@@ -54,7 +54,7 @@ async create(
   if (dto.organizationUnitId) {
     organizationUnit =
       await this.organizationUnitRepository.findByUuid(
-        companyId,
+         companyId,
         dto.organizationUnitId,
       );
 
@@ -71,7 +71,7 @@ async create(
   if (dto.departmentId) {
     department =
       await this.departmentRepository.findByUuid(
-        companyId,
+         companyId,
         dto.departmentId,
       );
 
@@ -86,7 +86,7 @@ async create(
   if (dto.designationId) {
     designation =
       await this.designationRepository.findByUuid(
-        companyId,
+         companyId,
         dto.designationId,
       );
 
@@ -401,7 +401,7 @@ private async validateDepartment(
 
   const department =
     await this.departmentRepository.findByUuid(
-      companyId,
+       companyId,
       uuid,
     );
 

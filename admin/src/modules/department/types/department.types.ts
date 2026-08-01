@@ -1,25 +1,51 @@
-export interface Department {
-  id: number;
+export type DepartmentStatus =
+  | "ACTIVE"
+  | "INACTIVE";
+
+export interface DepartmentOrganizationUnit {
   uuid: string;
+  name: string;
+  code: string;
+}
+
+export interface Department {
+  id: string;
+  uuid: string;
+
+  organizationUnitId: string;
+
+  organizationUnit: DepartmentOrganizationUnit;
 
   name: string;
   code: string;
+
   description?: string | null;
 
-  status: "ACTIVE" | "INACTIVE";
+  status: DepartmentStatus;
 
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateDepartmentDto {
+  organizationUnitUuid: string;
+
   name: string;
   code: string;
+
   description?: string;
 }
 
-export interface UpdateDepartmentDto
-  extends Partial<CreateDepartmentDto> {}
+export interface UpdateDepartmentDto {
+  organizationUnitUuid?: string;
+
+  name?: string;
+  code?: string;
+
+  description?: string;
+
+  status?: DepartmentStatus;
+}
 
 export type DepartmentFormData =
   CreateDepartmentDto;

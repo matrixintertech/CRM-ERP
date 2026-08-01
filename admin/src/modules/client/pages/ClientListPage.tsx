@@ -1,43 +1,38 @@
-// src/modules/client/pages/ClientListPage.tsx
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { useEffect, useState } from "react";
-
-import PageHeader from "@/shared/components/PageHeader";
-import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import PageHeader from "@/shared/components/PageHeader";
 
+import ClientDetailsModal from "../components/ClientDetailsModal";
+import ClientModal from "../components/ClientModal";
+import ClientTable from "../components/ClientTable";
+
+import { useCities } from "../../master/city/hooks/useCities";
+import { useStates } from "../../master/state/hooks/useStates";
 import { useClients } from "../hooks/useClients";
 
-import { useStates } from "../../master/state/hooks/useStates";
-import { useCities } from "../../master/city/hooks/useCities";
-
-import ClientTable from "../components/ClientTable";
-import ClientModal from "../components/ClientModal";
-import ClientDetailsModal from "../components/ClientDetailsModal";
-
-import type { CreateClientDto } from "../types/client.types";
+import type {
+  CreateClientDto,
+} from "../types/client.types";
 
 const initialFormData: CreateClientDto = {
   name: "",
   code: "",
-
   contactName: "",
   mobile: "",
   email: "",
-
   gstNumber: "",
   panNumber: "",
-
   stateUuid: "",
   cityUuid: "",
-
   pincode: "",
   address: "",
-
   remarks: "",
 };
-
-
 
 const ClientListPage = () => {
   const {
@@ -45,131 +40,265 @@ const ClientListPage = () => {
     clients,
     total,
     selectedClient,
-
     fetchClients,
     fetchClient,
-
     create,
     update,
     remove,
   } = useClients();
 
-
-    const {
+  const {
     dropdown: stateOptions,
     fetchDropdown: fetchStateDropdown,
   } = useStates();
 
-const {
-  dropdownCities: cityOptions,
-  fetchDropdownCities: fetchCityDropdown,
-} = useCities();
+  const {
+    dropdownCities: cityOptions,
+    fetchDropdownCities:
+      fetchCityDropdown,
+  } = useCities();
 
   const [openModal, setOpenModal] =
     useState(false);
 
-  const [openDetails, setOpenDetails] =
-    useState(false);
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
 
   const [editId, setEditId] =
     useState<string | null>(null);
 
   const [formData, setFormData] =
     useState<CreateClientDto>(
-      initialFormData,
+      () => ({
+        ...initialFormData,
+      }),
     );
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    void fetchClients();
+  }, [fetchClients]);
 
-
-const handleOpenCreateModal = async () => {
-  await fetchStateDropdown();
-
-  setEditId(null);
-  setFormData(initialFormData);
-
-  setOpenModal(true);
-};
-
-  const handleStateChange = async (
-  stateUuid: string,
-) => {
-  await fetchCityDropdown(stateUuid);
-};
-
-  const handleSubmit = async () => {
-    if (editId) {
-      await update(editId, formData);
-    } else {
-      await create(formData);
-    }
-
-    await fetchClients();
-
-    setOpenModal(false);
-
+  const resetForm = () => {
     setEditId(null);
 
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+    });
   };
 
+  const handleOpenCreateModal =
+    async () => {
+      try {
+        await fetchStateDropdown();
 
-const handleEdit = async (uuid: string) => {
-  console.log("1. Edit clicked");
+        resetForm();
 
-  await fetchStateDropdown();
+        setOpenModal(true);
+      } catch (error) {
+        console.error(
+          "Failed to prepare client form:",
+          error,
+        );
+      }
+    };
 
-  console.log("2. States loaded");
-
-  const response = await fetchClient(uuid);
-
-  console.log("3. Response:", response);
-
-  if (!response?.client) {
-    console.log("4. Client not found");
-    return;
-  }
-
-  const client = response.client;
-
-  await fetchCityDropdown(client.state?.uuid);
-
-  console.log("5. Cities loaded");
-
-  setEditId(uuid);
-
-  const data: CreateClientDto = {
-    name: client.name,
-    code: client.code,
-
-    contactName: client.contactName,
-    mobile: client.mobile,
-
-    email: client.email ?? "",
-
-    gstNumber: client.gstNumber ?? "",
-    panNumber: client.panNumber ?? "",
-
-    stateUuid: client.state?.uuid ?? "",
-    cityUuid: client.city?.uuid ?? "",
-
-    pincode: client.pincode ?? "",
-    address: client.address ?? "",
-
-    remarks: client.remarks ?? "",
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    resetForm();
   };
 
-  console.log("6. Setting formData:", data);
+  const handleStateChange = async (
+    stateUuid: string,
+  ) => {
+    setFormData((previous) => ({
+      ...previous,
+      stateUuid,
+      cityUuid: "",
+    }));
 
-  setFormData(data);
+    if (!stateUuid) {
+      return;
+    }
 
-  console.log("7. setFormData called");
+    try {
+      await fetchCityDropdown(
+        stateUuid,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load cities:",
+        error,
+      );
+    }
+  };
 
-  setOpenModal(true);
-};
+  const handleSubmit = async () => {
+    try {
+      const payload: CreateClientDto = {
+        name: formData.name.trim(),
 
+        code: formData.code
+          .trim()
+          .toUpperCase()
+          .replace(/\s+/g, ""),
+
+        contactName:
+          formData.contactName.trim(),
+
+        mobile: formData.mobile.trim(),
+
+        email:
+          formData.email?.trim() ||
+          undefined,
+
+        gstNumber:
+          formData.gstNumber?.trim() ||
+          undefined,
+
+        panNumber:
+          formData.panNumber
+            ?.trim()
+            .toUpperCase() ||
+          undefined,
+
+        stateUuid:
+          formData.stateUuid ||
+          undefined,
+
+        cityUuid:
+          formData.cityUuid ||
+          undefined,
+
+        pincode:
+          formData.pincode?.trim() ||
+          undefined,
+
+        address:
+          formData.address?.trim() ||
+          undefined,
+
+        remarks:
+          formData.remarks?.trim() ||
+          undefined,
+      };
+
+      if (editId) {
+        await update(
+          editId,
+          payload,
+        );
+      } else {
+        await create(payload);
+      }
+
+      await fetchClients();
+
+      handleCloseModal();
+    } catch (error) {
+      console.error(
+        "Failed to save client:",
+        error,
+      );
+    }
+  };
+
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
+      await fetchStateDropdown();
+
+      const client =
+        await fetchClient(uuid);
+
+      if (!client) {
+        return;
+      }
+
+      if (client.state?.uuid) {
+        await fetchCityDropdown(
+          client.state.uuid,
+        );
+      }
+
+      setEditId(uuid);
+
+      setFormData({
+        name: client.name,
+        code: client.code,
+        contactName:
+          client.contactName,
+        mobile: client.mobile,
+        email: client.email ?? "",
+        gstNumber:
+          client.gstNumber ?? "",
+        panNumber:
+          client.panNumber ?? "",
+        stateUuid:
+          client.state?.uuid ?? "",
+        cityUuid:
+          client.city?.uuid ?? "",
+        pincode:
+          client.pincode ?? "",
+        address:
+          client.address ?? "",
+        remarks:
+          client.remarks ?? "",
+      });
+
+      setOpenModal(true);
+    } catch (error) {
+      console.error(
+        "Failed to load client:",
+        error,
+      );
+    }
+  };
+
+  const handleView = async (
+    uuid: string,
+  ) => {
+    try {
+      const client =
+        await fetchClient(uuid);
+
+      if (!client) {
+        return;
+      }
+
+      setOpenDetails(true);
+    } catch (error) {
+      console.error(
+        "Failed to load client details:",
+        error,
+      );
+    }
+  };
+
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this client?",
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await remove(uuid);
+      await fetchClients();
+    } catch (error) {
+      console.error(
+        "Failed to delete client:",
+        error,
+      );
+    }
+  };
 
   return (
     <>
@@ -177,7 +306,11 @@ const handleEdit = async (uuid: string) => {
         title="Clients"
         subtitle="Manage company clients"
         actions={
-            <Button onClick={handleOpenCreateModal}>
+          <Button
+            onClick={
+              handleOpenCreateModal
+            }
+          >
             Create Client
           </Button>
         }
@@ -188,33 +321,31 @@ const handleEdit = async (uuid: string) => {
           data={clients}
           loading={loading}
           total={total}
-          onView={async (uuid) => {
-            await fetchClient(uuid);
-
-            setOpenDetails(true);
-          }}
+          onView={handleView}
           onEdit={handleEdit}
-          onDelete={async (uuid) => {
-            await remove(uuid);
-
-            await fetchClients();
-          }}
+          onDelete={handleDelete}
         />
       </Card>
 
-    <ClientModal
-      open={openModal}
-      loading={loading}
-      title={editId ? "Edit Client" : "Create Client"}
-      isEdit={!!editId}
-      formData={formData}
-      setFormData={setFormData}
-      stateOptions={stateOptions}
-      cityOptions={cityOptions}
-      onStateChange={handleStateChange}
-      onClose={() => setOpenModal(false)}
-      onSubmit={handleSubmit}
-    />
+      <ClientModal
+        open={openModal}
+        loading={loading}
+        title={
+          editId
+            ? "Edit Client"
+            : "Create Client"
+        }
+        isEdit={Boolean(editId)}
+        formData={formData}
+        setFormData={setFormData}
+        stateOptions={stateOptions}
+        cityOptions={cityOptions}
+        onStateChange={
+          handleStateChange
+        }
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+      />
 
       <ClientDetailsModal
         open={openDetails}

@@ -1,20 +1,29 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import type {
+  ChangeEvent,
+  FormEvent,
+} from "react";
+
+import Checkbox from "@/shared/components/Checkbox";
+import Input from "@/shared/components/Input";
+import Select from "@/shared/components/Select";
+import Textarea from "@/shared/components/Textarea";
 
 import type {
   Module,
   ModuleFormData,
 } from "../types/module.types";
 
-import Input from "@/shared/components/Input";
-import Textarea from "@/shared/components/Textarea";
-import Select from "@/shared/components/Select";
-import Checkbox from "@/shared/components/Checkbox";
-
 import styles from "./ModuleForm.module.css";
 
 interface Props {
   initialValues?: Partial<ModuleFormData>;
-
+  editingModuleUuid?: string;
+  modules: Module[];
   onSubmit: (
     values: ModuleFormData,
   ) => void | Promise<void>;
@@ -22,179 +31,222 @@ interface Props {
 
 const defaultValues: ModuleFormData = {
   name: "",
-
   code: "",
-
   description: "",
-
   icon: "",
-
   route: "",
-
+  parentId: "",
   sortOrder: 1,
-
+  isMenu: true,
+  isVisible: true,
   isSystem: false,
-
-  status: "ACTIVE",
+  status: "",
 };
 
 const ModuleForm = ({
   initialValues,
+  editingModuleUuid,
+  modules,
   onSubmit,
 }: Props) => {
   const [form, setForm] =
     useState<ModuleFormData>(
-      defaultValues,
+      () => ({ ...defaultValues }),
     );
 
   useEffect(() => {
-    if (initialValues) {
-      setForm({
-        ...defaultValues,
-        ...initialValues,
-      });
-    } else {
-      setForm(defaultValues);
-    }
+    setForm({
+      ...defaultValues,
+      ...initialValues,
+    });
   }, [initialValues]);
 
   const handleChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>,
+    e: ChangeEvent<
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
+    >,
   ) => {
-    const {
-      name,
-      value,
-      type,
-    } = e.target;
+    const { name, value, type } = e.target;
 
-    setForm((prev) => ({
-      ...prev,
+    let nextValue:
+      | string
+      | number
+      | boolean = value;
 
-      [name]:
-        type === "checkbox"
-          ? (
-              e.target as HTMLInputElement
-            ).checked
-          : name ===
-              "sortOrder"
-            ? Number(value)
-            : value,
+    if (type === "checkbox") {
+      nextValue = (
+        e.target as HTMLInputElement
+      ).checked;
+    } else if (name === "sortOrder") {
+      nextValue = Math.max(
+        1,
+        Number(value) || 1,
+      );
+    }
+
+    setForm((previous) => ({
+      ...previous,
+      [name]: nextValue,
     }));
   };
 
-  const handleSubmit = (
-    e: React.FormEvent,
+  const handleSubmit = async (
+    e: FormEvent<HTMLFormElement>,
   ) => {
     e.preventDefault();
 
-      console.log("FORM SUBMIT");
-
-    onSubmit(form);
+    await onSubmit(form);
   };
 
+  const parentOptions = [
+    {
+      label: "None",
+      value: "",
+    },
+    ...modules
+      .filter(
+        (module) =>
+          !module.parent &&
+          module.uuid !==
+            editingModuleUuid,
+      )
+      .map((module) => ({
+        label: module.name,
+        value: module.uuid,
+      })),
+  ];
+
   return (
-<form
-  id="module-form"
-  onSubmit={handleSubmit}
-  className={styles.form}
->
-  <div className={styles.row}>
-    <Input
-      id="name"
-      label="Module Name"
-      name="name"
-      value={form.name}
-      onChange={handleChange}
-      placeholder="Inventory"
-      required
-    />
+    <form
+      id="module-form"
+      onSubmit={handleSubmit}
+      className={styles.form}
+    >
+      <div className={styles.row}>
+        <Input
+          id="name"
+          label="Module Name"
+          name="name"
+          value={form.name}
+          onChange={handleChange}
+          placeholder="Inventory"
+          required
+        />
 
-    <Input
-      id="code"
-      label="Code"
-      name="code"
-      value={form.code}
-      onChange={handleChange}
-      placeholder="INVENTORY"
-      required
-    />
-  </div>
+        <Input
+          id="code"
+          label="Code"
+          name="code"
+          value={form.code}
+          onChange={handleChange}
+          placeholder="INVENTORY"
+          required
+        />
+      </div>
 
-  <div className={styles.row}>
-    <Input
-      id="route"
-      label="Route"
-      name="route"
-      value={form.route}
-      onChange={handleChange}
-      placeholder="/inventory"
-    />
+      <div className={styles.row}>
+        <Input
+          id="route"
+          label="Route"
+          name="route"
+          value={form.route}
+          onChange={handleChange}
+          placeholder="/inventory"
+        />
 
-    <Input
-      id="icon"
-      label="Icon"
-      name="icon"
-      value={form.icon}
-      onChange={handleChange}
-      placeholder="Package"
-    />
-  </div>
+        <Input
+          id="icon"
+          label="Icon"
+          name="icon"
+          value={form.icon}
+          onChange={handleChange}
+          placeholder="Package"
+        />
+      </div>
 
-  <div className={styles.row}>
-    <Input
-      id="sortOrder"
-      label="Sort Order"
-      type="number"
-      name="sortOrder"
-      value={String(form.sortOrder)}
-      onChange={handleChange}
-    />
+      <div className={styles.row}>
+         <Select
+            id="parentId"
+            label="Parent Module"
+            name="parentId"
+            value={form.parentId ?? ""}
+            onChange={handleChange}
+            showPlaceholder={false}
+            options={parentOptions}
+          />
+      </div>
 
-    <Select
-      id="status"
-      label="Status"
-      name="status"
-      value={form.status}
-      onChange={handleChange}
-      options={[
-        {
-          label: "Active",
-          value: "ACTIVE",
-        },
-        {
-          label: "Inactive",
-          value: "INACTIVE",
-        },
-      ]}
-    />
-  </div>
+      <div className={styles.row}>
+        <Input
+          id="sortOrder"
+          label="Sort Order"
+          type="number"
+          name="sortOrder"
+          value={String(form.sortOrder)}
+          onChange={handleChange}
+          min={1}
+        />
 
-  <div className={styles.fullWidth}>
-    <Textarea
-      id="description"
-      label="Description"
-      name="description"
-      value={form.description}
-      onChange={handleChange}
-      rows={4}
-      placeholder="Enter module description"
-    />
-  </div>
+        <Select
+          id="status"
+          label="Status"
+          name="status"
+          value={form.status ?? ""}
+          onChange={handleChange}
+          showPlaceholder={false}
+          options={[
+            {
+              label: "Active",
+              value: "ACTIVE",
+            },
+            {
+              label: "Inactive",
+              value: "INACTIVE",
+            },
+          ]}
+        />
+      </div>
 
-  <div className={styles.checkboxRow}>
-    <Checkbox
-      id="isSystem"
-      label="Is System Module"
-      name="isSystem"
-      checked={form.isSystem}
-      onChange={handleChange}
-    />
-  </div>
- 
-</form>
+      <div className={styles.fullWidth}>
+        <Textarea
+          id="description"
+          label="Description"
+          name="description"
+          value={form.description}
+          onChange={handleChange}
+          rows={4}
+          placeholder="Enter module description"
+        />
+      </div>
+
+      <div className={styles.checkboxRow}>
+        <Checkbox
+          id="isMenu"
+          label="Show In Menu"
+          name="isMenu"
+          checked={form.isMenu}
+          onChange={handleChange}
+        />
+
+        <Checkbox
+          id="isVisible"
+          label="Visible"
+          name="isVisible"
+          checked={form.isVisible}
+          onChange={handleChange}
+        />
+
+        <Checkbox
+          id="isSystem"
+          label="System Module"
+          name="isSystem"
+          checked={form.isSystem}
+          onChange={handleChange}
+        />
+      </div>
+    </form>
   );
 };
 

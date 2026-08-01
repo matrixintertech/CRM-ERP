@@ -1,9 +1,18 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
 import CityForm from "./CityForm";
 
-import type { CityFormData } from "../types/city.types";
+import type {
+  CityFormData,
+} from "../types/city.types";
+
+import styles from "./CityModal.module.css";
 
 interface Props {
   title: string;
@@ -13,13 +22,13 @@ interface Props {
 
   formData: CityFormData;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<CityFormData>
+  setFormData: Dispatch<
+    SetStateAction<CityFormData>
   >;
 
   onClose: () => void;
 
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
 }
 
 const CityModal = ({
@@ -32,11 +41,19 @@ const CityModal = ({
   onClose,
   onSubmit,
 }: Props) => {
+  const handleClose = () => {
+    if (loading) {
+      return;
+    }
+
+    onClose();
+  };
+
   return (
     <Modal
       open={open}
       title={title}
-      onClose={onClose}
+      onClose={handleClose}
       size="md"
     >
       <CityForm
@@ -44,24 +61,23 @@ const CityModal = ({
         setFormData={setFormData}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 12,
-          marginTop: 24,
-        }}
-      >
+      <div className={styles.actions}>
         <Button
+          type="button"
           variant="secondary"
-          onClick={onClose}
+          disabled={loading}
+          onClick={handleClose}
         >
           Cancel
         </Button>
 
         <Button
+          type="button"
           loading={loading}
-          onClick={onSubmit}
+          disabled={loading}
+          onClick={() => {
+            void onSubmit();
+          }}
         >
           {isEdit
             ? "Update City"

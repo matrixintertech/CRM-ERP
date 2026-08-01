@@ -10,7 +10,7 @@ import type {
   SubscriptionPlanFormData,
 } from "../types/subscription-plan.types";
 
-import { useModules } from "@/modules/module/hooks/useModules";
+import { useModule } from "@/modules/module/hooks/useModules";
 
 import type { Module } from "@/modules/module/types/module.types";
 
@@ -68,8 +68,8 @@ const SubscriptionPlanForm = ({
 
  const {
   modules,
-  loadModules,
-} = useModules();
+  fetchModules,
+} = useModule();
 
 const [moduleSearch, setModuleSearch] =
   useState("");
@@ -120,8 +120,8 @@ useEffect(() => {
   }
 }, [initialValues]);
 
-  useEffect(() => {
-  loadModules();
+useEffect(() => {
+  fetchModules();
 }, []);
 
   const handleChange = (
@@ -247,29 +247,29 @@ console.log(typeof form.moduleIds[0]);
 
   <div className={styles.form3}>
     <Select
-      label="Plan Type"
-      name="planType"
-      value={form.planType}
-      onChange={handleChange}
-      options={[
-        {
-          label: "Trial",
-          value: "TRIAL",
-        },
-        {
-          label: "Free",
-          value: "FREE",
-        },
-        {
-          label: "Paid",
-          value: "PAID",
-        },
-        {
-          label: "Enterprise",
-          value: "ENTERPRISE",
-        },
-      ]}
-    />
+  label="Plan Type"
+  name="planType"
+  value={form.planType}
+  onChange={handleChange}
+  options={[
+    {
+      label: "Internal",
+      value: "INTERNAL",
+    },
+    {
+      label: "Trial",
+      value: "TRIAL",
+    },
+    {
+      label: "Paid",
+      value: "PAID",
+    },
+    {
+      label: "Lifetime",
+      value: "LIFETIME",
+    },
+  ]}
+/>
 
     <Select
       label="Billing Cycle"

@@ -1,281 +1,590 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import { CreateOrganizationUnitDto } from '../dto/create-organization-unit.dto';
-import { UpdateOrganizationUnitDto } from '../dto/update-organization-unit.dto';
-import { OrganizationUnitRepository } from '../repositories/organization-unit.repository';
+import {
+  Prisma,
+  UserType,
+} from "@prisma/client";
+
+import { CreateOrganizationUnitDto } from "../dto/create-organization-unit.dto";
+import { UpdateOrganizationUnitDto } from "../dto/update-organization-unit.dto";
+
+import { OrganizationUnitRepository } from "../repositories/organization-unit.repository";
+import { CompanyRepository } from "../../company/repositories/company.repository";
+
+import { StateRepository } from "../../master/state/repositories/state.repository";
+import { CityRepository } from "../../master/city/repositories/city.repository";
+
+interface AuthUser {
+  id: bigint;
+  companyId: bigint | null;
+  userType: UserType;
+}
 
 @Injectable()
 export class OrganizationUnitService {
   constructor(
-    private readonly organizationUnitRepository: OrganizationUnitRepository,
+    private readonly organizationUnitRepository:
+      OrganizationUnitRepository,
+
+    private readonly companyRepository:
+      CompanyRepository,
+
+       private readonly stateRepository:
+    StateRepository,
+
+  private readonly cityRepository:
+    CityRepository,
   ) {}
 
-async create(
-  companyId: number,
-  dto: CreateOrganizationUnitDto,
-) {
-    // 1. Company Exists?
-   const company =
-     await this.organizationUnitRepository.findCompanyById(
-    BigInt(companyId),
-  );
+  private isPlatformOwner(
+    user: AuthUser,
+  ): boolean {
+    return (
+      user.userType ===
+      UserType.PLATFORM_OWNER
+    );
+  }
+
+  private getUserCompanyId(
+    user: AuthUser,
+  ): bigint {
+    if (!user.companyId) {
+      throw new ForbiddenException(
+        "Company context is missing.",
+      );
+    }
+
+    return user.companyId;
+  }
+
+  private async resolveCompanyId(
+    user: AuthUser,
+    companyUuid?: string,
+  ): Promise<bigint> {
+    if (!this.isPlatformOwner(user)) {
+      return this.getUserCompanyId(user);
+    }
+
+    if (!companyUuid) {
+      throw new BadRequestException(
+        "Company is required for platform owner.",
+      );
+    }
+
+    const company =
+      await this.companyRepository.findByUuid(
+        companyUuid,
+      );
 
     if (!company) {
       throw new NotFoundException(
-        'Company not found.',
+        "Company not found.",
       );
     }
 
-    // 2. Parent Exists? (Optional)
-    if (dto.parentId) {
-     const parent =
-        await this.organizationUnitRepository.findParentById(
-          BigInt(companyId),
-          BigInt(dto.parentId),
-        );
+    return company.id;
+  }
 
-      if (!parent) {
-        throw new NotFoundException(
-          'Parent organization unit not found.',
-        );
-      }
-    }
+async create(
+  user: AuthUser,
+  dto: CreateOrganizationUnitDto,
+) {
+  const {
+    companyUuid,
+    parentUuid,
+    stateUuid,
+    cityUuid,
+    code,
+    name,
+    ...unitData
+  } = dto;
 
-    // 3. Code Exists?
-    const code =
-  await this.organizationUnitRepository.findByCode(
-    BigInt(companyId),
-    dto.code,
-  );
+  const companyId =
+    await this.resolveCompanyId(
+      user,
+      companyUuid,
+    );
 
-    if (code) {
-      throw new ConflictException(
-        'Organization unit code already exists.',
+  let parentId: bigint | undefined;
+  let stateId: bigint | undefined;
+  let cityId: bigint | undefined;
+
+  if (parentUuid) {
+    const parent =
+      await this.organizationUnitRepository.findByUuid(
+        companyId,
+        parentUuid,
+      );
+
+    if (!parent) {
+      throw new NotFoundException(
+        "Parent organization unit not found.",
       );
     }
 
-    // 4. Name Exists?
-   const name =
-  await this.organizationUnitRepository.findByName(
-    BigInt(companyId),
-    dto.name,
-  );
+    parentId = parent.id;
+  }
 
-    if (name) {
-      throw new ConflictException(
-        'Organization unit name already exists.',
+  if (stateUuid) {
+    const state =
+      await this.stateRepository.findByUuid(
+        stateUuid,
+      );
+
+    if (!state) {
+      throw new NotFoundException(
+        "State not found.",
       );
     }
 
-    // 5. Create
-    const organizationUnit =
-      await this.organizationUnitRepository.create(
-        {
-          company: {
-            connect: {
-              id: BigInt(companyId),
-            },
-          },
+    stateId = state.id;
+  }
 
-          parent: dto.parentId
-            ? {
-                connect: {
-                  id: BigInt(dto.parentId),
-                },
-              }
-            : undefined,
+  if (cityUuid) {
+    const city =
+      await this.cityRepository.findByUuid(
+        cityUuid,
+      );
 
-          type: dto.type,
+    if (!city) {
+      throw new NotFoundException(
+        "City not found.",
+      );
+    }
 
-          name: dto.name,
+    if (
+      stateId !== undefined &&
+      city.stateId !== stateId
+    ) {
+      throw new BadRequestException(
+        "Selected city does not belong to the selected state.",
+      );
+    }
 
-          code: dto.code,
+    cityId = city.id;
+  }
 
-          email: dto.email,
+  const normalizedCode = code
+    .trim()
+    .toUpperCase();
 
-          mobile: dto.mobile,
+  const normalizedName = name.trim();
 
-          addressLine1:
-            dto.addressLine1,
+  const existingCode =
+    await this.organizationUnitRepository.findByCode(
+      companyId,
+      normalizedCode,
+    );
 
-          addressLine2:
-            dto.addressLine2,
+  if (existingCode) {
+    throw new ConflictException(
+      "Organization unit code already exists.",
+    );
+  }
 
-          city: dto.city,
+  const existingName =
+    await this.organizationUnitRepository.findByName(
+      companyId,
+      normalizedName,
+    );
 
-          state: dto.state,
+  if (existingName) {
+    throw new ConflictException(
+      "Organization unit name already exists.",
+    );
+  }
 
-          country: dto.country,
+  const createData:
+    Prisma.OrganizationUnitCreateInput = {
+      name: normalizedName,
+      code: normalizedCode,
 
-          pincode: dto.pincode,
+      type: unitData.type,
+      email: unitData.email,
+      mobile: unitData.mobile,
+
+      addressLine1:
+        unitData.addressLine1,
+
+      addressLine2:
+        unitData.addressLine2,
+
+      country: unitData.country,
+      pincode: unitData.pincode,
+      status: unitData.status,
+
+      company: {
+        connect: {
+          id: companyId,
         },
+      },
+
+      ...(parentId !== undefined
+        ? {
+            parent: {
+              connect: {
+                id: parentId,
+              },
+            },
+          }
+        : {}),
+
+      ...(stateId !== undefined
+        ? {
+            state: {
+              connect: {
+                id: stateId,
+              },
+            },
+          }
+        : {}),
+
+      ...(cityId !== undefined
+        ? {
+            city: {
+              connect: {
+                id: cityId,
+              },
+            },
+          }
+        : {}),
+    };
+
+  const organizationUnit =
+    await this.organizationUnitRepository.create(
+      createData,
+    );
+
+  return {
+    message:
+      "Organization unit created successfully.",
+    organizationUnit,
+  };
+}
+  async findAll(
+    user: AuthUser,
+  ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    const organizationUnits =
+      await this.organizationUnitRepository.findAll(
+        companyId,
       );
 
     return {
       message:
-        'Organization unit created successfully.',
+        "Organization units fetched successfully.",
+      organizationUnits,
+    };
+  }
 
+  async findOne(
+    user: AuthUser,
+    uuid: string,
+  ) {
+    const companyId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
+
+    const organizationUnit =
+      await this.organizationUnitRepository.findByUuid(
+        companyId,
+        uuid,
+      );
+
+    if (!organizationUnit) {
+      throw new NotFoundException(
+        "Organization unit not found.",
+      );
+    }
+
+    return {
+      message:
+        "Organization unit fetched successfully.",
       organizationUnit,
     };
   }
 
-async findAll(
-  companyId: number,
-) {
-  // Company Exists?
-  const company =
-    await this.organizationUnitRepository.findCompanyById(
-      BigInt(companyId),
-    );
-
-  if (!company) {
-    throw new NotFoundException(
-      'Company not found.',
-    );
-  }
-
-  const organizationUnits =
-    await this.organizationUnitRepository.findAllByCompanyId(
-      BigInt(companyId),
-    );
-
-  return {
-    message:
-      'Organization units fetched successfully.',
-    organizationUnits,
-  };
-}
-
-
-async findOne(
-  companyId: number,
-  id: number,
-) {
- const organizationUnit =
-  await this.organizationUnitRepository.findById(
-    BigInt(companyId),
-    BigInt(id),
-  );
-
-  if (!organizationUnit) {
-    throw new NotFoundException(
-      'Organization unit not found.',
-    );
-  }
-
-  return {
-    message:
-      'Organization unit fetched successfully.',
-    organizationUnit,
-  };
-}
-
-
 async update(
-  companyId: number,
-  id: number,
+  user: AuthUser,
+  uuid: string,
   dto: UpdateOrganizationUnitDto,
 ) {
+  const companyFilterId =
+    this.isPlatformOwner(user)
+      ? null
+      : this.getUserCompanyId(user);
+
   const organizationUnit =
-    await this.organizationUnitRepository.findById(
-      BigInt(companyId),
-      BigInt(id),
+    await this.organizationUnitRepository.findByUuid(
+      companyFilterId,
+      uuid,
     );
 
   if (!organizationUnit) {
     throw new NotFoundException(
-      'Organization unit not found.',
+      "Organization unit not found.",
     );
   }
 
-  // Code duplicate check
+  const {
+    parentUuid,
+    stateUuid,
+    cityUuid,
+    code,
+    name,
+    ...unitData
+  } = dto;
+
+  let parentUpdate:
+    | Prisma.OrganizationUnitUpdateInput["parent"]
+    | undefined;
+
+  let stateUpdate:
+    | Prisma.OrganizationUnitUpdateInput["state"]
+    | undefined;
+
+  let cityUpdate:
+    | Prisma.OrganizationUnitUpdateInput["city"]
+    | undefined;
+
+  if (parentUuid !== undefined) {
+    if (!parentUuid) {
+      parentUpdate = {
+        disconnect: true,
+      };
+    } else {
+      const parent =
+        await this.organizationUnitRepository.findByUuid(
+          organizationUnit.companyId,
+          parentUuid,
+        );
+
+      if (!parent) {
+        throw new NotFoundException(
+          "Parent organization unit not found.",
+        );
+      }
+
+      if (parent.uuid === uuid) {
+        throw new BadRequestException(
+          "Organization unit cannot be its own parent.",
+        );
+      }
+
+      parentUpdate = {
+        connect: {
+          id: parent.id,
+        },
+      };
+    }
+  }
+
+  let selectedStateId:
+    | bigint
+    | undefined;
+
+  if (stateUuid !== undefined) {
+    if (!stateUuid) {
+      stateUpdate = {
+        disconnect: true,
+      };
+    } else {
+      const state =
+        await this.stateRepository.findByUuid(
+          stateUuid,
+        );
+
+      if (!state) {
+        throw new NotFoundException(
+          "State not found.",
+        );
+      }
+
+      selectedStateId = state.id;
+
+      stateUpdate = {
+        connect: {
+          id: state.id,
+        },
+      };
+    }
+  }
+
+  if (cityUuid !== undefined) {
+    if (!cityUuid) {
+      cityUpdate = {
+        disconnect: true,
+      };
+    } else {
+      const city =
+        await this.cityRepository.findByUuid(
+          cityUuid,
+        );
+
+      if (!city) {
+        throw new NotFoundException(
+          "City not found.",
+        );
+      }
+
+      if (
+        selectedStateId !== undefined &&
+        city.stateId !== selectedStateId
+      ) {
+        throw new BadRequestException(
+          "Selected city does not belong to the selected state.",
+        );
+      }
+
+      cityUpdate = {
+        connect: {
+          id: city.id,
+        },
+      };
+    }
+  }
+
+  const normalizedCode =
+    code?.trim().toUpperCase();
+
+  const normalizedName =
+    name?.trim();
+
   if (
-    dto.code &&
-    dto.code !== organizationUnit.code
+    normalizedCode &&
+    normalizedCode !==
+      organizationUnit.code
   ) {
-    const code =
+    const duplicateCode =
       await this.organizationUnitRepository.findByCode(
-        BigInt(companyId),
-        dto.code,
+        organizationUnit.companyId,
+        normalizedCode,
       );
 
-    if (code) {
+    if (
+      duplicateCode &&
+      duplicateCode.uuid !== uuid
+    ) {
       throw new ConflictException(
-        'Organization unit code already exists.',
+        "Organization unit code already exists.",
       );
     }
   }
 
-  // Name duplicate check
   if (
-    dto.name &&
-    dto.name !== organizationUnit.name
+    normalizedName &&
+    normalizedName !==
+      organizationUnit.name
   ) {
-    const name =
+    const duplicateName =
       await this.organizationUnitRepository.findByName(
-        BigInt(companyId),
-        dto.name,
+        organizationUnit.companyId,
+        normalizedName,
       );
 
-    if (name) {
+    if (
+      duplicateName &&
+      duplicateName.uuid !== uuid
+    ) {
       throw new ConflictException(
-        'Organization unit name already exists.',
+        "Organization unit name already exists.",
       );
     }
   }
 
-  return this.organizationUnitRepository.update(
-    BigInt(id),
-    dto,
-  );
-}
+  const updateData:
+    Prisma.OrganizationUnitUpdateInput = {
+      ...unitData,
 
+      ...(normalizedCode !== undefined && {
+        code: normalizedCode,
+      }),
 
-async delete(
-  companyId: number,
-  id: number,
-) {
-  // 1. Exists?
-  const organizationUnit =
-  await this.organizationUnitRepository.findById(
-    BigInt(companyId),
-    BigInt(id),
-  );
+      ...(normalizedName !== undefined && {
+        name: normalizedName,
+      }),
 
-  if (!organizationUnit) {
-    throw new NotFoundException(
-      'Organization unit not found.',
+      ...(parentUpdate !== undefined && {
+        parent: parentUpdate,
+      }),
+
+      ...(stateUpdate !== undefined && {
+        state: stateUpdate,
+      }),
+
+      ...(cityUpdate !== undefined && {
+        city: cityUpdate,
+      }),
+    };
+
+  const updatedOrganizationUnit =
+    await this.organizationUnitRepository.update(
+      companyFilterId,
+      uuid,
+      updateData,
     );
-  }
-
-  // 2. Child Exists?
-const child =
-  await this.organizationUnitRepository.findChildren(
-    BigInt(companyId),
-    BigInt(id),
-  );
-
-  if (child) {
-    throw new ConflictException(
-      'Cannot delete organization unit because child units exist.',
-    );
-  }
-
-  // 3. Soft Delete
-  await this.organizationUnitRepository.delete(
-    BigInt(id),
-  );
 
   return {
     message:
-      'Organization unit deleted successfully.',
+      "Organization unit updated successfully.",
+
+    organizationUnit:
+      updatedOrganizationUnit,
   };
 }
 
+  async delete(
+    user: AuthUser,
+    uuid: string,
+  ) {
+    const companyFilterId =
+      this.isPlatformOwner(user)
+        ? null
+        : this.getUserCompanyId(user);
 
+    const organizationUnit =
+      await this.organizationUnitRepository.findByUuid(
+        companyFilterId,
+        uuid,
+      );
 
+    if (!organizationUnit) {
+      throw new NotFoundException(
+        "Organization unit not found.",
+      );
+    }
+
+    const children =
+      await this.organizationUnitRepository.findChildren(
+        organizationUnit.companyId,
+        organizationUnit.id,
+      );
+
+    if (children.length > 0) {
+      throw new ConflictException(
+        "Cannot delete organization unit because child units exist.",
+      );
+    }
+
+    await this.organizationUnitRepository.delete(
+      companyFilterId,
+      uuid,
+    );
+
+    return {
+      message:
+        "Organization unit deleted successfully.",
+    };
+  }
 }

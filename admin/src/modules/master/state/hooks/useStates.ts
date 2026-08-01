@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -25,139 +28,274 @@ const initialFormData: StateFormData = {
   status: "ACTIVE",
 };
 
+const getErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
+  };
+
+  const errors =
+    apiError.response?.data?.errors;
+
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join(", ");
+  }
+
+  return (
+    apiError.response?.data?.message ??
+    fallbackMessage
+  );
+};
+
 export const useStates = () => {
-  const [states, setStates] = useState<State[]>([]);
-  const [dropdown, setDropdown] = useState<
-    StateDropdown[]
-  >([]);
-  const [selectedState, setSelectedState] =
-    useState<State | null>(null);
+  const [states, setStates] =
+    useState<State[]>([]);
+
+  const [dropdown, setDropdown] =
+    useState<StateDropdown[]>([]);
+
+  const [
+    selectedState,
+    setSelectedState,
+  ] = useState<State | null>(null);
 
   const [loading, setLoading] =
     useState(false);
 
   const [formData, setFormData] =
     useState<StateFormData>(
-      initialFormData,
+      () => ({
+        ...initialFormData,
+      }),
     );
 
-  const fetchStates = async (
-    params?: StateQueryParams,
-  ) => {
-    try {
-      setLoading(true);
+  const fetchStates = useCallback(
+    async (
+      params?: StateQueryParams,
+    ) => {
+      try {
+        setLoading(true);
 
-      const data = await getStates(params);
+        const data =
+          await getStates(params);
 
-      setStates(data);
+        setStates(data);
 
-      return data;
-    } finally {
-      setLoading(false);
-    }
-  };
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch states:",
+          error,
+        );
 
-  const fetchDropdown = async () => {
-    const data =
-      await getStateDropdown();
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load states.",
+          ),
+        );
 
-    setDropdown(data);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-    return data;
-  };
+  const fetchDropdown = useCallback(
+    async () => {
+      try {
+        const data =
+          await getStateDropdown();
 
-  const fetchState = async (
-    uuid: string,
-  ) => {
-    const data = await getState(uuid);
+        setDropdown(data);
 
-    setSelectedState(data);
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch state dropdown:",
+          error,
+        );
 
-    return data;
-  };
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load state dropdown.",
+          ),
+        );
 
-  const create = async (
-    payload: StateFormData,
-  ) => {
-    try {
-      setLoading(true);
+        throw error;
+      }
+    },
+    [],
+  );
 
-      console.log(payload);
+  const fetchState = useCallback(
+    async (uuid: string) => {
+      try {
+        setLoading(true);
 
-      const data = await createState(
-        payload,
-      );
+        const data =
+          await getState(uuid);
 
-      notify.success(
-        "State created successfully.",
-      );
+        setSelectedState(data);
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to create state.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to fetch state:",
+          error,
+        );
 
-  const update = async (
-    uuid: string,
-    payload: Partial<StateFormData>,
-  ) => {
-    try {
-      setLoading(true);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load state details.",
+          ),
+        );
 
-      const data = await updateState(
-        uuid,
-        payload,
-      );
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-      notify.success(
-        "State updated successfully.",
-      );
+  const create = useCallback(
+    async (
+      payload: StateFormData,
+    ) => {
+      try {
+        setLoading(true);
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update state.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        const data =
+          await createState(payload);
 
-  const remove = async (
-    uuid: string,
-  ) => {
-    try {
-      setLoading(true);
+        notify.success(
+          data?.message ??
+            "State created successfully.",
+        );
 
-      const data = await deleteState(
-        uuid,
-      );
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to create state:",
+          error,
+        );
 
-      notify.success(
-        "State deleted successfully.",
-      );
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create state.",
+          ),
+        );
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to delete state.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-  const resetForm = () => {
-    setFormData(initialFormData);
-  };
+  const update = useCallback(
+    async (
+      uuid: string,
+      payload: Partial<StateFormData>,
+    ) => {
+      try {
+        setLoading(true);
+
+        const data =
+          await updateState(
+            uuid,
+            payload,
+          );
+
+        notify.success(
+          data?.message ??
+            "State updated successfully.",
+        );
+
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to update state:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update state.",
+          ),
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const remove = useCallback(
+    async (uuid: string) => {
+      try {
+        setLoading(true);
+
+        const data =
+          await deleteState(uuid);
+
+        notify.success(
+          data?.message ??
+            "State deleted successfully.",
+        );
+
+        return data;
+      } catch (error: unknown) {
+        console.error(
+          "Failed to delete state:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete state.",
+          ),
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      ...initialFormData,
+    });
+  }, []);
+
+  const clearSelectedState =
+    useCallback(() => {
+      setSelectedState(null);
+    }, []);
 
   return {
     loading,
@@ -178,5 +316,6 @@ export const useStates = () => {
     remove,
 
     resetForm,
+    clearSelectedState,
   };
 };

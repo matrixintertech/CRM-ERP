@@ -8,10 +8,16 @@ export class SubscriptionPlanModuleRepository {
     private readonly prisma: PrismaService,
   ) {}
 
-  async createMany(
+async createMany(
   subscriptionPlanId: bigint,
   moduleIds: string[],
 ) {
+  if (moduleIds.length === 0) {
+    return {
+      count: 0,
+    };
+  }
+
   return this.prisma.subscriptionPlanModule.createMany({
     data: moduleIds.map((moduleId) => ({
       subscriptionPlanId,
@@ -37,10 +43,32 @@ export class SubscriptionPlanModuleRepository {
     return this.prisma.subscriptionPlanModule.findMany({
       where: {
         subscriptionPlanId,
+        module: {
+          deletedAt: null,
+        },
       },
-      include: {
-        module: true,
+
+      select: {
+        id: true,
+        createdAt: true,
+
+        module: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            code: true,
+            icon: true,
+            route: true,
+            sortOrder: true,
+            isMenu: true,
+            isVisible: true,
+            isSystem: true,
+            status: true,
+          },
+        },
       },
+
       orderBy: {
         module: {
           sortOrder: 'asc',
@@ -48,4 +76,33 @@ export class SubscriptionPlanModuleRepository {
       },
     });
   }
+
+  async replaceModules(
+  subscriptionPlanId: bigint,
+  moduleIds: string[],
+) {
+  return this.prisma.$transaction(
+    async (transaction) => {
+      await transaction.subscriptionPlanModule.deleteMany({
+        where: {
+          subscriptionPlanId,
+        },
+      });
+
+      if (moduleIds.length === 0) {
+        return {
+          count: 0,
+        };
+      }
+
+      return transaction.subscriptionPlanModule.createMany({
+        data: moduleIds.map((moduleId) => ({
+          subscriptionPlanId,
+          moduleId: BigInt(moduleId),
+        })),
+        skipDuplicates: true,
+      });
+    },
+  );
+}
 }

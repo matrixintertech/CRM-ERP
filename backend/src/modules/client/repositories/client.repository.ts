@@ -1,39 +1,70 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, Status } from '@prisma/client';
+import { Injectable } from "@nestjs/common";
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  Prisma,
+  Status,
+} from "@prisma/client";
 
-import { ClientDropdownDto, ClientQueryDto } from '../dto';
-import { IClientRepository } from '../interfaces';
+import { PrismaService } from "src/database/prisma.service";
 
-export type ClientWithRelations = Prisma.ClientGetPayload<{
-  include: {
-    state: {
-      select: {
-        uuid: true;
-        name: true;
+import {
+  ClientDropdownDto,
+  ClientQueryDto,
+} from "../dto";
+
+import { IClientRepository } from "../interfaces";
+
+export type ClientWithRelations =
+  Prisma.ClientGetPayload<{
+    include: {
+      company: {
+        select: {
+          uuid: true;
+          name: true;
+          code: true;
+        };
+      };
+
+      state: {
+        select: {
+          uuid: true;
+          name: true;
+        };
+      };
+
+      city: {
+        select: {
+          uuid: true;
+          name: true;
+        };
       };
     };
-    city: {
-      select: {
-        uuid: true;
-        name: true;
-      };
-    };
-  };
-}>;
+  }>;
 
 @Injectable()
-export class ClientRepository implements IClientRepository {
-  constructor(private readonly prisma: PrismaService) {}
+export class ClientRepository
+  implements IClientRepository
+{
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
   private readonly include = {
+    company: {
+      select: {
+        uuid: true,
+        name: true,
+        code: true,
+      },
+    },
+
     state: {
       select: {
         uuid: true,
         name: true,
       },
     },
+
     city: {
       select: {
         uuid: true,
@@ -52,67 +83,93 @@ export class ClientRepository implements IClientRepository {
   }
 
   async findAll(
-    companyId: bigint,
+    companyId: bigint | null,
     query: ClientQueryDto,
   ): Promise<{
     clients: ClientWithRelations[];
     total: number;
   }> {
-    const { page = 1, limit = 10, search, status } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+    } = query;
+
+    const normalizedSearch =
+      search?.trim();
 
     const where: Prisma.ClientWhereInput = {
-      companyId,
       deletedAt: null,
-      ...(status && { status }),
-      ...(search && {
+
+      /*
+       * PLATFORM_OWNER:
+       * companyId null hoga, isliye filter nahi lagega.
+       *
+       * COMPANY_ADMIN / EMPLOYEE:
+       * companyId available hoga, sirf us company ke clients aayenge.
+       */
+      ...(companyId !== null && {
+        companyId,
+      }),
+
+      ...(status && {
+        status,
+      }),
+
+      ...(normalizedSearch && {
         OR: [
           {
             name: {
-              contains: search,
-              mode: 'insensitive',
+              contains: normalizedSearch,
+              mode: "insensitive",
             },
           },
           {
             code: {
-              contains: search,
-              mode: 'insensitive',
+              contains: normalizedSearch,
+              mode: "insensitive",
             },
           },
           {
             contactName: {
-              contains: search,
-              mode: 'insensitive',
+              contains: normalizedSearch,
+              mode: "insensitive",
             },
           },
           {
             mobile: {
-              contains: search,
+              contains: normalizedSearch,
             },
           },
           {
             email: {
-              contains: search,
-              mode: 'insensitive',
+              contains: normalizedSearch,
+              mode: "insensitive",
             },
           },
         ],
       }),
     };
 
-    const [clients, total] = await this.prisma.$transaction([
-      this.prisma.client.findMany({
-        where,
-        include: this.include,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.client.count({
-        where,
-      }),
-    ]);
+    const [clients, total] =
+      await this.prisma.$transaction([
+        this.prisma.client.findMany({
+          where,
+          include: this.include,
+
+          skip: (page - 1) * limit,
+          take: limit,
+
+          orderBy: {
+            createdAt: "desc",
+          },
+        }),
+
+        this.prisma.client.count({
+          where,
+        }),
+      ]);
 
     return {
       clients,
@@ -121,7 +178,7 @@ export class ClientRepository implements IClientRepository {
   }
 
   async findDropdown(
-    companyId: bigint,
+    companyId: bigint | null,
     query: ClientDropdownDto,
   ): Promise<
     {
@@ -131,33 +188,48 @@ export class ClientRepository implements IClientRepository {
   > {
     return this.prisma.client.findMany({
       where: {
-        companyId,
         deletedAt: null,
-        status: query.status ?? Status.ACTIVE,
+
+        ...(companyId !== null && {
+          companyId,
+        }),
+
+        status:
+          query.status ??
+          Status.ACTIVE,
       },
+
       select: {
         uuid: true,
         name: true,
       },
+
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
   }
 
   async findByUuid(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
   ): Promise<ClientWithRelations | null> {
     return this.prisma.client.findFirst({
       where: {
-        companyId,
         uuid,
         deletedAt: null,
+
+        ...(companyId !== null && {
+          companyId,
+        }),
       },
+
       include: this.include,
     });
   }
+
+
+
 
   async findByCode(
     companyId: bigint,
@@ -169,36 +241,87 @@ export class ClientRepository implements IClientRepository {
         code,
         deletedAt: null,
       },
+
       include: this.include,
     });
   }
 
-async update(
-  companyId: bigint,
-  uuid: string,
-  data: Prisma.ClientUncheckedUpdateInput,
-): Promise<ClientWithRelations> {
-  return this.prisma.client.update({
-    where: {
-      uuid,
-    },
-    data,
-    include: this.include,
-  });
-}
-
-  async softDelete(
-    companyId: bigint,
+  async update(
+    companyId: bigint | null,
     uuid: string,
+    data: Prisma.ClientUncheckedUpdateInput,
   ): Promise<ClientWithRelations> {
+    const client =
+      await this.prisma.client.findFirst({
+        where: {
+          uuid,
+          deletedAt: null,
+
+          ...(companyId !== null && {
+            companyId,
+          }),
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!client) {
+      throw new Error(
+        "Client not found.",
+      );
+    }
+
     return this.prisma.client.update({
       where: {
-        uuid,
+        id: client.id,
       },
+
+      data,
+
+      include: this.include,
+    });
+  }
+
+  async softDelete(
+    companyId: bigint | null,
+    uuid: string,
+  ): Promise<ClientWithRelations> {
+    const client =
+      await this.prisma.client.findFirst({
+        where: {
+          uuid,
+          deletedAt: null,
+
+          ...(companyId !== null && {
+            companyId,
+          }),
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!client) {
+      throw new Error(
+        "Client not found.",
+      );
+    }
+
+    return this.prisma.client.update({
+      where: {
+        id: client.id,
+      },
+
       data: {
         deletedAt: new Date(),
       },
+
       include: this.include,
     });
   }
+
+
 }

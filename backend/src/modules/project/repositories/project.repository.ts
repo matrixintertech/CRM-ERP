@@ -1,17 +1,29 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, Project, Status  } from '@prisma/client';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
-import { PrismaService } from "src/database/prisma.service";
+import { Prisma } from '@prisma/client';
 
-import { IProjectRepository } from './project.repository.interface';
-import { ProjectWithRelations } from '../types/project.types';
+import { PrismaService } from 'src/database/prisma.service';
 
 import { ProjectQueryDto } from '../dto';
 
+import type {
+  ProjectWithRelations,
+} from '../types/project.types';
+
+import type {
+  IProjectRepository,
+} from './project.repository.interface';
+
 @Injectable()
-export class ProjectRepository implements IProjectRepository {
+export class ProjectRepository
+  implements IProjectRepository
+{
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {}
 
   private readonly include = {
@@ -25,6 +37,7 @@ export class ProjectRepository implements IProjectRepository {
         mobile: true,
       },
     },
+
     state: {
       select: {
         id: true,
@@ -32,6 +45,7 @@ export class ProjectRepository implements IProjectRepository {
         name: true,
       },
     },
+
     city: {
       select: {
         id: true,
@@ -50,86 +64,104 @@ export class ProjectRepository implements IProjectRepository {
     });
   }
 
-async findAll(
-  companyId: bigint,
-  query: ProjectQueryDto,
-): Promise<{
-  projects: ProjectWithRelations[];
-  total: number;
-}> {
-  const { page = 1, limit = 10, search } = query;
+  async findAll(
+    companyId: bigint | null,
+    query: ProjectQueryDto,
+  ): Promise<{
+    projects: ProjectWithRelations[];
+    total: number;
+  }> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+    } = query;
 
-const where: Prisma.ProjectWhereInput = {
-  companyId,
-  deletedAt: null,
-  ...(search && {
-    OR: [
-      {
-        name: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-      {
-        srn: {
-          contains: search,
-          mode: 'insensitive',
-        },
-      },
-      {
-        client: {
-          name: {
-            contains: search,
-            mode: 'insensitive',
+    const normalizedSearch =
+      search?.trim();
+
+    const where: Prisma.ProjectWhereInput = {
+      deletedAt: null,
+
+      ...(companyId !== null && {
+        companyId,
+      }),
+
+      ...(normalizedSearch && {
+        OR: [
+          {
+            name: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
           },
-        },
-      },
-    ],
-  }),
-};
+          {
+            srn: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+          {
+            client: {
+              name: {
+                contains: normalizedSearch,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      }),
+    };
 
-  const [projects, total] = await this.prisma.$transaction([
-    this.prisma.project.findMany({
-      where,
-      include: this.include,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    }),
+    const [projects, total] =
+      await this.prisma.$transaction([
+        this.prisma.project.findMany({
+          where,
+          include: this.include,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
 
-    this.prisma.project.count({
-      where,
-    }),
-  ]);
+        this.prisma.project.count({
+          where,
+        }),
+      ]);
 
-  return {
-    projects,
-    total,
-  };
-}
+    return {
+      projects,
+      total,
+    };
+  }
 
   async count(
-    companyId: bigint,
+    companyId: bigint | null,
   ): Promise<number> {
     return this.prisma.project.count({
       where: {
-        companyId,
         deletedAt: null,
+
+        ...(companyId !== null && {
+          companyId,
+        }),
       },
     });
   }
 
   async findByUuid(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
   ): Promise<ProjectWithRelations | null> {
     return this.prisma.project.findFirst({
       where: {
-        companyId,
         uuid,
         deletedAt: null,
+
+        ...(companyId !== null && {
+          companyId,
+        }),
       },
       include: this.include,
     });
@@ -150,13 +182,34 @@ const where: Prisma.ProjectWhereInput = {
   }
 
   async update(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
     data: Prisma.ProjectUncheckedUpdateInput,
   ): Promise<ProjectWithRelations> {
+    const project =
+      await this.prisma.project.findFirst({
+        where: {
+          uuid,
+          deletedAt: null,
+
+          ...(companyId !== null && {
+            companyId,
+          }),
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!project) {
+      throw new NotFoundException(
+        'Project not found.',
+      );
+    }
+
     return this.prisma.project.update({
       where: {
-        uuid,
+        id: project.id,
       },
       data,
       include: this.include,
@@ -164,20 +217,28 @@ const where: Prisma.ProjectWhereInput = {
   }
 
   async delete(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
   ): Promise<void> {
-    await this.prisma.project.updateMany({
-      where: {
-        companyId,
-        uuid,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    const result =
+      await this.prisma.project.updateMany({
+        where: {
+          uuid,
+          deletedAt: null,
+
+          ...(companyId !== null && {
+            companyId,
+          }),
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+
+    if (result.count === 0) {
+      throw new NotFoundException(
+        'Project not found.',
+      );
+    }
   }
-
-
 }

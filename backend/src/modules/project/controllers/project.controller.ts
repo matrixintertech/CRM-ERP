@@ -10,7 +10,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+
 import { AuthGuard } from '@nestjs/passport';
+
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -20,6 +22,10 @@ import {
 
 import type { Request } from 'express';
 
+import type {
+  User,
+} from '@prisma/client';
+
 import {
   CreateProjectDto,
   ProjectQueryDto,
@@ -28,85 +34,101 @@ import {
 
 import { ProjectService } from '../services/project.service';
 
+interface AuthenticatedRequest
+  extends Request {
+  user: User;
+}
+
 @ApiTags('Projects')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard('jwt'))
 @Controller('projects')
 export class ProjectController {
   constructor(
-    private readonly projectService: ProjectService,
+    private readonly projectService:
+      ProjectService,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create Project' })
+  @ApiOperation({
+    summary: 'Create Project',
+  })
   create(
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateProjectDto,
   ) {
     return this.projectService.create(
-      (req.user as any).companyId,
+      req.user,
       dto,
     );
   }
 
-@Get()
-@ApiOperation({ summary: 'Get All Projects' })
-findAll(
-  @Req() req: Request,
-  @Query() query: ProjectQueryDto,
-) {
-  return this.projectService.findAll(
-    (req.user as any).companyId,
-    query,
-  );
-}
+  @Get()
+  @ApiOperation({
+    summary: 'Get All Projects',
+  })
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: ProjectQueryDto,
+  ) {
+    return this.projectService.findAll(
+      req.user,
+      query,
+    );
+  }
 
   @Get(':uuid')
-  @ApiOperation({ summary: 'Get Project By UUID' })
+  @ApiOperation({
+    summary: 'Get Project By UUID',
+  })
   @ApiParam({
     name: 'uuid',
     type: String,
   })
   findByUuid(
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Param('uuid') uuid: string,
   ) {
     return this.projectService.findByUuid(
-      (req.user as any).companyId,
+      req.user,
       uuid,
     );
   }
 
   @Patch(':uuid')
-  @ApiOperation({ summary: 'Update Project' })
+  @ApiOperation({
+    summary: 'Update Project',
+  })
   @ApiParam({
     name: 'uuid',
     type: String,
   })
   update(
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Param('uuid') uuid: string,
     @Body() dto: UpdateProjectDto,
   ) {
     return this.projectService.update(
-      (req.user as any).companyId,
+      req.user,
       uuid,
       dto,
     );
   }
 
   @Delete(':uuid')
-  @ApiOperation({ summary: 'Delete Project' })
+  @ApiOperation({
+    summary: 'Delete Project',
+  })
   @ApiParam({
     name: 'uuid',
     type: String,
   })
   remove(
-    @Req() req: Request,
+    @Req() req: AuthenticatedRequest,
     @Param('uuid') uuid: string,
   ) {
     return this.projectService.remove(
-      (req.user as any).companyId,
+      req.user,
       uuid,
     );
   }

@@ -1,6 +1,6 @@
-
-
-export type ClientStatus = 'ACTIVE' | 'INACTIVE';
+export type ClientStatus =
+  | "ACTIVE"
+  | "INACTIVE";
 
 export interface StateOption {
   uuid: string;
@@ -52,7 +52,6 @@ export interface ClientListResponse {
 export interface ClientQueryParams {
   page?: number;
   limit?: number;
-
   search?: string;
   status?: ClientStatus;
 }

@@ -1,27 +1,30 @@
 import { Prisma } from '@prisma/client';
 
-import { ProjectWithRelations } from '../types/project.types';
 import { ProjectQueryDto } from '../dto';
+
+import type {
+  ProjectWithRelations,
+} from '../types/project.types';
 
 export interface IProjectRepository {
   create(
     data: Prisma.ProjectUncheckedCreateInput,
   ): Promise<ProjectWithRelations>;
 
- findAll(
-  companyId: bigint,
-  query: ProjectQueryDto,
-): Promise<{
-  projects: ProjectWithRelations[];
-  total: number;
-}>;
+  findAll(
+    companyId: bigint | null,
+    query: ProjectQueryDto,
+  ): Promise<{
+    projects: ProjectWithRelations[];
+    total: number;
+  }>;
 
   count(
-    companyId: bigint,
+    companyId: bigint | null,
   ): Promise<number>;
 
   findByUuid(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
   ): Promise<ProjectWithRelations | null>;
 
@@ -31,13 +34,13 @@ export interface IProjectRepository {
   ): Promise<ProjectWithRelations | null>;
 
   update(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
     data: Prisma.ProjectUncheckedUpdateInput,
   ): Promise<ProjectWithRelations>;
 
   delete(
-    companyId: bigint,
+    companyId: bigint | null,
     uuid: string,
   ): Promise<void>;
 }

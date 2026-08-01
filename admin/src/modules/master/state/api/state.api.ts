@@ -1,49 +1,73 @@
 import api from "@/shared/services/axios";
 
 import type {
+  State,
   StateFormData,
   StateQueryParams,
 } from "../types/state.types";
 
+interface StateListApiResponse {
+  data: {
+    states: State[];
+  };
+}
+
+interface StateDetailsApiResponse {
+  data: {
+    state: State;
+  };
+}
+
+interface StateMutationApiResponse {
+  message?: string;
+  data?: {
+    state?: State;
+  };
+}
+
 export const createState = async (
   payload: StateFormData,
-) => {
-  const { data } = await api.post(
-    "/master/states",
-    payload,
-  );
+): Promise<StateMutationApiResponse> => {
+  const { data } =
+    await api.post<StateMutationApiResponse>(
+      "/master/states",
+      payload,
+    );
 
   return data;
 };
 
 export const getStates = async (
   params?: StateQueryParams,
-) => {
-  const { data } = await api.get(
-    "/master/states",
-    {
-      params,
-    },
-  );
+): Promise<State[]> => {
+  const { data } =
+    await api.get<StateListApiResponse>(
+      "/master/states",
+      {
+        params,
+      },
+    );
 
   return data.data.states;
 };
 
 export const getState = async (
   uuid: string,
-) => {
-  const { data } = await api.get(
-    `/master/states/${uuid}`,
-  );
+): Promise<State> => {
+  const { data } =
+    await api.get<StateDetailsApiResponse>(
+      `/master/states/${uuid}`,
+    );
 
   return data.data.state;
 };
 
 export const getStateDropdown =
-  async () => {
-    const { data } = await api.get(
-      "/master/states/dropdown",
-    );
+  async (): Promise<State[]> => {
+    const { data } =
+      await api.get<StateListApiResponse>(
+        "/master/states/dropdown",
+      );
 
     return data.data.states;
   };
@@ -51,21 +75,23 @@ export const getStateDropdown =
 export const updateState = async (
   uuid: string,
   payload: Partial<StateFormData>,
-) => {
-  const { data } = await api.patch(
-    `/master/states/${uuid}`,
-    payload,
-  );
+): Promise<StateMutationApiResponse> => {
+  const { data } =
+    await api.patch<StateMutationApiResponse>(
+      `/master/states/${uuid}`,
+      payload,
+    );
 
   return data;
 };
 
 export const deleteState = async (
   uuid: string,
-) => {
-  const { data } = await api.delete(
-    `/master/states/${uuid}`,
-  );
+): Promise<StateMutationApiResponse> => {
+  const { data } =
+    await api.delete<StateMutationApiResponse>(
+      `/master/states/${uuid}`,
+    );
 
   return data;
 };

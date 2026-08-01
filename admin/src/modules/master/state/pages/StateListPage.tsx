@@ -3,25 +3,28 @@ import {
   useState,
 } from "react";
 
-import PageHeader from "@/shared/components/PageHeader";
-import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import PageHeader from "@/shared/components/PageHeader";
+
+import { notify } from "@/shared/utils/notify";
+
+import StateDetailsModal from "../components/StateDetailsModal";
+import StateModal from "../components/StateModal";
+import StateTable from "../components/StateTable";
 
 import { useStates } from "../hooks/useStates";
 
-import StateTable from "../components/StateTable";
-import StateModal from "../components/StateModal";
-import StateDetailsModal from "../components/StateDetailsModal";
+import type {
+  StateFormData,
+} from "../types/state.types";
 
-import type { StateFormData } from "../types/state.types";
-
-const initialFormData: StateFormData =
-  {
-    name: "",
-    code: "",
-    gstCode: "",
-    status: "ACTIVE",
-  };
+const initialFormData: StateFormData = {
+  name: "",
+  code: "",
+  gstCode: "",
+  status: "ACTIVE",
+};
 
 const StateListPage = () => {
   const {
@@ -48,43 +51,83 @@ const StateListPage = () => {
 
   const [formData, setFormData] =
     useState<StateFormData>(
-      initialFormData,
+      () => ({
+        ...initialFormData,
+      }),
     );
 
   useEffect(() => {
-    fetchStates();
-  }, []);
+    void fetchStates();
+  }, [fetchStates]);
 
-  const handleSubmit =
-    async () => {
+  const resetForm = () => {
+    setEditId(null);
+
+    setFormData({
+      ...initialFormData,
+    });
+  };
+
+  const handleOpenCreate = () => {
+    resetForm();
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    resetForm();
+  };
+
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const payload: StateFormData = {
+        ...formData,
+        name: formData.name.trim(),
+        code: formData.code
+          .trim()
+          .toUpperCase(),
+        gstCode:
+          formData.gstCode.trim(),
+      };
+
       if (editId) {
         await update(
           editId,
-          formData,
+          payload,
         );
       } else {
-        await create(formData);
+        await create(payload);
       }
 
       await fetchStates();
 
-      setOpenModal(false);
-
-      setEditId(null);
-
-      setFormData(
-        initialFormData,
+      handleCloseModal();
+    } catch (error) {
+      console.error(
+        "Failed to save state:",
+        error,
       );
-    };
+    }
+  };
 
-  const handleEdit =
-    async (
-      uuid: string,
-    ) => {
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
       const state =
         await fetchState(uuid);
 
-      if (!state) return;
+      if (!state) {
+        notify.error(
+          "State not found.",
+        );
+
+        return;
+      }
 
       setEditId(uuid);
 
@@ -97,7 +140,60 @@ const StateListPage = () => {
       });
 
       setOpenModal(true);
-    };
+    } catch (error) {
+      console.error(
+        "Failed to load state:",
+        error,
+      );
+    }
+  };
+
+  const handleView = async (
+    uuid: string,
+  ) => {
+    try {
+      const state =
+        await fetchState(uuid);
+
+      if (!state) {
+        notify.error(
+          "State not found.",
+        );
+
+        return;
+      }
+
+      setOpenDetails(true);
+    } catch (error) {
+      console.error(
+        "Failed to load state details:",
+        error,
+      );
+    }
+  };
+
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this state?",
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await remove(uuid);
+      await fetchStates();
+    } catch (error) {
+      console.error(
+        "Failed to delete state:",
+        error,
+      );
+    }
+  };
 
   return (
     <>
@@ -106,15 +202,9 @@ const StateListPage = () => {
         subtitle="Manage states"
         actions={
           <Button
-            onClick={() => {
-              setEditId(null);
-
-              setFormData(
-                initialFormData,
-              );
-
-              setOpenModal(true);
-            }}
+            onClick={
+              handleOpenCreate
+            }
           >
             Create State
           </Button>
@@ -125,29 +215,9 @@ const StateListPage = () => {
         <StateTable
           data={states}
           loading={loading}
-          onView={async (
-            uuid,
-          ) => {
-            await fetchState(
-              uuid,
-            );
-
-            setOpenDetails(
-              true,
-            );
-          }}
-          onEdit={
-            handleEdit
-          }
-          onDelete={async (
-            uuid,
-          ) => {
-            await remove(
-              uuid,
-            );
-
-            await fetchStates();
-          }}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       </Card>
 
@@ -159,29 +229,19 @@ const StateListPage = () => {
             ? "Edit State"
             : "Create State"
         }
-        isEdit={!!editId}
+        isEdit={Boolean(editId)}
         formData={formData}
-        setFormData={
-          setFormData
-        }
-        onClose={() =>
-          setOpenModal(false)
-        }
-        onSubmit={
-          handleSubmit
-        }
+        setFormData={setFormData}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
       />
 
       <StateDetailsModal
         open={openDetails}
         loading={loading}
-        state={
-          selectedState
-        }
-        onClose={() =>
-          setOpenDetails(
-            false,
-          )
+        state={selectedState}
+        onClose={
+          handleCloseDetails
         }
       />
     </>

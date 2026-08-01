@@ -8,6 +8,7 @@ import { ClientRepository } from './repositories/client.repository';
 import { StateModule } from '../master/state/state.module';
 import { CityModule } from '../master/city/city.module';
 import { AuthModule } from '../auth/auth.module';
+import { CompanyModule } from '../company/company.module';
 
 @Module({
   imports: [
@@ -15,12 +16,18 @@ import { AuthModule } from '../auth/auth.module';
     AuthModule,
     StateModule,
     CityModule,
+    CompanyModule,
   ],
-  controllers: [ClientController],
+
+  controllers: [
+    ClientController,
+  ],
+
   providers: [
     ClientService,
     ClientRepository,
   ],
+
   exports: [
     ClientService,
     ClientRepository,
