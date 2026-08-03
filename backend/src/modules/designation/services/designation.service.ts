@@ -31,7 +31,7 @@ export class DesignationService {
     const department =
       await this.departmentRepository.findByUuid(
         companyId,
-        dto.departmentId,
+        dto.departmentUuid,
       );
 
     if (!department) {
@@ -40,11 +40,19 @@ export class DesignationService {
       );
     }
 
+    const normalizedName =
+      dto.name.trim();
+
+    const normalizedCode =
+      dto.code
+        .trim()
+        .toUpperCase();
+
     const existingName =
       await this.designationRepository.findByName(
         companyId,
         department.id,
-        dto.name,
+        normalizedName,
       );
 
     if (existingName) {
@@ -57,7 +65,7 @@ export class DesignationService {
       await this.designationRepository.findByCode(
         companyId,
         department.id,
-        dto.code,
+        normalizedCode,
       );
 
     if (existingCode) {
@@ -68,8 +76,12 @@ export class DesignationService {
 
     const designation =
       await this.designationRepository.create({
-        name: dto.name,
-        code: dto.code,
+        name:
+          normalizedName,
+
+        code:
+          normalizedCode,
+
         description:
           dto.description,
 
@@ -92,10 +104,10 @@ export class DesignationService {
     return {
       message:
         "Designation created successfully.",
+
       designation,
     };
   }
-
 
   async findAll(
     companyId: bigint,
@@ -108,10 +120,10 @@ export class DesignationService {
     return {
       message:
         "Designations fetched successfully.",
+
       designations,
     };
   }
-
 
   async findOne(
     companyId: bigint,
@@ -132,10 +144,10 @@ export class DesignationService {
     return {
       message:
         "Designation fetched successfully.",
+
       designation,
     };
   }
-
 
   async update(
     companyId: bigint,
@@ -157,11 +169,11 @@ export class DesignationService {
     let departmentId =
       designation.departmentId;
 
-    if (dto.departmentId) {
+    if (dto.departmentUuid) {
       const department =
         await this.departmentRepository.findByUuid(
           companyId,
-          dto.departmentId,
+          dto.departmentUuid,
         );
 
       if (!department) {
@@ -174,16 +186,24 @@ export class DesignationService {
         department.id;
     }
 
+    const normalizedName =
+      dto.name?.trim();
+
+    const normalizedCode =
+      dto.code
+        ?.trim()
+        .toUpperCase();
 
     if (
-      dto.name &&
-      dto.name !== designation.name
+      normalizedName &&
+      normalizedName !==
+        designation.name
     ) {
       const existingName =
         await this.designationRepository.findByName(
           companyId,
           departmentId,
-          dto.name,
+          normalizedName,
         );
 
       if (
@@ -196,16 +216,16 @@ export class DesignationService {
       }
     }
 
-
     if (
-      dto.code &&
-      dto.code !== designation.code
+      normalizedCode &&
+      normalizedCode !==
+        designation.code
     ) {
       const existingCode =
         await this.designationRepository.findByCode(
           companyId,
           departmentId,
-          dto.code,
+          normalizedCode,
         );
 
       if (
@@ -218,27 +238,33 @@ export class DesignationService {
       }
     }
 
-
     const updatedDesignation =
       await this.designationRepository.update(
         id,
         {
-          name: dto.name,
-          code: dto.code,
-          description:
-            dto.description,
+          ...(normalizedName !== undefined && {
+            name: normalizedName,
+          }),
 
-          department:
-            dto.departmentId
-              ? {
-                  connect: {
-                    id: departmentId,
-                  },
-                }
-              : undefined,
+          ...(normalizedCode !== undefined && {
+            code: normalizedCode,
+          }),
+
+          ...(dto.description !== undefined && {
+            description:
+              dto.description,
+          }),
+
+          ...(dto.departmentUuid && {
+            department: {
+              connect: {
+                id:
+                  departmentId,
+              },
+            },
+          }),
         },
       );
-
 
     return {
       message:
@@ -248,7 +274,6 @@ export class DesignationService {
         updatedDesignation,
     };
   }
-
 
   async delete(
     companyId: bigint,
@@ -275,4 +300,57 @@ export class DesignationService {
         "Designation deleted successfully.",
     };
   }
+
+  async findByUuid(
+  companyId: bigint,
+  uuid: string,
+) {
+  const designation =
+    await this.designationRepository.findByUuid(
+      companyId,
+      uuid,
+    );
+
+  if (!designation) {
+    throw new NotFoundException(
+      "Designation not found.",
+    );
+  }
+
+  return designation;
+}
+
+async updateByUuid(
+  companyId: bigint,
+  uuid: string,
+  dto: UpdateDesignationDto,
+) {
+  const designation =
+    await this.findByUuid(
+      companyId,
+      uuid,
+    );
+
+  return this.update(
+    companyId,
+    designation.id,
+    dto,
+  );
+}
+
+async deleteByUuid(
+  companyId: bigint,
+  uuid: string,
+) {
+  const designation =
+    await this.findByUuid(
+      companyId,
+      uuid,
+    );
+
+  return this.delete(
+    companyId,
+    designation.id,
+  );
+}
 }

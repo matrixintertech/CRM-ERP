@@ -2,54 +2,64 @@ import api from "@/shared/services/axios";
 
 import type {
   CreateEmployeeDto,
+  Employee,
   UpdateEmployeeDto,
 } from "../types/employee.types";
 
 export const createEmployee = async (
   payload: CreateEmployeeDto,
 ) => {
-  const response = await api.post(
+  const { data } = await api.post(
     "/employees",
     payload,
   );
 
-  return response.data;
+  return data;
 };
 
-export const getEmployees = async () => {
-  const response = await api.get("/employees");
+export const getEmployees = async (): Promise<
+  Employee[]
+> => {
+  const { data } = await api.get(
+    "/employees",
+  );
 
-  return response.data.data;
+  return Array.isArray(data.data)
+    ? data.data
+    : data.data?.employees ?? [];
 };
 
 export const getEmployee = async (
   uuid: string,
-) => {
-  const response = await api.get(
+): Promise<Employee> => {
+  const { data } = await api.get(
     `/employees/${uuid}`,
   );
 
-  return response.data.data;
+  return (
+    data.data?.employee ??
+    data.data
+  );
 };
 
 export const updateEmployee = async (
   uuid: string,
   payload: UpdateEmployeeDto,
 ) => {
-  const response = await api.patch(
+  const { data } = await api.patch(
     `/employees/${uuid}`,
     payload,
   );
 
-  return response.data;
+  return data;
 };
 
 export const deleteEmployee = async (
   uuid: string,
 ) => {
-  const response = await api.delete(
+  const { data } = await api.delete(
     `/employees/${uuid}`,
   );
 
-  return response.data;
+  return data;
 };

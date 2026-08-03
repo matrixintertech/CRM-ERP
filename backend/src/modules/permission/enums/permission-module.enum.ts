@@ -8,7 +8,6 @@ export enum PermissionModule {
   ROLE = "ROLE",
   USER = "USER",
 
-  HR = "HR",
   DEPARTMENT = "DEPARTMENT",
   DESIGNATION = "DESIGNATION",
   EMPLOYEE = "EMPLOYEE",
@@ -17,6 +16,9 @@ export enum PermissionModule {
   VENDOR = "VENDOR",
 
   PROJECT = "PROJECT",
+  PROJECT_CATEGORY = "PROJECT_CATEGORY",
+
+  TASK = "TASK",
 
   INVENTORY = "INVENTORY",
   PURCHASE = "PURCHASE",

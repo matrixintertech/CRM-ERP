@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
 } from "@nestjs/common";
@@ -16,7 +17,8 @@ import { UpdatePermissionDto } from "../dto/update-permission.dto";
 @Controller("permissions")
 export class PermissionController {
   constructor(
-    private readonly permissionService: PermissionService,
+    private readonly permissionService:
+      PermissionService,
   ) {}
 
   @Post()
@@ -24,7 +26,9 @@ export class PermissionController {
     @Body()
     dto: CreatePermissionDto,
   ) {
-    return this.permissionService.create(dto);
+    return this.permissionService.create(
+      dto,
+    );
   }
 
   @Get()
@@ -32,15 +36,22 @@ export class PermissionController {
     return this.permissionService.findAll();
   }
 
-   @Get("grouped")
-findGrouped() {
-  return this.permissionService.findGrouped();
-}
+  /*
+   * Is route ko @Get(":id") se pehle hi rakho.
+   * Warna "grouped" ko id treat kiya ja sakta hai.
+   */
+  @Get("grouped")
+  findGrouped() {
+    return this.permissionService.findGrouped();
+  }
 
   @Get(":id")
   findOne(
-    @Param("id")
-    id: string,
+    @Param(
+      "id",
+      ParseIntPipe,
+    )
+    id: number,
   ) {
     return this.permissionService.findOne(
       BigInt(id),
@@ -49,8 +60,11 @@ findGrouped() {
 
   @Patch(":id")
   update(
-    @Param("id")
-    id: string,
+    @Param(
+      "id",
+      ParseIntPipe,
+    )
+    id: number,
 
     @Body()
     dto: UpdatePermissionDto,
@@ -63,13 +77,14 @@ findGrouped() {
 
   @Delete(":id")
   remove(
-    @Param("id")
-    id: string,
+    @Param(
+      "id",
+      ParseIntPipe,
+    )
+    id: number,
   ) {
     return this.permissionService.remove(
       BigInt(id),
     );
   }
-
-
 }

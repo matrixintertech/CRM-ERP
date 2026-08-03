@@ -7,6 +7,8 @@ import {
   MaxLength,
 } from "class-validator";
 
+import { Status } from "@prisma/client";
+
 import { PermissionModule } from "../enums/permission-module.enum";
 
 export class CreatePermissionDto {
@@ -40,4 +42,12 @@ export class CreatePermissionDto {
   @IsString()
   @MaxLength(255)
   description?: string;
+
+  @ApiPropertyOptional({
+    enum: Status,
+    default: Status.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(Status)
+  status?: Status;
 }

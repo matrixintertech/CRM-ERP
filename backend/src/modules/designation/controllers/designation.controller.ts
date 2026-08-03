@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -12,8 +11,9 @@ import {
 } from "@nestjs/common";
 
 import {
-  ApiTags,
   ApiBearerAuth,
+  ApiParam,
+  ApiTags,
 } from "@nestjs/swagger";
 
 import { AuthGuard } from "@nestjs/passport";
@@ -55,41 +55,50 @@ export class DesignationController {
     );
   }
 
-  @Get(":id")
+  @Get(":uuid")
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   findOne(
     @Req() req: Request,
-    @Param("id", ParseIntPipe)
-    id: number,
+    @Param("uuid") uuid: string,
   ) {
-    return this.designationService.findOne(
+    return this.designationService.findByUuid(
       (req.user as any).companyId,
-      BigInt(id),
+      uuid,
     );
   }
 
-  @Patch(":id")
+  @Patch(":uuid")
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   update(
     @Req() req: Request,
-    @Param("id", ParseIntPipe)
-    id: number,
+    @Param("uuid") uuid: string,
     @Body() dto: UpdateDesignationDto,
   ) {
-    return this.designationService.update(
+    return this.designationService.updateByUuid(
       (req.user as any).companyId,
-      BigInt(id),
+      uuid,
       dto,
     );
   }
 
-  @Delete(":id")
+  @Delete(":uuid")
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
   delete(
     @Req() req: Request,
-    @Param("id", ParseIntPipe)
-    id: number,
+    @Param("uuid") uuid: string,
   ) {
-    return this.designationService.delete(
+    return this.designationService.deleteByUuid(
       (req.user as any).companyId,
-      BigInt(id),
+      uuid,
     );
   }
 }

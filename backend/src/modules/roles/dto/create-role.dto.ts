@@ -1,43 +1,44 @@
 import {
   ApiProperty,
   ApiPropertyOptional,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
 import {
   IsBoolean,
-  IsNumber,
+  IsNotEmpty,
   IsOptional,
   IsString,
-} from 'class-validator';
+  MaxLength,
+} from "class-validator";
 
 export class CreateRoleDto {
   @ApiProperty({
-    example: 1,
-  })
-  @IsNumber()
-  companyId: number;
-
-  @ApiProperty({
-    example: 'HR Manager',
+    example: "HR Manager",
   })
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
   name: string;
 
   @ApiProperty({
-    example: 'HR_MANAGER',
+    example: "HR_MANAGER",
   })
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
   code: string;
 
   @ApiPropertyOptional({
-    example: 'Manage HR activities',
+    example: "Manage HR activities",
   })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   description?: string;
 
   @ApiPropertyOptional({
     example: false,
+    default: false,
   })
   @IsOptional()
   @IsBoolean()

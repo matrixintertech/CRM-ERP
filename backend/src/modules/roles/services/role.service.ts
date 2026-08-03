@@ -2,289 +2,434 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+} from "@prisma/client";
 
-import { CreateRoleDto } from '../dto/create-role.dto';
-import { UpdateRoleDto } from '../dto/update-role.dto';
-import { AssignRolePermissionsDto } from '../dto/assign-role-permissions.dto';
+import { CreateRoleDto } from "../dto/create-role.dto";
+import { UpdateRoleDto } from "../dto/update-role.dto";
+import { AssignRolePermissionsDto } from "../dto/assign-role-permissions.dto";
 
-import { RoleRepository } from '../repositories/role.repository';
-
+import { RoleRepository } from "../repositories/role.repository";
 
 @Injectable()
 export class RoleService {
   constructor(
-    private readonly roleRepository: RoleRepository,
+    private readonly roleRepository:
+      RoleRepository,
   ) {}
 
   async create(
+    companyId: bigint,
     dto: CreateRoleDto,
     tx?: Prisma.TransactionClient,
   ) {
-    // 1. Company Exists
     const company =
       await this.roleRepository.findCompanyById(
-        BigInt(dto.companyId),
+        companyId,
       );
 
     if (!company) {
       throw new NotFoundException(
-        'Company not found.',
+        "Company not found.",
       );
     }
 
-    // 2. Role Code
-    const roleCode =
+    const normalizedName =
+      dto.name.trim();
+
+    const normalizedCode =
+      dto.code
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+    const existingCode =
       await this.roleRepository.findByCode(
-        BigInt(dto.companyId),
-        dto.code,
+        companyId,
+        normalizedCode,
       );
 
-    if (roleCode) {
+    if (existingCode) {
       throw new ConflictException(
-        'Role code already exists.',
+        "Role code already exists.",
       );
     }
 
-    // 3. Role Name
-    const roleName =
+    const existingName =
       await this.roleRepository.findByName(
-        BigInt(dto.companyId),
-        dto.name,
+        companyId,
+        normalizedName,
       );
 
-    if (roleName) {
+    if (existingName) {
       throw new ConflictException(
-        'Role name already exists.',
+        "Role name already exists.",
       );
     }
 
-    // 4. Create Role
     const role =
       await this.roleRepository.create(
         {
           company: {
             connect: {
-              id: BigInt(
-                dto.companyId,
-              ),
+              id: companyId,
             },
           },
 
-          name: dto.name,
+          name:
+            normalizedName,
 
-          code: dto.code,
+          code:
+            normalizedCode,
 
           description:
-            dto.description,
+            dto.description?.trim(),
 
+          // Company-created roles should normally
+          // not be system roles.
           isSystem:
-            dto.isSystem ??
-            false,
+            dto.isSystem ?? false,
         },
         tx,
       );
 
     return {
       message:
-        'Role created successfully.',
+        "Role created successfully.",
 
       role,
     };
   }
 
-
-async findAll(
-  companyId: number,
-) {
-  const company =
-    await this.roleRepository.findCompanyById(
-      BigInt(companyId),
-    );
-
-  if (!company) {
-    throw new NotFoundException(
-      'Company not found.',
-    );
-  }
-
-  const roles =
-    await this.roleRepository.findByCompanyId(
-      BigInt(companyId),
-    );
-
-  return {
-    message:
-      'Roles fetched successfully.',
-    roles,
-  };
-}
-
-
-async findOne(
-  id: number,
-) {
-  const role =
-    await this.roleRepository.findById(
-      BigInt(id),
-    );
-
-  if (!role) {
-    throw new NotFoundException(
-      'Role not found.',
-    );
-  }
-
-  return {
-    message:
-      'Role fetched successfully.',
-    role,
-  };
-}
-
-
-async update(
-  id: number,
-  dto: UpdateRoleDto,
-) {
-  // 1. Role Exists
-  const role =
-    await this.roleRepository.findById(
-      BigInt(id),
-    );
-
-  if (!role) {
-    throw new NotFoundException(
-      'Role not found.',
-    );
-  }
-
-  // 2. Check Duplicate Code
-  if (
-    dto.code &&
-    dto.code !== role.code
+  async findAll(
+    companyId: bigint,
   ) {
-    const roleCode =
-      await this.roleRepository.findByCode(
-        role.companyId,
-        dto.code,
+    const company =
+      await this.roleRepository.findCompanyById(
+        companyId,
       );
 
-    if (roleCode) {
-      throw new ConflictException(
-        'Role code already exists.',
+    if (!company) {
+      throw new NotFoundException(
+        "Company not found.",
       );
     }
-  }
 
-  // 3. Check Duplicate Name
-  if (
-    dto.name &&
-    dto.name !== role.name
-  ) {
-    const roleName =
-      await this.roleRepository.findByName(
-        role.companyId,
-        dto.name,
+    const roles =
+      await this.roleRepository.findByCompanyId(
+        companyId,
       );
 
-    if (roleName) {
-      throw new ConflictException(
-        'Role name already exists.',
+    return {
+      message:
+        "Roles fetched successfully.",
+
+      roles,
+    };
+  }
+
+  async findDropdown(
+    companyId: bigint,
+  ) {
+    const roles =
+      await this.roleRepository.findActiveByCompanyId(
+        companyId,
+      );
+
+    return {
+      message:
+        "Role dropdown fetched successfully.",
+
+      roles,
+    };
+  }
+
+  async findOne(
+    companyId: bigint,
+    uuid: string,
+  ) {
+    const role =
+      await this.roleRepository.findByUuid(
+        companyId,
+        uuid,
+      );
+
+    if (!role) {
+      throw new NotFoundException(
+        "Role not found.",
       );
     }
+
+    return {
+      message:
+        "Role fetched successfully.",
+
+      role,
+    };
   }
 
-  // 4. Update
-  const updatedRole =
-    await this.roleRepository.update(
-      BigInt(id),
-      dto,
-    );
+  async update(
+    companyId: bigint,
+    uuid: string,
+    dto: UpdateRoleDto,
+  ) {
+    const existingRole =
+      await this.roleRepository.findByUuid(
+        companyId,
+        uuid,
+      );
 
-  return {
-    message:
-      'Role updated successfully.',
-    role: updatedRole,
-  };
-}
+    if (!existingRole) {
+      throw new NotFoundException(
+        "Role not found.",
+      );
+    }
 
+    const normalizedName =
+      dto.name?.trim();
+
+    const normalizedCode =
+      dto.code
+        ?.trim()
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+    if (
+      normalizedCode !== undefined &&
+      normalizedCode !==
+        existingRole.code
+    ) {
+      const duplicateCode =
+        await this.roleRepository.findByCode(
+          companyId,
+          normalizedCode,
+        );
+
+      if (
+        duplicateCode &&
+        duplicateCode.uuid !== uuid
+      ) {
+        throw new ConflictException(
+          "Role code already exists.",
+        );
+      }
+    }
+
+    if (
+      normalizedName !== undefined &&
+      normalizedName !==
+        existingRole.name
+    ) {
+      const duplicateName =
+        await this.roleRepository.findByName(
+          companyId,
+          normalizedName,
+        );
+
+      if (
+        duplicateName &&
+        duplicateName.uuid !== uuid
+      ) {
+        throw new ConflictException(
+          "Role name already exists.",
+        );
+      }
+    }
+
+    const updatedRole =
+      await this.roleRepository.update(
+        companyId,
+        uuid,
+        {
+          ...(normalizedName !==
+            undefined && {
+            name:
+              normalizedName,
+          }),
+
+          ...(normalizedCode !==
+            undefined && {
+            code:
+              normalizedCode,
+          }),
+
+          ...(dto.description !==
+            undefined && {
+            description:
+              dto.description.trim() ||
+              null,
+          }),
+
+          ...(dto.status !==
+            undefined && {
+            status:
+              dto.status,
+          }),
+        },
+      );
+
+    if (!updatedRole) {
+      throw new NotFoundException(
+        "Role not found.",
+      );
+    }
+
+    return {
+      message:
+        "Role updated successfully.",
+
+      role:
+        updatedRole,
+    };
+  }
 
 async delete(
-  id: number,
+  companyId: bigint,
+  uuid: string,
 ) {
-  // 1. Role Exists
   const role =
-    await this.roleRepository.findById(
-      BigInt(id),
+    await this.roleRepository.findByUuid(
+      companyId,
+      uuid,
     );
 
   if (!role) {
     throw new NotFoundException(
-      'Role not found.',
+      "Role not found.",
     );
   }
 
-  // 2. System Role
   if (role.isSystem) {
     throw new ConflictException(
-      'System role cannot be deleted.',
+      "System role cannot be deleted.",
     );
   }
 
-  // 3. Soft Delete
-  await this.roleRepository.delete(
-    BigInt(id),
-  );
-
-  return {
-    message:
-      'Role deleted successfully.',
-  };
-}
-
-
-async findRolePermissions(
-  roleId: bigint,
-) {
-  await this.findOne(
-    Number(roleId),
-  );
-
-  const permissions =
-    await this.roleRepository.findRolePermissions(
-      roleId,
+  const userCount =
+    await this.roleRepository.countUsers(
+      companyId,
+      uuid,
     );
 
-  return {
-    roleId: roleId.toString(),
-    permissionIds:
-      permissions.map((item) =>
-        item.permissionId.toString(),
-      ),
-  };
-}
+  if (userCount > 0) {
+    throw new ConflictException(
+      "Role cannot be deleted because users are assigned to it.",
+    );
+  }
 
-async assignPermissions(
-  roleId: bigint,
-  dto: AssignRolePermissionsDto,
-) {
-  await this.findOne(
-    Number(roleId),
-  );
-
-  await this.roleRepository.assignPermissions(
-    roleId,
-    dto.permissionIds,
+  await this.roleRepository.softDelete(
+    companyId,
+    uuid,
   );
 
   return {
     message:
-      "Permissions assigned successfully.",
+      "Role deleted successfully.",
   };
 }
+  async findRolePermissions(
+    companyId: bigint,
+    roleUuid: string,
+  ) {
+    const role =
+      await this.roleRepository.findByUuid(
+        companyId,
+        roleUuid,
+      );
 
+    if (!role) {
+      throw new NotFoundException(
+        "Role not found.",
+      );
+    }
+
+    const rolePermissions =
+      await this.roleRepository.findRolePermissions(
+        companyId,
+        roleUuid,
+      );
+
+    const permissions =
+      rolePermissions.map(
+        (item) =>
+          item.permission,
+      );
+
+    return {
+      message:
+        "Role permissions fetched successfully.",
+
+      role: {
+        uuid:
+          role.uuid,
+
+        name:
+          role.name,
+
+        code:
+          role.code,
+      },
+
+      permissionUuids:
+        permissions.map(
+          (permission) =>
+            permission.uuid,
+        ),
+
+      permissions,
+    };
+  }
+
+  async assignPermissions(
+    companyId: bigint,
+    roleUuid: string,
+    dto: AssignRolePermissionsDto,
+  ) {
+    const role =
+      await this.roleRepository.findByUuid(
+        companyId,
+        roleUuid,
+      );
+
+    if (!role) {
+      throw new NotFoundException(
+        "Role not found.",
+      );
+    }
+
+    const result =
+      await this.roleRepository.assignPermissions(
+        companyId,
+        roleUuid,
+        dto.permissionUuids,
+      );
+
+    if (!result) {
+      throw new NotFoundException(
+        "Role not found.",
+      );
+    }
+
+    if (
+      result.assignedPermissionCount !==
+      result.requestedPermissionCount
+    ) {
+      throw new NotFoundException(
+        "One or more permissions were not found or inactive.",
+      );
+    }
+
+    return {
+      message:
+        "Permissions assigned successfully.",
+
+      roleUuid,
+
+      permissionUuids:
+        result.foundPermissionUuids,
+    };
+  }
 }

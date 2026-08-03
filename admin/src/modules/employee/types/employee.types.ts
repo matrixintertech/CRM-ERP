@@ -1,9 +1,6 @@
-// employee.types.ts
-
 export type Gender =
   | "MALE"
-  | "FEMALE"
-
+  | "FEMALE";
 
 export type EmploymentType =
   | "FULL_TIME"
@@ -15,65 +12,123 @@ export type Status =
   | "ACTIVE"
   | "INACTIVE";
 
+export type UserType =
+  | "PLATFORM_OWNER"
+  | "COMPANY_ADMIN"
+  | "EMPLOYEE"
+  | "VENDOR"
+  | "CLIENT";
+
+export type UserStatus =
+  | "PENDING"
+  | "ACTIVE"
+  | "INACTIVE"
+  | "SUSPENDED";
+
+export interface EmployeeRelation {
+  uuid: string;
+  name: string;
+  code?: string;
+}
+
+export interface EmployeeManager {
+  uuid: string;
+  displayName: string;
+}
+
+export interface EmployeeRole {
+  uuid: string;
+  name: string;
+  code: string;
+  status: Status;
+}
+
+export interface EmployeeUser {
+  uuid: string;
+
+  displayName?: string | null;
+
+  email?: string | null;
+
+  mobile?: string | null;
+
+  userType: UserType;
+
+  status: UserStatus;
+
+  role?: EmployeeRole | null;
+}
+
 export interface Employee {
   uuid: string;
+
   employeeCode: string;
 
   firstName: string;
-  lastName?: string;
-  displayName?: string;
+
+  lastName?: string | null;
+
+  displayName?: string | null;
 
   email: string;
-  mobile?: string;
 
-  gender?: Gender;
+  mobile?: string | null;
 
-  joiningDate?: string;
+  gender?: Gender | null;
 
-  employmentType?: EmploymentType;
+  joiningDate?: string | null;
 
-  avatarUrl?: string;
+  employmentType?: EmploymentType | null;
+
+  avatarUrl?: string | null;
 
   status: Status;
 
-  organizationUnit?: {
-    uuid: string;
-    name: string;
-  };
+  organizationUnit?:
+    | EmployeeRelation
+    | null;
 
-  department?: {
-    uuid: string;
-    name: string;
-  };
+  department?:
+    | EmployeeRelation
+    | null;
 
-  designation?: {
-    uuid: string;
-    name: string;
-  };
+  designation?:
+    | EmployeeRelation
+    | null;
 
-  manager?: {
-    uuid: string;
-    displayName: string;
-  };
+  manager?:
+    | EmployeeManager
+    | null;
+
+  user?:
+    | EmployeeUser
+    | null;
 
   createdAt: string;
+
   updatedAt: string;
 }
 
 export interface CreateEmployeeDto {
   firstName: string;
+
   lastName?: string;
+
   displayName?: string;
 
   email: string;
+
   mobile?: string;
 
   gender?: Gender;
 
-  organizationUnitId?: string;
-  departmentId?: string;
-  designationId?: string;
-  managerId?: string;
+  organizationUnitUuid?: string;
+
+  departmentUuid?: string;
+
+  designationUuid?: string;
+
+  managerUuid?: string;
 
   joiningDate?: string;
 
@@ -86,18 +141,24 @@ export interface CreateEmployeeDto {
 
 export interface UpdateEmployeeDto {
   firstName?: string;
+
   lastName?: string;
+
   displayName?: string;
 
   email?: string;
+
   mobile?: string;
 
   gender?: Gender;
 
-  organizationUnitId?: string;
-  departmentId?: string;
-  designationId?: string;
-  managerId?: string;
+  organizationUnitUuid?: string;
+
+  departmentUuid?: string;
+
+  designationUuid?: string;
+
+  managerUuid?: string;
 
   joiningDate?: string;
 

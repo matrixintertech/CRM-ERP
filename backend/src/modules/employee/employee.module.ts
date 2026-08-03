@@ -8,8 +8,17 @@ import { DepartmentRepository } from "../department/repositories/department.repo
 import { DesignationRepository } from "../designation/repositories/designation.repository";
 import { OrganizationUnitRepository } from "../organization-unit/repositories/organization-unit.repository";
 
+import { RoleModule } from "../roles/role.module";
+
 @Module({
-  controllers: [EmployeeController],
+  imports: [
+    RoleModule,
+  ],
+
+  controllers: [
+    EmployeeController,
+  ],
+
   providers: [
     EmployeeService,
     EmployeeRepository,
@@ -18,6 +27,7 @@ import { OrganizationUnitRepository } from "../organization-unit/repositories/or
     DesignationRepository,
     OrganizationUnitRepository,
   ],
+
   exports: [
     EmployeeService,
     EmployeeRepository,

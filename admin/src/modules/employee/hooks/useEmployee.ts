@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
+
 import { notify } from "@/shared/utils/notify";
 
 import {
@@ -19,43 +23,78 @@ export const useEmployee = () => {
   const [loading, setLoading] =
     useState(false);
 
-  const [employees, setEmployees] =
-    useState<Employee[]>([]);
+  const [
+    employees,
+    setEmployees,
+  ] = useState<Employee[]>([]);
 
   const [
     selectedEmployee,
     setSelectedEmployee,
-  ] = useState<Employee | null>(null);
+  ] = useState<Employee | null>(
+    null,
+  );
 
   const fetchEmployees =
-    async () => {
+    useCallback(async () => {
       setLoading(true);
 
       try {
         const data =
           await getEmployees();
 
-        setEmployees(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  const fetchEmployee =
-    async (uuid: string) => {
-      setLoading(true);
-
-      try {
-        const data =
-          await getEmployee(uuid);
-
-        setSelectedEmployee(data);
+        setEmployees(
+          Array.isArray(data)
+            ? data
+            : [],
+        );
 
         return data;
+      } catch (error: any) {
+        notify.error(
+          error?.response?.data
+            ?.message ??
+            "Failed to load employees.",
+        );
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
+
+  const fetchEmployee =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        setLoading(true);
+
+        try {
+          const data =
+            await getEmployee(
+              uuid,
+            );
+
+          setSelectedEmployee(
+            data,
+          );
+
+          return data;
+        } catch (error: any) {
+          notify.error(
+            error?.response?.data
+              ?.message ??
+              "Failed to load employee.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
 
   const create = async (
     payload: CreateEmployeeDto,
@@ -64,16 +103,21 @@ export const useEmployee = () => {
 
     try {
       const data =
-        await createEmployee(payload);
+        await createEmployee(
+          payload,
+        );
 
       notify.success(
-        "Employee created successfully.",
+        data?.message ??
+          "Employee created successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to create employee.",
+        error?.response?.data
+          ?.message ??
+          "Failed to create employee.",
       );
 
       throw error;
@@ -96,13 +140,16 @@ export const useEmployee = () => {
         );
 
       notify.success(
-        "Employee updated successfully.",
+        data?.message ??
+          "Employee updated successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to update employee.",
+        error?.response?.data
+          ?.message ??
+          "Failed to update employee.",
       );
 
       throw error;
@@ -118,16 +165,38 @@ export const useEmployee = () => {
 
     try {
       const data =
-        await deleteEmployee(uuid);
+        await deleteEmployee(
+          uuid,
+        );
+
+      setEmployees(
+        (previous) =>
+          previous.filter(
+            (employee) =>
+              employee.uuid !== uuid,
+          ),
+      );
+
+      if (
+        selectedEmployee?.uuid ===
+        uuid
+      ) {
+        setSelectedEmployee(
+          null,
+        );
+      }
 
       notify.success(
-        "Employee deleted successfully.",
+        data?.message ??
+          "Employee deleted successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to delete employee.",
+        error?.response?.data
+          ?.message ??
+          "Failed to delete employee.",
       );
 
       throw error;
@@ -140,17 +209,13 @@ export const useEmployee = () => {
     loading,
 
     employees,
-
     selectedEmployee,
 
     fetchEmployees,
-
     fetchEmployee,
 
     create,
-
     update,
-
     remove,
   };
 };

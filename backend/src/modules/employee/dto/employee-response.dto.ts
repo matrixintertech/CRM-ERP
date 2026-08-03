@@ -1,10 +1,101 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { EmploymentType, Gender, Status } from "@prisma/client";
+
+import {
+  EmploymentType,
+  Gender,
+  Status,
+  UserStatus,
+  UserType,
+} from "@prisma/client";
+
+class RelationDto {
+  @ApiProperty()
+  uuid: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  code?: string | null;
+}
+
+class ManagerDto {
+  @ApiProperty()
+  uuid: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  employeeCode?: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  displayName?: string | null;
+}
+
+class UserRoleDto {
+  @ApiProperty()
+  uuid: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  code: string;
+
+  @ApiProperty({
+    enum: Status,
+  })
+  status: Status;
+}
+
+class UserDto {
+  @ApiProperty()
+  uuid: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  email?: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  mobile?: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  displayName?: string | null;
+
+  @ApiProperty({
+    enum: UserType,
+  })
+  userType: UserType;
+
+  @ApiProperty({
+    enum: UserStatus,
+  })
+  status: UserStatus;
+
+  @ApiProperty({
+    type: UserRoleDto,
+    required: false,
+    nullable: true,
+  })
+  role?: UserRoleDto | null;
+}
 
 export class EmployeeResponseDto {
-  @ApiProperty()
-  id: string;
-
   @ApiProperty()
   uuid: string;
 
@@ -14,14 +105,23 @@ export class EmployeeResponseDto {
   @ApiProperty()
   firstName: string;
 
-  @ApiProperty({ required: false })
-  lastName?: string;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  lastName?: string | null;
 
-  @ApiProperty({ required: false })
-  displayName?: string;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  displayName?: string | null;
 
-  @ApiProperty({ required: false })
-  email?: string;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+  })
+  email?: string | null;
 
   @ApiProperty()
   mobile: string;
@@ -29,52 +129,68 @@ export class EmployeeResponseDto {
   @ApiProperty({
     enum: Gender,
     required: false,
+    nullable: true,
   })
-  gender?: Gender;
+  gender?: Gender | null;
 
   @ApiProperty({
     required: false,
-    description: "Organization Unit UUID",
+    nullable: true,
   })
-  organizationUnitId?: string;
-
-  @ApiProperty({
-    required: false,
-    description: "Department UUID",
-  })
-  departmentId?: string;
-
-  @ApiProperty({
-    required: false,
-    description: "Designation UUID",
-  })
-  designationId?: string;
-
-  @ApiProperty({
-    required: false,
-    description: "Reporting Manager UUID",
-  })
-  managerId?: string;
-
-  @ApiProperty({
-    required: false,
-  })
-  joiningDate?: Date;
+  joiningDate?: Date | null;
 
   @ApiProperty({
     enum: EmploymentType,
+    required: false,
+    nullable: true,
   })
-  employmentType: EmploymentType;
+  employmentType?: EmploymentType | null;
 
   @ApiProperty({
     required: false,
+    nullable: true,
   })
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 
   @ApiProperty({
     enum: Status,
   })
   status: Status;
+
+  @ApiProperty({
+    type: RelationDto,
+    required: false,
+    nullable: true,
+  })
+  organizationUnit?: RelationDto | null;
+
+  @ApiProperty({
+    type: RelationDto,
+    required: false,
+    nullable: true,
+  })
+  department?: RelationDto | null;
+
+  @ApiProperty({
+    type: RelationDto,
+    required: false,
+    nullable: true,
+  })
+  designation?: RelationDto | null;
+
+  @ApiProperty({
+    type: ManagerDto,
+    required: false,
+    nullable: true,
+  })
+  manager?: ManagerDto | null;
+
+  @ApiProperty({
+    type: UserDto,
+    required: false,
+    nullable: true,
+  })
+  user?: UserDto | null;
 
   @ApiProperty()
   createdAt: Date;

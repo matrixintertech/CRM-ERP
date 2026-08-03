@@ -1,5 +1,8 @@
+import {
+  useCallback,
+  useState,
+} from "react";
 
-import { useState } from "react";
 import { notify } from "@/shared/utils/notify";
 
 import {
@@ -13,6 +16,7 @@ import {
 import type {
   Designation,
   DesignationFormData,
+  UpdateDesignationDto,
 } from "../types/designation.types";
 
 export const useDesignation = () => {
@@ -27,37 +31,70 @@ export const useDesignation = () => {
   const [
     selectedDesignation,
     setSelectedDesignation,
-  ] = useState<Designation | null>(null);
+  ] = useState<Designation | null>(
+    null,
+  );
 
   const fetchDesignations =
-    async () => {
+    useCallback(async () => {
       setLoading(true);
 
       try {
         const data =
           await getDesignations();
 
-        setDesignations(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  const fetchDesignation =
-    async (id: string) => {
-      setLoading(true);
-
-      try {
-        const data =
-          await getDesignation(id);
-
-        setSelectedDesignation(data);
+        setDesignations(
+          Array.isArray(data)
+            ? data
+            : [],
+        );
 
         return data;
+      } catch (error: any) {
+        notify.error(
+          error?.response?.data
+            ?.message ??
+            "Failed to load designations.",
+        );
+
+        throw error;
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
+
+  const fetchDesignation =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        setLoading(true);
+
+        try {
+          const data =
+            await getDesignation(
+              uuid,
+            );
+
+          setSelectedDesignation(
+            data,
+          );
+
+          return data;
+        } catch (error: any) {
+          notify.error(
+            error?.response?.data
+              ?.message ??
+              "Failed to load designation.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
 
   const create = async (
     payload: DesignationFormData,
@@ -66,16 +103,21 @@ export const useDesignation = () => {
 
     try {
       const data =
-        await createDesignation(payload);
+        await createDesignation(
+          payload,
+        );
 
       notify.success(
-        "Designation created successfully.",
+        data?.message ??
+          "Designation created successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to create designation.",
+        error?.response?.data
+          ?.message ??
+          "Failed to create designation.",
       );
 
       throw error;
@@ -85,26 +127,29 @@ export const useDesignation = () => {
   };
 
   const update = async (
-    id: string,
-    payload: Partial<DesignationFormData>,
+    uuid: string,
+    payload: UpdateDesignationDto,
   ) => {
     setLoading(true);
 
     try {
       const data =
         await updateDesignation(
-          id,
+          uuid,
           payload,
         );
 
       notify.success(
-        "Designation updated successfully.",
+        data?.message ??
+          "Designation updated successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to update designation.",
+        error?.response?.data
+          ?.message ??
+          "Failed to update designation.",
       );
 
       throw error;
@@ -114,22 +159,36 @@ export const useDesignation = () => {
   };
 
   const remove = async (
-    id: string,
+    uuid: string,
   ) => {
     setLoading(true);
 
     try {
       const data =
-        await deleteDesignation(id);
+        await deleteDesignation(
+          uuid,
+        );
+
+      setDesignations(
+        (previous) =>
+          previous.filter(
+            (designation) =>
+              designation.uuid !==
+              uuid,
+          ),
+      );
 
       notify.success(
-        "Designation deleted successfully.",
+        data?.message ??
+          "Designation deleted successfully.",
       );
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       notify.error(
-        "Failed to delete designation.",
+        error?.response?.data
+          ?.message ??
+          "Failed to delete designation.",
       );
 
       throw error;
@@ -142,17 +201,13 @@ export const useDesignation = () => {
     loading,
 
     designations,
-
     selectedDesignation,
 
     fetchDesignations,
-
     fetchDesignation,
 
     create,
-
     update,
-
     remove,
   };
 };

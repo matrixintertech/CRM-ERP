@@ -131,6 +131,18 @@ export const menu: MenuItem[] = [
       title: "Organization Unit",
       path: "/settings/organization-units",
     },
+
+     {
+      id: "roles",
+      title: "Roles",
+      path: "/settings/roles",
+    },
+
+     {
+      id: "permissions",
+      title: "Permissions",
+      path: "/settings/permissions",
+    },
     
   ],
 },

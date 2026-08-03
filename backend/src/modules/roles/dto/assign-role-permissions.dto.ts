@@ -1,17 +1,22 @@
+import { ApiProperty } from "@nestjs/swagger";
+
 import {
-  ArrayNotEmpty,
+  ArrayUnique,
   IsArray,
-  IsNumber,
+  IsUUID,
 } from "class-validator";
 
 export class AssignRolePermissionsDto {
+  @ApiProperty({
+    description:
+      "Permission UUIDs. Empty array removes all permissions.",
+    example: [],
+    type: [String],
+  })
   @IsArray()
-  @ArrayNotEmpty()
-  @IsNumber(
-    {},
-    {
-      each: true,
-    },
-  )
-  permissionIds: number[];
+  @ArrayUnique()
+  @IsUUID("4", {
+    each: true,
+  })
+  permissionUuids: string[];
 }

@@ -1,154 +1,265 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
+
 import { notify } from "@/shared/utils/notify";
 
 import {
+  assignRolePermissions,
   createRole,
   deleteRole,
   getRole,
+  getRolePermissions,
   getRoles,
   updateRole,
 } from "../api/role.api";
 
 import type {
+  AssignRolePermissionsDto,
+  CreateRoleDto,
   Role,
-  RoleFormData,
+  RolePermissionResponse,
+  UpdateRoleDto,
 } from "../types/role.types";
 
-export const useRoles = () => {
+export const useRole = () => {
   const [loading, setLoading] =
     useState(false);
 
-  const [roles, setRoles] =
-    useState<Role[]>([]);
+  const [
+    roles,
+    setRoles,
+  ] = useState<Role[]>([]);
 
   const [
     selectedRole,
     setSelectedRole,
-  ] = useState<Role | null>(null);
+  ] = useState<Role | null>(
+    null,
+  );
 
-  const fetchRoles = async (
-    companyId: string,
+  const [
+    selectedRolePermissions,
+    setSelectedRolePermissions,
+  ] =
+    useState<RolePermissionResponse | null>(
+      null,
+    );
+
+  const fetchRoles =
+    useCallback(async () => {
+      setLoading(true);
+
+      try {
+        const data =
+          await getRoles();
+
+        setRoles(
+          Array.isArray(data)
+            ? data
+            : [],
+        );
+
+        return data;
+      } catch (error) {
+        notify.error(
+          "Failed to load roles.",
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    }, []);
+
+  const fetchRole =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        setLoading(true);
+
+        try {
+          const data =
+            await getRole(uuid);
+
+          setSelectedRole(data);
+
+          return data;
+        } catch (error) {
+          notify.error(
+            "Failed to load role.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
+
+  const fetchRolePermissions =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        setLoading(true);
+
+        try {
+          const data =
+            await getRolePermissions(
+              uuid,
+            );
+
+          setSelectedRolePermissions(
+            data,
+          );
+
+          return data;
+        } catch (error) {
+          notify.error(
+            "Failed to load role permissions.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
+
+  const create = async (
+    payload: CreateRoleDto,
   ) => {
     setLoading(true);
 
     try {
       const data =
-        await getRoles(companyId);
+        await createRole(payload);
 
-      setRoles(data);
+      notify.success(
+        "Role created successfully.",
+      );
+
+      return data;
+    } catch (error) {
+      notify.error(
+        "Failed to create role.",
+      );
+
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
- const fetchRole = async (
-  id: string,
-) => {
-  setLoading(true);
+  const update = async (
+    uuid: string,
+    payload: UpdateRoleDto,
+  ) => {
+    setLoading(true);
 
-  try {
-    const data =
-      await getRole(id);
+    try {
+      const data =
+        await updateRole(
+          uuid,
+          payload,
+        );
 
-    setSelectedRole(data);
+      notify.success(
+        "Role updated successfully.",
+      );
 
-    return data; 
-  } finally {
-    setLoading(false);
-  }
-};
+      return data;
+    } catch (error) {
+      notify.error(
+        "Failed to update role.",
+      );
 
-const create = async (
-  payload: RoleFormData,
-) => {
-  setLoading(true);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  try {
-    const data = await createRole(payload);
+  const remove = async (
+    uuid: string,
+  ) => {
+    setLoading(true);
 
-    notify.success(
-      "Role created successfully.",
-    );
+    try {
+      const data =
+        await deleteRole(uuid);
 
-    return data;
-  } catch (error) {
-    notify.error(
-      "Failed to create role.",
-    );
+      setRoles((previous) =>
+        previous.filter(
+          (role) =>
+            role.uuid !== uuid,
+        ),
+      );
 
-    throw error;
-  } finally {
-    setLoading(false);
-  }
-};
+      notify.success(
+        "Role deleted successfully.",
+      );
 
-const update = async (
-  id: string,
-  payload: Partial<RoleFormData>,
-) => {
-  setLoading(true);
+      return data;
+    } catch (error) {
+      notify.error(
+        "Failed to delete role.",
+      );
 
-  try {
-    const data = await updateRole(
-      id,
-      payload,
-    );
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    notify.success(
-      "Role updated successfully.",
-    );
+  const assignPermissions = async (
+    uuid: string,
+    payload: AssignRolePermissionsDto,
+  ) => {
+    setLoading(true);
 
-    return data;
-  } catch (error) {
-    notify.error(
-      "Failed to update role.",
-    );
+    try {
+      const data =
+        await assignRolePermissions(
+          uuid,
+          payload,
+        );
 
-    throw error;
-  } finally {
-    setLoading(false);
-  }
-};
+      notify.success(
+        "Role permissions updated successfully.",
+      );
 
-const remove = async (
-  id: string,
-) => {
-  setLoading(true);
+      return data;
+    } catch (error) {
+      notify.error(
+        "Failed to update role permissions.",
+      );
 
-  try {
-    const data = await deleteRole(id);
-
-    notify.success(
-      "Role deleted successfully.",
-    );
-
-    return data;
-  } catch (error) {
-    notify.error(
-      "Failed to delete role.",
-    );
-
-    throw error;
-  } finally {
-    setLoading(false);
-  }
-};
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
     loading,
 
     roles,
-
     selectedRole,
+    selectedRolePermissions,
 
     fetchRoles,
-
     fetchRole,
+    fetchRolePermissions,
 
     create,
-
     update,
-
     remove,
+    assignPermissions,
   };
 };

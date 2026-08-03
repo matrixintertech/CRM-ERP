@@ -1,13 +1,15 @@
-import { Module } from '@nestjs/common';
+import { Module } from "@nestjs/common";
 
-import { PrismaModule } from 'src/database/prisma.module';
+import { PrismaModule } from "src/database/prisma.module";
 
-import { RoleController } from './controllers/role.controller';
-import { RoleRepository } from './repositories/role.repository';
-import { RoleService } from './services/role.service';
+import { RoleController } from "./controllers/role.controller";
+import { RoleRepository } from "./repositories/role.repository";
+import { RoleService } from "./services/role.service";
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+  ],
 
   controllers: [
     RoleController,
@@ -18,6 +20,9 @@ import { RoleService } from './services/role.service';
     RoleRepository,
   ],
 
-  exports: [RoleService],
+  exports: [
+    RoleService,
+    RoleRepository,
+  ],
 })
 export class RoleModule {}

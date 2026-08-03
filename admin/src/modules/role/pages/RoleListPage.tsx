@@ -2,139 +2,307 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import {
   useNavigate,
-  useParams,
 } from "react-router-dom";
+
+import {
+  KeyRound,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import DataTable from "@/shared/components/DataTable/DataTable";
 
-import { useRoles } from "../hooks/useRoles";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
-import RoleTable from "../components/RoleTable";
 import RoleModal from "../components/RoleModal";
-import RoleDetailsModal from "../components/RoleDetailsModal";
 
-import type { RoleFormData } from "../types/role.types";
+import {
+  useRole,
+} from "../hooks/useRoles";
 
+import type {
+  Role,
+  RoleFormData,
+  UpdateRoleDto,
+} from "../types/role.types";
 
-const RoleListPage = () => {
+const createDefaultForm =
+  (): RoleFormData => ({
+    name: "",
+    code: "",
+    description: "",
+    status: "ACTIVE",
+  });
+
+const RolePage = () => {
   const navigate = useNavigate();
-
-
-  const { companyId } =
-    useParams();
 
   const {
     loading,
     roles,
-    selectedRole,
     fetchRoles,
     fetchRole,
     create,
     update,
     remove,
-  } = useRoles();
+  } = useRole();
 
-  const [openModal, setOpenModal] =
+  const [open, setOpen] =
     useState(false);
 
   const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+    editUuid,
+    setEditUuid,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const [editId, setEditId] =
-    useState<string | null>(null);
-
-  const [formData, setFormData] =
-    useState<RoleFormData>({
-      companyId: Number(companyId),
-
-      name: "",
-
-      code: "",
-
-      description: "",
-
-      isSystem: false,
-    });
+  const [
+    formData,
+    setFormData,
+  ] = useState<RoleFormData>(
+    createDefaultForm,
+  );
 
   useEffect(() => {
-    if (companyId) {
-      fetchRoles(companyId);
-    }
-  }, [companyId]);
+    void fetchRoles();
+  }, [fetchRoles]);
 
-const handleSubmit = async () => {
-  if (editId) {
-    const {
-      companyId,
-      ...payload
-    } = formData;
+  const resetForm = () => {
+    setEditUuid(null);
 
-    await update(
-      editId,
-      payload,
+    setFormData(
+      createDefaultForm(),
     );
-  } else {
-    await create(formData);
-  }
+  };
 
-  await fetchRoles(companyId!);
+  const handleClose = () => {
+    setOpen(false);
+    resetForm();
+  };
 
-  setOpenModal(false);
+  const handleCreateOpen = () => {
+    resetForm();
+    setOpen(true);
+  };
 
-  setEditId(null);
+  const handleSubmit = async () => {
+    try {
+      if (editUuid) {
+        const payload:
+          UpdateRoleDto = {
+          name:
+            formData.name.trim(),
 
-  setFormData({
-    companyId: Number(companyId),
-    name: "",
-    code: "",
-    description: "",
-    isSystem: false,
-  });
-};
+          code:
+            formData.code
+              .trim()
+              .toUpperCase(),
 
+          description:
+            formData.description
+              .trim() ||
+            undefined,
 
-const handleEdit = async (
-  id: string,
-) => {
-  const role =
-    await fetchRole(id);
+          status:
+            formData.status,
+        };
 
-  if (!role) return;
+        await update(
+          editUuid,
+          payload,
+        );
+      } else {
+        await create({
+          name:
+            formData.name.trim(),
 
-  setEditId(id);
+          code:
+            formData.code
+              .trim()
+              .toUpperCase(),
 
-  setFormData({
-    companyId: Number(companyId),
-    name: role.name,
-    code: role.code,
-    description:
-      role.description ?? "",
-    isSystem: role.isSystem,
-  });
+          description:
+            formData.description
+              .trim() ||
+            undefined,
 
-  setOpenModal(true);
-};
+          isSystem: false,
+        });
+      }
 
+      await fetchRoles();
+      handleClose();
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
 
-const handlePermissions = (
-  id: string,
-) => {
-  navigate(
-    `/companies/${companyId}/roles/${id}/permissions`,
-  );
-};
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
+      const role =
+        await fetchRole(uuid);
+
+      if (!role) {
+        return;
+      }
+
+      setEditUuid(uuid);
+
+      setFormData({
+        name: role.name,
+        code: role.code,
+
+        description:
+          role.description ?? "",
+
+        status: role.status,
+      });
+
+      setOpen(true);
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
+
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this role?",
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await remove(uuid);
+    } catch (error: any) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
+
+  const columns:
+    DataTableColumn<Role>[] = [
+      {
+        key: "name",
+        title: "Role",
+      },
+      {
+        key: "code",
+        title: "Code",
+      },
+      {
+        key: "description",
+        title: "Description",
+
+        render: (row) =>
+          row.description ||
+          "-",
+      },
+      {
+        key: "employees",
+        title: "Employees",
+        align: "center",
+
+        render: (row) =>
+          row._count?.employees ??
+          0,
+      },
+      {
+        key: "isSystem",
+        title: "Type",
+        align: "center",
+
+        render: (row) =>
+          row.isSystem
+            ? "System"
+            : "Custom",
+      },
+      {
+        key: "status",
+        title: "Status",
+        align: "center",
+      },
+      {
+        key: "actions",
+        title: "Actions",
+        align: "center",
+
+        render: (row) => (
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "center",
+              gap: 8,
+            }}
+          >
+            <Button
+              size="sm"
+              aria-label="Assign permissions"
+              onClick={() =>
+                navigate(
+                  `/settings/roles/${row.uuid}/permissions`,
+                )
+              }
+            >
+              <KeyRound size={16} />
+            </Button>
+
+            <Button
+              size="sm"
+              disabled={row.isSystem}
+              onClick={() =>
+                handleEdit(row.uuid)
+              }
+            >
+              <SquarePen size={16} />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={row.isSystem}
+              onClick={() =>
+                handleDelete(
+                  row.uuid,
+                )
+              }
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
+        ),
+      },
+    ];
 
   return (
     <>
       <PageHeader
         title="Roles"
-        subtitle="Manage company roles"
+        subtitle="Manage company roles and permissions"
         actions={
           <div
             style={{
@@ -145,87 +313,52 @@ const handlePermissions = (
             <Button
               variant="secondary"
               onClick={() =>
-                navigate(
-                  "/companies",
-                )
+                navigate(-1)
               }
             >
               Back
             </Button>
 
             <Button
-              onClick={() => {
-                setEditId(null);
-
-                setFormData({
-                  companyId: Number(companyId),
-                  name: "",
-                  code: "",
-                  description: "",
-                  isSystem: false,
-                });
-
-                setOpenModal(true);
-              }}
+              onClick={
+                handleCreateOpen
+              }
             >
-              Create Role
+              Add Role
             </Button>
           </div>
         }
       />
 
       <Card>
-        <RoleTable
-          data={roles}
+        <DataTable
           loading={loading}
-          onView={async (
-            id,
-          ) => {
-            await fetchRole(id);
-
-            setOpenDetails(true);
-          }}
-           onEdit={handleEdit}
-          onDelete={async (
-            id,
-          ) => {
-            await remove(id);
-
-            await fetchRoles(
-              companyId!,
-            );
-          }}
-           onPermissions={handlePermissions}
+          data={roles ?? []}
+          columns={columns}
+          keyField="uuid"
+          showSerialNumber
+          emptyMessage="No Roles Found."
         />
       </Card>
 
       <RoleModal
-        open={openModal}
+        title={
+          editUuid
+            ? "Edit Role"
+            : "Create Role"
+        }
+        isEdit={
+          Boolean(editUuid)
+        }
+        open={open}
         loading={loading}
-         title={
-            editId
-              ? "Edit Role"
-              : "Create Role"
-          }
-          isEdit={!!editId}
         formData={formData}
         setFormData={setFormData}
-        onClose={() =>
-          setOpenModal(false)
-        }
-        onSubmit={handleSubmit }
-      />
-
-      <RoleDetailsModal
-        open={openDetails}
-        role={selectedRole}
-        loading={loading}
-        onClose={() =>
-          setOpenDetails(false)
-        }
+        onClose={handleClose}
+        onSubmit={handleSubmit}
       />
     </>
   );
 };
 
-export default RoleListPage;
+export default RolePage;

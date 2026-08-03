@@ -2,6 +2,7 @@ import api from "@/shared/services/axios";
 
 import type {
   CreateDesignationDto,
+  Designation,
   UpdateDesignationDto,
 } from "../types/designation.types";
 
@@ -13,33 +14,38 @@ export const createDesignation = async (
     payload,
   );
 
-  return data;
+  return data.data ?? data;
 };
 
-export const getDesignations = async () => {
+export const getDesignations = async (): Promise<
+  Designation[]
+> => {
   const { data } = await api.get(
     "/designations",
   );
 
-  return data.data.designations;
+  return Array.isArray(data.data)
+    ? data.data
+    : data.data?.designations ?? [];
 };
 
 export const getDesignation = async (
-  id: string,
-) => {
+  uuid: string,
+): Promise<Designation> => {
   const { data } = await api.get(
-    `/designations/${id}`,
+    `/designations/${uuid}`,
   );
 
-  return data.data.designation;
+  return data.data?.designation ??
+    data.data;
 };
 
 export const updateDesignation = async (
-  id: string,
-  payload: Partial<UpdateDesignationDto>,
+  uuid: string,
+  payload: UpdateDesignationDto,
 ) => {
   const { data } = await api.patch(
-    `/designations/${id}`,
+    `/designations/${uuid}`,
     payload,
   );
 
@@ -47,10 +53,10 @@ export const updateDesignation = async (
 };
 
 export const deleteDesignation = async (
-  id: string,
+  uuid: string,
 ) => {
   const { data } = await api.delete(
-    `/designations/${id}`,
+    `/designations/${uuid}`,
   );
 
   return data;

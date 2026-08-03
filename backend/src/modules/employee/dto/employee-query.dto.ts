@@ -1,85 +1,59 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import {
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
+
 import {
   IsEnum,
-  IsInt,
   IsOptional,
-  IsString,
   IsUUID,
-  Min,
 } from "class-validator";
-import { EmploymentType, Status } from "@prisma/client";
+
+import {
+  EmploymentType,
+  Gender,
+  Status,
+} from "@prisma/client";
 
 export class EmployeeQueryDto {
   @ApiPropertyOptional({
-    example: 1,
-    default: 1,
+    description: "Organization Unit UUID",
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({
-    example: 10,
-    default: 10,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number = 10;
-
-  @ApiPropertyOptional({
-    example: "Anil",
-    description: "Search by employee code, name, email or mobile",
-  })
-  @IsOptional()
-  @IsString()
-  search?: string;
-
-  @ApiPropertyOptional({
-    enum: Status,
-    example: Status.ACTIVE,
-  })
-  @IsOptional()
-  @IsEnum(Status)
-  status?: Status;
-
-  @ApiPropertyOptional({
-    enum: EmploymentType,
-    example: EmploymentType.FULL_TIME,
-  })
-  @IsOptional()
-  @IsEnum(EmploymentType)
-  employmentType?: EmploymentType;
+  @IsUUID()
+  organizationUnitUuid?: string;
 
   @ApiPropertyOptional({
     description: "Department UUID",
   })
   @IsOptional()
   @IsUUID()
-  departmentId?: string;
+  departmentUuid?: string;
 
   @ApiPropertyOptional({
     description: "Designation UUID",
   })
   @IsOptional()
   @IsUUID()
-  designationId?: string;
+  designationUuid?: string;
 
   @ApiPropertyOptional({
-    description: "Organization Unit UUID",
+    enum: Gender,
   })
   @IsOptional()
-  @IsUUID()
-  organizationUnitId?: string;
+  @IsEnum(Gender)
+  gender?: Gender;
 
   @ApiPropertyOptional({
-    description: "Reporting Manager UUID",
+    enum: EmploymentType,
   })
   @IsOptional()
-  @IsUUID()
-  managerId?: string;
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType;
+
+  @ApiPropertyOptional({
+    enum: Status,
+  })
+  @IsOptional()
+  @IsEnum(Status)
+  status?: Status;
 }

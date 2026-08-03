@@ -12,33 +12,64 @@ import { UpdatePermissionDto } from "../dto/update-permission.dto";
 @Injectable()
 export class PermissionService {
   constructor(
-    private readonly permissionRepository: PermissionRepository,
+    private readonly permissionRepository:
+      PermissionRepository,
   ) {}
 
   async create(
     dto: CreatePermissionDto,
   ) {
-    const exists =
+    const normalizedCode =
+      dto.code
+        .trim()
+        .toLowerCase();
+
+    const existingPermission =
       await this.permissionRepository.findByCode(
-        dto.code,
+        normalizedCode,
       );
 
-    if (exists) {
+    if (existingPermission) {
       throw new ConflictException(
         "Permission code already exists.",
       );
     }
 
     const permission =
-      await this.permissionRepository.create(
-        dto,
-      );
+      await this.permissionRepository.create({
+        ...dto,
 
-    return permission;
+        module:
+          dto.module,
+
+        name:
+          dto.name.trim(),
+
+        code:
+          normalizedCode,
+
+        description:
+          dto.description?.trim(),
+      });
+
+    return {
+      message:
+        "Permission created successfully.",
+
+      permission,
+    };
   }
 
   async findAll() {
-    return this.permissionRepository.findAll();
+    const permissions =
+      await this.permissionRepository.findAll();
+
+    return {
+      message:
+        "Permissions fetched successfully.",
+
+      permissions,
+    };
   }
 
   async findOne(
@@ -55,24 +86,47 @@ export class PermissionService {
       );
     }
 
-    return permission;
+    return {
+      message:
+        "Permission fetched successfully.",
+
+      permission,
+    };
   }
 
   async update(
     id: bigint,
     dto: UpdatePermissionDto,
   ) {
-    await this.findOne(id);
+    const existingPermission =
+      await this.permissionRepository.findById(
+        id,
+      );
 
-    if (dto.code) {
-      const exists =
+    if (!existingPermission) {
+      throw new NotFoundException(
+        "Permission not found.",
+      );
+    }
+
+    const normalizedCode =
+      dto.code
+        ?.trim()
+        .toLowerCase();
+
+    if (
+      normalizedCode &&
+      normalizedCode !==
+        existingPermission.code
+    ) {
+      const duplicatePermission =
         await this.permissionRepository.findByCode(
-          dto.code,
+          normalizedCode,
         );
 
       if (
-        exists &&
-        exists.id !== id
+        duplicatePermission &&
+        duplicatePermission.id !== id
       ) {
         throw new ConflictException(
           "Permission code already exists.",
@@ -80,49 +134,115 @@ export class PermissionService {
       }
     }
 
-    return this.permissionRepository.update(
+    const permission =
+      await this.permissionRepository.update(
+        id,
+        {
+          ...(dto.module !== undefined && {
+            module:
+              dto.module,
+          }),
+
+          ...(dto.name !== undefined && {
+            name:
+              dto.name.trim(),
+          }),
+
+          ...(normalizedCode !== undefined && {
+            code:
+              normalizedCode,
+          }),
+
+          ...(dto.description !==
+            undefined && {
+            description:
+              dto.description.trim(),
+          }),
+
+          ...(dto.status !== undefined && {
+            status:
+              dto.status,
+          }),
+        },
+      );
+
+    return {
+      message:
+        "Permission updated successfully.",
+
+      permission,
+    };
+  }
+
+async remove(
+  id: bigint,
+) {
+  const existingPermission =
+    await this.permissionRepository.findById(
       id,
-      dto,
+    );
+
+  if (!existingPermission) {
+    throw new NotFoundException(
+      "Permission not found.",
     );
   }
 
-  async remove(
-    id: bigint,
-  ) {
-    await this.findOne(id);
-
-    return this.permissionRepository.delete(
+  const permission =
+    await this.permissionRepository.softDelete(
       id,
     );
-  }
 
-  async findGrouped() {
+  return {
+    message:
+      "Permission deleted successfully.",
+
+    permission,
+  };
+}
+
+async findGrouped() {
   const permissions =
     await this.permissionRepository.findGrouped();
 
-  const grouped = permissions.reduce(
-    (acc, permission) => {
-      const module = permission.module;
+  type PermissionItem =
+    (typeof permissions)[number];
 
-      if (!acc[module]) {
-        acc[module] = [];
-      }
+  const grouped: Record<
+    string,
+    PermissionItem[]
+  > = {};
 
-      acc[module].push(permission);
+  for (const permission of permissions) {
+    const module =
+      permission.module;
 
-      return acc;
-    },
-    {} as Record<string, typeof permissions>,
-  );
+    if (!grouped[module]) {
+      grouped[module] = [];
+    }
 
-  return Object.entries(grouped).map(
-    ([module, permissions]) => ({
-      module,
-      permissions,
-    }),
-  );
+    grouped[module].push(
+      permission,
+    );
+  }
+
+  const permissionGroups =
+    Object.entries(grouped).map(
+      ([
+        module,
+        modulePermissions,
+      ]) => ({
+        module,
+        permissions:
+          modulePermissions,
+      }),
+    );
+
+  return {
+    message:
+      "Grouped permissions fetched successfully.",
+
+    permissionGroups,
+  };
 }
-
-
-
 }

@@ -8,8 +8,17 @@ import {
   IsString,
   IsUUID,
 } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { EmploymentType, Gender, Status } from "@prisma/client";
+
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
+
+import {
+  EmploymentType,
+  Gender,
+  Status,
+} from "@prisma/client";
 
 export class CreateEmployeeDto {
   @ApiProperty({
@@ -55,36 +64,44 @@ export class CreateEmployeeDto {
   gender?: Gender;
 
   @ApiPropertyOptional({
-    description: "Organization Unit UUID",
-    example: "b68b1d3f-8c27-4b8f-91d2-2f1d7b6d8c10",
+    description:
+      "Organization Unit UUID",
+    example:
+      "b68b1d3f-8c27-4b8f-91d2-2f1d7b6d8c10",
   })
   @IsOptional()
   @IsUUID()
-  organizationUnitId?: string;
+  organizationUnitUuid?: string;
 
   @ApiPropertyOptional({
-    description: "Department UUID",
-    example: "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
+    description:
+      "Department UUID",
+    example:
+      "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
   })
   @IsOptional()
   @IsUUID()
-  departmentId?: string;
+  departmentUuid?: string;
 
   @ApiPropertyOptional({
-    description: "Designation UUID",
-    example: "f0a42b54-0bc5-4b5d-9bb9-66fd1a2b0d20",
+    description:
+      "Designation UUID",
+    example:
+      "f0a42b54-0bc5-4b5d-9bb9-66fd1a2b0d20",
   })
   @IsOptional()
   @IsUUID()
-  designationId?: string;
+  designationUuid?: string;
 
   @ApiPropertyOptional({
-    description: "Reporting Manager UUID",
-    example: "7d4c40bb-8df6-4b93-9d34-3b66d5f8c541",
+    description:
+      "Reporting Manager UUID",
+    example:
+      "7d4c40bb-8df6-4b93-9d34-3b66d5f8c541",
   })
   @IsOptional()
   @IsUUID()
-  managerId?: string;
+  managerUuid?: string;
 
   @ApiPropertyOptional({
     example: "2026-08-01",
@@ -95,14 +112,16 @@ export class CreateEmployeeDto {
 
   @ApiPropertyOptional({
     enum: EmploymentType,
-    example: EmploymentType.FULL_TIME,
+    example:
+      EmploymentType.FULL_TIME,
   })
   @IsOptional()
   @IsEnum(EmploymentType)
   employmentType?: EmploymentType;
 
   @ApiPropertyOptional({
-    example: "https://example.com/avatar.jpg",
+    example:
+      "https://example.com/avatar.jpg",
   })
   @IsOptional()
   @IsString()

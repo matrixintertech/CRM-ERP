@@ -1,0 +1,95 @@
+name: matrix-crm-production
+
+services:
+  postgres:
+    image: postgres:16-alpine
+
+    container_name: matrix-crm-prod-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - matrix-crm-prod-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+
+    container_name: matrix-crm-prod-backend
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+
+      FRONTEND_URL: ${FRONTEND_URL}
+
+    ports:
+      - "127.0.0.1:3200:3000"
+
+    networks:
+      - matrix-crm-prod-network
+
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+
+    container_name: matrix-crm-prod-admin
+
+    restart: unless-stopped
+
+    depends_on:
+      backend:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8200:80"
+
+    networks:
+      - matrix-crm-prod-network
+
+volumes:
+  postgres_prod_data:
+    name: matrix-crm-prod-postgres-data
+
+networks:
+  matrix-crm-prod-network:
+    name: matrix-crm-prod-network
+    driver: bridge

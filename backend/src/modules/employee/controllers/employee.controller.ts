@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -16,11 +17,19 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+
 import { AuthGuard } from "@nestjs/passport";
+
+import type { Request } from "express";
+import type { User } from "@prisma/client";
 
 import { EmployeeService } from "../services/employee.service";
 import { CreateEmployeeDto } from "../dto/create-employee.dto";
 import { UpdateEmployeeDto } from "../dto/update-employee.dto";
+
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
 
 @ApiTags("Employees")
 @ApiBearerAuth("access-token")
@@ -28,71 +37,115 @@ import { UpdateEmployeeDto } from "../dto/update-employee.dto";
 @Controller("employees")
 export class EmployeeController {
   constructor(
-    private readonly employeeService: EmployeeService,
+    private readonly employeeService:
+      EmployeeService,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: "Create Employee" })
+  @ApiOperation({
+    summary: "Create Employee",
+  })
   @ApiResponse({
     status: 201,
-    description: "Employee created successfully.",
+    description:
+      "Employee created successfully.",
   })
-  async create(
-    @Req() req,
+  create(
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateEmployeeDto,
   ) {
     return this.employeeService.create(
-      BigInt((req.user as any).companyId),
+      req.user.companyId!,
       dto,
     );
   }
 
   @Get()
-  @ApiOperation({ summary: "Get All Employees" })
-  async findAll(@Req() req) {
+  @ApiOperation({
+    summary: "Get All Employees",
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Employees fetched successfully.",
+  })
+  findAll(
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.employeeService.findAll(
-      BigInt((req.user as any).companyId),
+      req.user.companyId!,
     );
   }
 
   @Get(":uuid")
-  @ApiOperation({ summary: "Get Employee By UUID" })
+  @ApiOperation({
+    summary: "Get Employee By UUID",
+  })
   @ApiParam({
     name: "uuid",
-    example: "b68b1d3f-8c27-4b8f-91d2-2f1d7b6d8c10",
+    type: String,
+    example:
+      "b68b1d3f-8c27-4b8f-91d2-2f1d7b6d8c10",
   })
-  async findOne(
-    @Req() req,
+  @ApiResponse({
+    status: 200,
+    description:
+      "Employee fetched successfully.",
+  })
+  findOne(
+    @Req() req: AuthenticatedRequest,
     @Param("uuid") uuid: string,
   ) {
     return this.employeeService.findOne(
-      BigInt((req.user as any).companyId),
+      req.user.companyId!,
       uuid,
     );
   }
 
   @Patch(":uuid")
-  @ApiOperation({ summary: "Update Employee" })
-  async update(
-    @Req() req,
+  @ApiOperation({
+    summary: "Update Employee",
+  })
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Employee updated successfully.",
+  })
+  update(
+    @Req() req: AuthenticatedRequest,
     @Param("uuid") uuid: string,
     @Body() dto: UpdateEmployeeDto,
   ) {
     return this.employeeService.update(
-      BigInt((req.user as any).companyId),
+      req.user.companyId!,
       uuid,
       dto,
     );
   }
 
   @Delete(":uuid")
-  @ApiOperation({ summary: "Delete Employee" })
-  async remove(
-    @Req() req,
+  @ApiOperation({
+    summary: "Delete Employee",
+  })
+  @ApiParam({
+    name: "uuid",
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Employee deleted successfully.",
+  })
+  remove(
+    @Req() req: AuthenticatedRequest,
     @Param("uuid") uuid: string,
   ) {
     return this.employeeService.remove(
-      BigInt((req.user as any).companyId),
+      req.user.companyId!,
       uuid,
     );
   }

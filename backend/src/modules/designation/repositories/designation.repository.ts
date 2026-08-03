@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 
 import {
   Prisma,
-  Designation,
 } from "@prisma/client";
 
 import { PrismaService } from "src/database/prisma.service";
@@ -13,27 +12,46 @@ export class DesignationRepository {
     private readonly prisma: PrismaService,
   ) {}
 
+  private readonly include = {
+    department: {
+      select: {
+        id: true,
+        uuid: true,
+        name: true,
+        code: true,
+
+        organizationUnit: {
+          select: {
+            id: true,
+            uuid: true,
+            name: true,
+            code: true,
+            type: true,
+          },
+        },
+      },
+    },
+  } satisfies Prisma.DesignationInclude;
+
   async create(
     data: Prisma.DesignationCreateInput,
-  ): Promise<Designation> {
+  ) {
     return this.prisma.designation.create({
       data,
+      include: this.include,
     });
   }
 
-
   async findAll(
     companyId: bigint,
-  ): Promise<Designation[]> {
+  ) {
     return this.prisma.designation.findMany({
       where: {
         companyId,
         deletedAt: null,
       },
 
-      include: {
-        department: true,
-      },
+      include: this.include,
 
       orderBy: {
         createdAt: "desc",
@@ -41,11 +59,10 @@ export class DesignationRepository {
     });
   }
 
-
   async findById(
     companyId: bigint,
     id: bigint,
-  ): Promise<Designation | null> {
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         id,
@@ -53,17 +70,14 @@ export class DesignationRepository {
         deletedAt: null,
       },
 
-      include: {
-        department: true,
-      },
+      include: this.include,
     });
   }
-
 
   async findByUuid(
     companyId: bigint,
     uuid: string,
-  ): Promise<Designation | null> {
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -71,18 +85,15 @@ export class DesignationRepository {
         deletedAt: null,
       },
 
-      include: {
-        department: true,
-      },
+      include: this.include,
     });
   }
-
 
   async findByName(
     companyId: bigint,
     departmentId: bigint,
     name: string,
-  ): Promise<Designation | null> {
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -93,12 +104,11 @@ export class DesignationRepository {
     });
   }
 
-
   async findByCode(
     companyId: bigint,
     departmentId: bigint,
     code: string,
-  ): Promise<Designation | null> {
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -109,24 +119,24 @@ export class DesignationRepository {
     });
   }
 
-
   async update(
     id: bigint,
     data: Prisma.DesignationUpdateInput,
-  ): Promise<Designation> {
+  ) {
     return this.prisma.designation.update({
       where: {
         id,
       },
 
       data,
+
+      include: this.include,
     });
   }
 
-
   async softDelete(
     id: bigint,
-  ): Promise<Designation> {
+  ) {
     return this.prisma.designation.update({
       where: {
         id,
@@ -135,6 +145,8 @@ export class DesignationRepository {
       data: {
         deletedAt: new Date(),
       },
+
+      include: this.include,
     });
   }
 }

@@ -3,12 +3,15 @@ import Modal from "@/shared/components/Modal";
 
 import RoleForm from "./RoleForm";
 
-import type { RoleFormData } from "../types/role.types";
+import type {
+  RoleFormData,
+} from "../types/role.types";
 
 interface Props {
   title: string;
+  isEdit: boolean;
+
   open: boolean;
-   isEdit: boolean;
   loading: boolean;
 
   formData: RoleFormData;
@@ -18,20 +21,23 @@ interface Props {
   >;
 
   onClose: () => void;
-
   onSubmit: () => void;
 }
 
 const RoleModal = ({
   title,
-  open,
   isEdit,
+  open,
   loading,
   formData,
   setFormData,
   onClose,
   onSubmit,
 }: Props) => {
+  const disabled =
+    !formData.name.trim() ||
+    !formData.code.trim();
+
   return (
     <Modal
       open={open}
@@ -42,6 +48,7 @@ const RoleModal = ({
       <RoleForm
         formData={formData}
         setFormData={setFormData}
+        isEdit={isEdit}
       />
 
       <div
@@ -55,13 +62,18 @@ const RoleModal = ({
       >
         <Button
           variant="secondary"
+          disabled={loading}
           onClick={onClose}
         >
           Cancel
         </Button>
 
-       <Button
+        <Button
           loading={loading}
+          disabled={
+            loading ||
+            disabled
+          }
           onClick={onSubmit}
         >
           {isEdit

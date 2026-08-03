@@ -3,7 +3,13 @@ import Modal from "@/shared/components/Modal";
 
 import DesignationForm from "./DesignationForm";
 
-import type { DesignationFormData } from "../types/designation.types";
+import type {
+  DesignationFormData,
+} from "../types/designation.types";
+
+import type {
+  Department,
+} from "../../department/types/department.types";
 
 interface Props {
   title: string;
@@ -11,6 +17,8 @@ interface Props {
 
   open: boolean;
   loading: boolean;
+
+  departments: Department[];
 
   formData: DesignationFormData;
 
@@ -28,6 +36,7 @@ const DesignationModal = ({
   isEdit,
   open,
   loading,
+  departments,
   formData,
   setFormData,
   onClose,
@@ -41,6 +50,7 @@ const DesignationModal = ({
       size="md"
     >
       <DesignationForm
+        departments={departments}
         formData={formData}
         setFormData={setFormData}
       />

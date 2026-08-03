@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
+
 import {
   IsNotEmpty,
   IsOptional,
@@ -10,11 +14,12 @@ import {
 export class CreateDesignationDto {
   @ApiProperty({
     description: "Department UUID",
-    example: "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
+    example:
+      "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
   })
   @IsUUID()
   @IsNotEmpty()
-  departmentId: string;
+  departmentUuid: string;
 
   @ApiProperty({
     example: "Project Manager",
@@ -35,8 +40,10 @@ export class CreateDesignationDto {
   code: string;
 
   @ApiPropertyOptional({
-    example: "Responsible for managing projects and teams.",
-    description: "Designation description",
+    example:
+      "Responsible for managing projects and teams.",
+    description:
+      "Designation description",
   })
   @IsOptional()
   @IsString()

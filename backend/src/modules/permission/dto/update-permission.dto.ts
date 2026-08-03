@@ -1,39 +1,7 @@
-import {
-  ApiPropertyOptional,
-} from "@nestjs/swagger";
+import { PartialType } from "@nestjs/swagger";
 
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from "class-validator";
+import { CreatePermissionDto } from "./create-permission.dto";
 
-import { PermissionModule } from "../enums/permission-module.enum";
-
-export class UpdatePermissionDto {
-  @ApiPropertyOptional({
-    enum: PermissionModule,
-  })
-  @IsOptional()
-  @IsEnum(PermissionModule)
-  module?: PermissionModule;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  name?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  code?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  description?: string;
-}
+export class UpdatePermissionDto extends PartialType(
+  CreatePermissionDto,
+) {}

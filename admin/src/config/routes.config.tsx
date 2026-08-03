@@ -7,7 +7,6 @@ import CompanyListPage from "@/modules/company/pages/CompanyListPage";
 import CompanyCreatePage from "@/modules/company/pages/CompanyCreatePage";
 import OrganizationUnitPage from "@/modules/organization-unit/pages/OrganizationUnitPage";
 import RoleListPage from "@/modules/role/pages/RoleListPage";
-import RolePermissionPage from "@/modules/role-permission/pages/RolePermissionPage";
 import SubscriptionModulePage from "@/modules/subscription/pages/SubscriptionModulePage";
 import ModuleListPage from "@/modules/module/pages/ModuleListPage";
 import SubscriptionPlanListPage from "@/modules/subscription-plan/pages/SubscriptionPlanListPage";
@@ -19,6 +18,9 @@ import CompanyProfilePage from "@/modules/company/pages/CompanyProfilePage";
 import DesignationPage from "@/modules/designation/pages/DesignationPage";
 import DepartmentPage from "@/modules/department/pages/DepartmentPage";
 import EmployeePage from "@/modules/employee/pages/EmployeePage";
+import PermissionPage from "@/modules/permission/pages/PermissionPage";
+import RoleListPagePage from "@/modules/role/pages/RoleListPage";
+import RolePermissionPage from "@/modules/role/pages/RolePermissionPage";
 
 
 
@@ -122,7 +124,26 @@ export const protectedRoutes: AppRoute[] = [
 {
   path: "/employees",
   element: <EmployeePage />,
-}
+},
+
+{
+  path: "/settings/permissions",
+  element: <PermissionPage />,
+},
+
+{
+  path: "/settings/roles",
+  element: <RoleListPage />,
+},
+
+{
+  path: "/settings/roles/:uuid/permissions",
+  element: <RolePermissionPage />,
+},
+
+
+
+
 
   
 ];

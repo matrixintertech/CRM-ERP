@@ -1,55 +1,99 @@
 import api from "@/shared/services/axios";
 
-import type { RoleFormData } from "../types/role.types";
+import type {
+  AssignRolePermissionsDto,
+  CreateRoleDto,
+  Role,
+  RolePermissionResponse,
+  UpdateRoleDto,
+} from "../types/role.types";
 
 export const createRole = async (
-  payload: RoleFormData,
+  payload: CreateRoleDto,
 ) => {
   const { data } = await api.post(
     "/roles",
     payload,
   );
 
-  return data;
-};
-
-export const getRoles = async (
-  companyId: string,
-) => {
-  const { data } = await api.get(
-    `/roles/company/${companyId}`,
+  return (
+    data.data?.role ??
+    data.role ??
+    data.data
   );
-
-  return data.data.roles;
 };
+
+export const getRoles =
+  async (): Promise<Role[]> => {
+    const { data } = await api.get(
+      "/roles",
+    );
+
+    return (
+      data.data?.roles ??
+      data.roles ??
+      data.data ??
+      []
+    );
+  };
 
 export const getRole = async (
-  id: string,
-) => {
+  uuid: string,
+): Promise<Role> => {
   const { data } = await api.get(
-    `/roles/${id}`,
+    `/roles/${uuid}`,
   );
 
-  return data.data.role;
+  return (
+    data.data?.role ??
+    data.role ??
+    data.data
+  );
 };
 
 export const updateRole = async (
-  id: string,
-  payload: Partial<RoleFormData>,
+  uuid: string,
+  payload: UpdateRoleDto,
 ) => {
   const { data } = await api.patch(
-    `/roles/${id}`,
+    `/roles/${uuid}`,
     payload,
+  );
+
+  return (
+    data.data?.role ??
+    data.role ??
+    data.data
+  );
+};
+
+export const deleteRole = async (
+  uuid: string,
+) => {
+  const { data } = await api.delete(
+    `/roles/${uuid}`,
   );
 
   return data;
 };
 
-export const deleteRole = async (
-  id: string,
+export const getRolePermissions = async (
+  uuid: string,
+): Promise<RolePermissionResponse> => {
+  const { data } = await api.get(
+    `/roles/${uuid}/permissions`,
+  );
+
+  return data.data ?? data;
+};
+
+export const assignRolePermissions = async (
+  uuid: string,
+  payload: AssignRolePermissionsDto,
 ) => {
-  const { data } = await api.delete(
-    `/roles/${id}`,
+  const { data } = await api.put(
+    `/roles/${uuid}/permissions`,
+    payload,
   );
 
   return data;

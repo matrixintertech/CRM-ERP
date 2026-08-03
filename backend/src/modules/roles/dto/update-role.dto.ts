@@ -1,41 +1,33 @@
 import {
   ApiPropertyOptional,
-} from '@nestjs/swagger';
+  OmitType,
+  PartialType,
+} from "@nestjs/swagger";
+
+import {
+  IsEnum,
+  IsOptional,
+} from "class-validator";
 
 import {
   Status,
-} from '@prisma/client';
+} from "@prisma/client";
 
 import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+  CreateRoleDto,
+} from "./create-role.dto";
 
-export class UpdateRoleDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  code?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isSystem?: boolean;
-
+export class UpdateRoleDto extends PartialType(
+  OmitType(
+    CreateRoleDto,
+    [
+      "isSystem",
+    ] as const,
+  ),
+) {
   @ApiPropertyOptional({
     enum: Status,
+    example: Status.ACTIVE,
   })
   @IsOptional()
   @IsEnum(Status)

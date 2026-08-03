@@ -3,7 +3,26 @@ import Modal from "@/shared/components/Modal";
 
 import EmployeeForm from "./EmployeeForm";
 
-import type { CreateEmployeeDto } from "../types/employee.types";
+import type {
+  CreateEmployeeDto,
+  Employee,
+} from "../types/employee.types";
+
+import type {
+  OrganizationUnit,
+} from "../../organization-unit/types/organization-unit.types";
+
+import type {
+  Department,
+} from "../../department/types/department.types";
+
+import type {
+  Designation,
+} from "../../designation/types/designation.types";
+
+import type {
+  Role,
+} from "../../role/types/role.types";
 
 interface Props {
   title: string;
@@ -12,6 +31,14 @@ interface Props {
   open: boolean;
   loading: boolean;
 
+  editingUuid?: string | null;
+
+  employees: Employee[];
+  organizationUnits: OrganizationUnit[];
+  departments: Department[];
+  designations: Designation[];
+  roles: Role[];
+
   formData: CreateEmployeeDto;
 
   setFormData: React.Dispatch<
@@ -19,7 +46,6 @@ interface Props {
   >;
 
   onClose: () => void;
-
   onSubmit: () => void;
 }
 
@@ -28,11 +54,24 @@ const EmployeeModal = ({
   isEdit,
   open,
   loading,
+  editingUuid,
+  employees,
+  organizationUnits,
+  departments,
+  designations,
+  roles,
   formData,
   setFormData,
   onClose,
   onSubmit,
 }: Props) => {
+  const isSubmitDisabled =
+    !formData.firstName.trim() ||
+    !formData.email.trim() ||
+    !formData.organizationUnitUuid ||
+    !formData.departmentUuid ||
+    !formData.designationUuid;
+
   return (
     <Modal
       open={open}
@@ -41,6 +80,14 @@ const EmployeeModal = ({
       size="lg"
     >
       <EmployeeForm
+        employees={employees}
+        organizationUnits={
+          organizationUnits
+        }
+        departments={departments}
+        designations={designations}
+        roles={roles}
+        editingUuid={editingUuid}
         formData={formData}
         setFormData={setFormData}
       />
@@ -55,6 +102,7 @@ const EmployeeModal = ({
       >
         <Button
           variant="secondary"
+          disabled={loading}
           onClick={onClose}
         >
           Cancel
@@ -62,6 +110,10 @@ const EmployeeModal = ({
 
         <Button
           loading={loading}
+          disabled={
+            loading ||
+            isSubmitDisabled
+          }
           onClick={onSubmit}
         >
           {isEdit
