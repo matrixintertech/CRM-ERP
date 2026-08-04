@@ -46,5 +46,21 @@ docker compose \
   docker compose -f docker/docker-compose.yml down
   docker compose -f docker/docker-compose.yml up -d
 
+  docker compose -f docker/docker-compose.yml up --build backend
+  docker compose -f docker/docker-compose.yml up --build -d admin
+
   for log
   docker compose -f docker/docker-compose.yml logs -f backend
+
+  //format
+  docker compose -f docker/docker-compose.yml exec backend npx prisma format
+
+  //validate
+  docker compose -f docker/docker-compose.yml exec backend npx prisma format
+
+  //migration example
+  docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev --name add-project-category
+
+  //for install packages
+  
+  docker compose -f docker/docker-compose.yml exec admin npm install react-otp-input

@@ -21,6 +21,10 @@ import EmployeePage from "@/modules/employee/pages/EmployeePage";
 import PermissionPage from "@/modules/permission/pages/PermissionPage";
 import RoleListPagePage from "@/modules/role/pages/RoleListPage";
 import RolePermissionPage from "@/modules/role/pages/RolePermissionPage";
+import ProjectCategoryPage from "@/modules/project-category/pages/ProjectCategoryPage";
+import ProjectCategoryListPage from "@/modules/project-category/pages/ProjectCategoryPage";
+import ProfilePage from "@/modules/profile/pages/ProfilePage";
+import UserListPage from "@/modules/users/pages/UserListPage";
 
 
 
@@ -140,6 +144,21 @@ export const protectedRoutes: AppRoute[] = [
   path: "/settings/roles/:uuid/permissions",
   element: <RolePermissionPage />,
 },
+
+{
+  path: "/project-categories",
+  element: <ProjectCategoryListPage />,
+},
+
+{
+  path: "/settings/profile",
+  element: <ProfilePage />,
+},
+
+{
+  path: "/settings/users",
+  element: <UserListPage />,
+}
 
 
 

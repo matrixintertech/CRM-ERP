@@ -7,6 +7,7 @@
     var(--color-sidebar-border);
 
   overflow-y: auto;
+  overflow-x: hidden;
 
   flex-shrink: 0;
 }
@@ -20,6 +21,13 @@
 }
 
 .groupTitle {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  min-height: 36px;
+
   padding: 8px 14px;
 
   font-size: 11px;
@@ -37,11 +45,21 @@
   flex-direction: column;
 
   gap: 4px;
+
+  margin-top: 4px;
+  margin-left: 18px;
+
+  padding-left: 10px;
+
+  border-left: 1px solid
+    var(--color-sidebar-border);
 }
 
 .link {
   display: flex;
   align-items: center;
+
+  gap: 10px;
 
   min-height: 42px;
 
@@ -68,4 +86,51 @@
   color: var(--color-sidebar-text-active);
 
   font-weight: 600;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+
+  min-width: 18px;
+  min-height: 18px;
+
+  flex: 0 0 18px;
+
+  display: block;
+
+  color: currentColor;
+}
+
+.children .icon {
+  width: 16px;
+  height: 16px;
+
+  min-width: 16px;
+  min-height: 16px;
+
+  flex-basis: 16px;
+}
+
+.link span,
+.groupTitle span {
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.children .link {
+  min-height: 38px;
+
+  padding: 0 12px;
+
+  font-size: 13px;
+}
+
+.active .icon {
+  color: var(--color-sidebar-text-active);
 }

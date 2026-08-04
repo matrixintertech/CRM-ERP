@@ -303,6 +303,7 @@ model Company {
   roles                Role[]
   clients              Client[]
   projects             Project[]
+  projectCategories    ProjectCategory[]
   designations         Designation[]
   departments          Department[]
   employees            Employee[]
@@ -497,6 +498,7 @@ model OrganizationUnit {
 
   departments Department[]
   employees   Employee[]
+  projects    Project[]
 
   @@index([companyId])
   @@index([parentId])
@@ -711,6 +713,12 @@ model Project {
   clientId BigInt
   client   Client @relation(fields: [clientId], references: [id])
 
+  categoryId BigInt
+  category   ProjectCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  organizationUnitId BigInt
+  organizationUnit   OrganizationUnit? @relation(fields: [organizationUnitId], references: [id], onDelete: SetNull)
+
   stateId BigInt?
   state   State?  @relation(fields: [stateId], references: [id])
 
@@ -736,6 +744,8 @@ model Project {
 
   @@unique([companyId, srn])
   @@index([companyId])
+  @@index([categoryId])
+  @@index([organizationUnitId])
   @@index([clientId])
   @@index([stateId])
   @@index([cityId])
@@ -744,6 +754,43 @@ model Project {
 }
 
 //Project Schema End
+
+//Project Category Schema
+
+model ProjectCategory {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(100)
+  code String @db.VarChar(50)
+
+  description String?
+
+  color String? @db.VarChar(20)
+
+  sortOrder Int @default(0)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  projects Project[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([deletedAt])
+  @@map("project_categories")
+}
+
+//Project Category End 
 
 //Designation Schema Start
 

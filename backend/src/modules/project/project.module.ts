@@ -8,12 +8,23 @@ import { StateRepository } from 'src/modules/master/state/repositories/state.rep
 
 import { CompanyModule } from 'src/modules/company/company.module';
 
+import {
+  ProjectCategoryModule,
+} from 'src/modules/project-category/project-category.module';
+
+
+import {
+  OrganizationUnitModule,
+} from 'src/modules/organization-unit/organization-unit.module';
+
 import { ProjectController } from './controllers/project.controller';
 import { ProjectRepository } from './repositories/project.repository';
 import { ProjectService } from './services/project.service';
 
 @Module({
-  imports: [PrismaModule, CompanyModule],
+  imports: [PrismaModule, CompanyModule, ProjectCategoryModule,
+
+    OrganizationUnitModule],
 
   controllers: [ProjectController],
 

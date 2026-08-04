@@ -13,35 +13,86 @@
     var(--color-border);
 
   box-shadow: var(--shadow-sm);
+
+  position: relative;
+  z-index: 100;
 }
 
+/* Logo */
+
 .logo {
-  font-size: 20px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
 
   color: var(--color-primary);
 }
 
-.right {
-  display: flex;
-  align-items: center;
-
-  gap: 20px;
-}
-
-.iconButton {
-  width: 40px;
-  height: 40px;
+.logoMark {
+  width: 36px;
+  height: 36px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border: none;
+  border-radius: 10px;
 
-  border-radius: 50%;
+  background: var(--color-primary);
+
+  color: var(--color-white);
+
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.logoText {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+
+  white-space: nowrap;
+}
+
+/* Right actions */
+
+.right {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+/* Notification button */
+
+.iconButton {
+  width: 40px;
+  height: 40px;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 10px;
 
   background: transparent;
+
+  color: var(--color-text-light);
 
   cursor: pointer;
 
@@ -50,51 +101,44 @@
 
 .iconButton:hover {
   background: #f3f4f6;
+
+  border-color: #e5e7eb;
+
+  color: var(--color-text);
 }
 
-.profile {
-  display: flex;
-  align-items: center;
-
-  gap: 12px;
+.iconButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-.avatar {
-  width: 38px;
-  height: 38px;
+.notificationBadge {
+  min-width: 17px;
+  height: 17px;
+
+  position: absolute;
+  top: -3px;
+  right: -3px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 50%;
+  padding: 0 4px;
 
-  background: var(--color-primary);
+  border: 2px solid var(--color-white);
+  border-radius: 999px;
 
-  color: #fff;
+  background: #dc2626;
 
-  font-size: 14px;
+  color: #ffffff;
+
+  font-size: 9px;
   font-weight: 700;
-
-  flex-shrink: 0;
+  line-height: 1;
 }
 
-.name {
-  font-size: 14px;
-  font-weight: 600;
-
-  color: #111827;
-
-  line-height: 1.2;
-}
-
-.role {
-  margin-top: 2px;
-
-  font-size: 12px;
-
-  color: #6b7280;
-}
+/* Profile */
 
 .profileWrapper {
   position: relative;
@@ -103,45 +147,169 @@
 .profile {
   display: flex;
   align-items: center;
-  gap: 12px;
 
-  padding: 6px 14px;
+  gap: 11px;
+
+  min-height: 46px;
+
+  padding: 5px 10px 5px 6px;
 
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
 
   background: #fafafa;
 
+  color: var(--color-text);
+
   cursor: pointer;
 
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .profile:hover {
   background: #f3f4f6;
+
   border-color: #e5e7eb;
 }
 
+.profile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.avatar,
+.avatarImage {
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  border-radius: 50%;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: var(--color-primary);
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.avatarImage {
+  object-fit: cover;
+
+  border: 1px solid var(--color-border);
+}
+
+.profileInfo {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  text-align: left;
+}
+
+.name {
+  max-width: 180px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #111827;
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.role {
+  max-width: 180px;
+
+  margin-top: 2px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #6b7280;
+
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.chevron {
+  flex-shrink: 0;
+
+  color: #6b7280;
+
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+
 .dropdown {
+  width: 260px;
+
   position: absolute;
-
   top: calc(100% + 10px);
-
   right: 0;
 
-  min-width: 220px;
+  padding: 8px;
 
   background: var(--color-white);
 
   border: 1px solid var(--color-border);
-
-  border-radius: 10px;
+  border-radius: 12px;
 
   box-shadow: var(--shadow-md);
 
-  overflow: hidden;
-
   z-index: 1000;
+}
+
+.dropdownHeader {
+  padding: 10px 10px 12px;
+}
+
+.dropdownName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #111827;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dropdownEmail {
+  margin-top: 4px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #6b7280;
+
+  font-size: 12px;
+}
+
+.dropdownDivider {
+  height: 1px;
+
+  margin: 4px 0;
+
+  background: var(--color-border);
 }
 
 .dropdown button {
@@ -152,34 +320,84 @@
 
   gap: 10px;
 
-  padding: 12px 16px;
+  padding: 11px 12px;
 
   border: none;
+  border-radius: 8px;
 
   background: transparent;
 
-  cursor: pointer;
+  color: var(--color-text);
 
   font-size: 14px;
+  text-align: left;
 
-  color: var(--color-text);
+  cursor: pointer;
 
   transition: var(--transition);
 }
 
 .dropdown button:hover {
-  background: #f9fafb;
+  background: #f3f4f6;
 }
 
-.dropdown button:last-child {
-  color: #dc2626;
+.dropdown button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
-.dropdown button:last-child:hover {
-  background: #fef2f2;
+.logoutButton {
+  color: #dc2626 !important;
 }
 
-.profileInfo {
-  display: flex;
-  flex-direction: column;
+.logoutButton:hover {
+  background: #fef2f2 !important;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+  }
+
+  .logoText {
+    display: none;
+  }
+
+  .profileInfo {
+    display: none;
+  }
+
+  .profile {
+    gap: 7px;
+
+    padding-right: 8px;
+  }
+
+  .dropdown {
+    width: min(
+      260px,
+      calc(100vw - 32px)
+    );
+  }
+}
+
+@media (max-width: 480px) {
+  .right {
+    gap: 8px;
+  }
+
+  .profile {
+    padding: 4px;
+  }
+
+  .chevron {
+    display: none;
+  }
+
+  .iconButton {
+    width: 38px;
+    height: 38px;
+  }
 }

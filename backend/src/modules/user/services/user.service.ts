@@ -11,13 +11,38 @@ import {
   UserType,
 } from "@prisma/client";
 
-import { UserRepository } from "../repositories/user.repository";
-import { EmployeeRepository } from "../../employee/repositories/employee.repository";
-import { RoleRepository } from "../../roles/repositories/role.repository";
+import {
+  UserRepository,
+} from "../repositories/user.repository";
 
-import { CreateUserDto } from "../dto/create-user.dto";
-import { CreateEmployeeUserAccountDto } from "../dto/create-employee-user-account.dto";
-import { UpdateEmployeeUserAccountDto } from "../dto/update-employee-user-account.dto";
+import {
+  EmployeeRepository,
+} from "../../employee/repositories/employee.repository";
+
+import {
+  RoleRepository,
+} from "../../roles/repositories/role.repository";
+
+import {
+  CreateUserDto,
+} from "../dto/create-user.dto";
+
+import {
+  CreateEmployeeUserAccountDto,
+} from "../dto/create-employee-user-account.dto";
+
+import {
+  UpdateEmployeeUserAccountDto,
+} from "../dto/update-employee-user-account.dto";
+
+import {
+  UserQueryDto,
+} from "../dto/user-query.dto";
+
+import {
+  AssignUserPermissionsDto,
+} from "../dto/assign-user-permissions.dto";
+
 
 @Injectable()
 export class UserService {
@@ -31,6 +56,8 @@ export class UserService {
     private readonly roleRepository:
       RoleRepository,
   ) {}
+
+
 
   async create(
     dto: CreateUserDto,
@@ -102,6 +129,8 @@ export class UserService {
     );
   }
 
+
+
   async findCompanyAdmin(
     companyId: bigint,
   ) {
@@ -109,6 +138,337 @@ export class UserService {
       companyId,
     );
   }
+
+
+
+  /*
+   * Get all login users.
+   *
+   * companyId:
+   * - company user ke liye company ID
+   * - platform owner ke liye null
+   */
+async findAll(
+  companyId: bigint | null,
+  query: UserQueryDto,
+) {
+  let roleId:
+    bigint | undefined;
+
+  if (query.roleUuid) {
+    if (companyId === null) {
+      throw new BadRequestException(
+        "Role filter is not supported for platform owner.",
+      );
+    }
+
+    const role =
+      await this.roleRepository.findByUuid(
+        companyId,
+        query.roleUuid,
+      );
+
+    if (!role) {
+      throw new NotFoundException(
+        "Role not found for this company.",
+      );
+    }
+
+    roleId =
+      role.id;
+  }
+
+  const {
+    roleUuid: _roleUuid,
+    ...filters
+  } = query;
+
+  const result =
+    await this.userRepository.findAll(
+      companyId,
+      {
+        ...filters,
+        roleId,
+      },
+    );
+
+  const page =
+    query.page ?? 1;
+
+  const limit =
+    query.limit ?? 10;
+
+  return {
+    message:
+      "Users fetched successfully.",
+
+    users:
+      result.users,
+
+    total:
+      result.total,
+
+    page,
+
+    limit,
+
+    totalPages:
+      Math.ceil(
+        result.total /
+          limit,
+      ),
+  };
+}
+
+
+
+  /*
+   * Get one user by UUID.
+   */
+  async findByUuid(
+    companyId: bigint | null,
+    userUuid: string,
+  ) {
+    const user =
+      await this.userRepository.findByUuid(
+        companyId,
+        userUuid,
+      );
+
+    if (!user) {
+      throw new NotFoundException(
+        "User not found.",
+      );
+    }
+
+    return {
+      message:
+        "User fetched successfully.",
+
+      user,
+    };
+  }
+
+
+
+  /*
+   * Get:
+   * - role permissions
+   * - additional user permissions
+   * - effective permissions
+   */
+  async findPermissions(
+    companyId: bigint | null,
+    userUuid: string,
+  ) {
+    const user =
+      await this.userRepository.findUserWithPermissions(
+        companyId,
+        userUuid,
+      );
+
+    if (!user) {
+      throw new NotFoundException(
+        "User not found.",
+      );
+    }
+
+    const rolePermissions =
+      user.role?.rolePermissions.map(
+        (item) =>
+          item.permission,
+      ) ?? [];
+
+    const additionalPermissions =
+      user.extraPermissions.map(
+        (item) =>
+          item.permission,
+      );
+
+    /*
+     * Role aur additional permissions ko
+     * permission UUID ke basis par merge karo.
+     */
+    const effectivePermissionMap =
+      new Map<
+        string,
+        (typeof additionalPermissions)[number]
+      >();
+
+    for (
+      const permission
+      of rolePermissions
+    ) {
+      effectivePermissionMap.set(
+        permission.uuid,
+        permission,
+      );
+    }
+
+    for (
+      const permission
+      of additionalPermissions
+    ) {
+      effectivePermissionMap.set(
+        permission.uuid,
+        permission,
+      );
+    }
+
+    return {
+      message:
+        "User permissions fetched successfully.",
+
+      user: {
+        uuid:
+          user.uuid,
+
+        displayName:
+          user.displayName,
+
+        email:
+          user.email,
+
+        mobile:
+          user.mobile,
+
+        status:
+          user.status,
+
+        userType:
+          user.userType,
+
+        employee:
+          user.employee
+            ? {
+                uuid:
+                  user.employee.uuid,
+
+                employeeCode:
+                  user.employee
+                    .employeeCode,
+
+                displayName:
+                  user.employee
+                    .displayName,
+              }
+            : null,
+      },
+
+      role:
+        user.role
+          ? {
+              uuid:
+                user.role.uuid,
+
+              name:
+                user.role.name,
+
+              code:
+                user.role.code,
+            }
+          : null,
+
+      rolePermissions,
+
+      additionalPermissions,
+
+      effectivePermissions:
+        Array.from(
+          effectivePermissionMap.values(),
+        ),
+    };
+  }
+
+
+
+  /*
+   * Replace user-specific additional permissions.
+   *
+   * Role permissions is method se change nahi hongi.
+   */
+  async updatePermissions(
+    companyId: bigint | null,
+    userUuid: string,
+    dto: AssignUserPermissionsDto,
+  ) {
+    const user =
+      await this.userRepository.findUserWithPermissions(
+        companyId,
+        userUuid,
+      );
+
+    if (!user) {
+      throw new NotFoundException(
+        "User not found.",
+      );
+    }
+
+    const uniquePermissionUuids =
+      Array.from(
+        new Set(
+          dto.permissionUuids,
+        ),
+      );
+
+    const permissions =
+      uniquePermissionUuids.length > 0
+        ? await this.userRepository
+            .findActivePermissionsByUuids(
+              uniquePermissionUuids,
+            )
+        : [];
+
+    if (
+      permissions.length !==
+      uniquePermissionUuids.length
+    ) {
+      throw new BadRequestException(
+        "One or more permissions are invalid or inactive.",
+      );
+    }
+
+    /*
+     * Role se already inherited permissions ko
+     * UserPermission table me duplicate save nahi karna.
+     */
+    const rolePermissionIds =
+      new Set(
+        user.role?.rolePermissions.map(
+          (item) =>
+            item.permissionId,
+        ) ?? [],
+      );
+
+    const additionalPermissionIds =
+      permissions
+        .filter(
+          (permission) =>
+            !rolePermissionIds.has(
+              permission.id,
+            ),
+        )
+        .map(
+          (permission) =>
+            permission.id,
+        );
+
+    await this.userRepository.replaceUserPermissions(
+      user.id,
+      additionalPermissionIds,
+    );
+
+    /*
+     * Save hone ke baad fresh permission
+     * response return karo.
+     */
+    return this.findPermissions(
+      companyId,
+      userUuid,
+    );
+  }
+
+
 
   async createEmployeeUserAccount(
     companyId: bigint,
@@ -151,7 +511,10 @@ export class UserService {
       );
     }
 
-    if (role.status !== "ACTIVE") {
+    if (
+      role.status !==
+      "ACTIVE"
+    ) {
       throw new BadRequestException(
         "Selected role is inactive.",
       );
@@ -210,19 +573,22 @@ export class UserService {
       await this.userRepository.create({
         company: {
           connect: {
-            id: companyId,
+            id:
+              companyId,
           },
         },
 
         employee: {
           connect: {
-            id: employee.id,
+            id:
+              employee.id,
           },
         },
 
         role: {
           connect: {
-            id: role.id,
+            id:
+              role.id,
           },
         },
 
@@ -252,6 +618,8 @@ export class UserService {
       user,
     };
   }
+
+
 
   async findEmployeeUserAccount(
     companyId: bigint,
@@ -288,6 +656,8 @@ export class UserService {
       user,
     };
   }
+
+
 
   async updateEmployeeUserAccount(
     companyId: bigint,
@@ -337,7 +707,8 @@ export class UserService {
 
     if (
       role &&
-      role.status !== "ACTIVE"
+      role.status !==
+        "ACTIVE"
     ) {
       throw new BadRequestException(
         "Selected role is inactive.",
@@ -357,7 +728,8 @@ export class UserService {
           ...(role && {
             role: {
               connect: {
-                id: role.id,
+                id:
+                  role.id,
               },
             },
           }),
@@ -372,6 +744,8 @@ export class UserService {
         updatedUser,
     };
   }
+
+
 
   async deleteEmployeeUserAccount(
     companyId: bigint,

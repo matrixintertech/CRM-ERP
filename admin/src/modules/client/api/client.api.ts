@@ -36,14 +36,21 @@ export const getClients = async (
 /**
  * Get Client By UUID
  */
+interface ClientDetailsResponse {
+  client: Client;
+}
+
+/**
+ * Get Client By UUID
+ */
 export const getClientByUuid = async (
   uuid: string,
 ): Promise<Client> => {
   const { data } = await api.get<
-    ApiResponse<Client>
+    ApiResponse<ClientDetailsResponse>
   >(`/clients/${uuid}`);
 
-  return data.data;
+  return data.data.client;
 };
 
 /**

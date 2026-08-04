@@ -1,604 +1,908 @@
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 
 import {
+  LoginMethod,
+  LoginStatus,
+  OtpChannel,
   OtpPurpose,
-  OtpStatus,RefreshTokenStatus, LoginMethod, LoginStatus
+  OtpStatus,
+  RefreshTokenStatus,
+  UserStatus,
 } from '@prisma/client';
 
 import { JwtService } from '@nestjs/jwt';
+
 import { jwtConfig } from 'src/config/jwt.config';
 
-import { AuthRepository } from '../repositories/auth.repository';
+import {
+  AuthRepository,
+} from '../repositories/auth.repository';
 
-import { SendOtpDto } from '../dto/send-otp.dto';
-import { VerifyOtpDto } from '../dto/verify-otp.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import {
+  SendOtpDto,
+} from '../dto/send-otp.dto';
 
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import {
+  VerifyOtpDto,
+} from '../dto/verify-otp.dto';
 
-import { OtpUtil } from '../utils/otp.util';
-import { TokenUtil } from '../utils/token.util';
-import { LogoutDto } from '../dto/logout.dto';
-import { ForgotPasswordDto } from '../dto/forgot-password.dto';
-import { VerifyResetOtpDto } from '../dto/verify-reset-otp.dto';
+import {
+  RefreshTokenDto,
+} from '../dto/refresh-token.dto';
+
+import {
+  LogoutDto,
+} from '../dto/logout.dto';
+
+import {
+  ForgotPasswordDto,
+} from '../dto/forgot-password.dto';
+
+import {
+  VerifyResetOtpDto,
+} from '../dto/verify-reset-otp.dto';
+
+import type {
+  JwtPayload,
+} from '../interfaces/jwt-payload.interface';
+
+import {
+  OtpUtil,
+} from '../utils/otp.util';
+
+import {
+  TokenUtil,
+} from '../utils/token.util';
+
+/*
+ * Apne actual mail module path ke according
+ * is import ko adjust karna.
+ */
+import {
+  MailService,
+} from '../../mail/services/mail.service';
+
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly authRepository: AuthRepository,
-     private readonly jwtService: JwtService,
+    private readonly authRepository:
+      AuthRepository,
+
+    private readonly jwtService:
+      JwtService,
+
+    private readonly mailService:
+      MailService,
   ) {}
 
-async sendOtp(dto: SendOtpDto) {
-  const user =
-    await this.authRepository.findUserByIdentifier(
-      dto.receiver,
-    );
 
-  if (!user) {
-    throw new NotFoundException(
-      'User not found.',
-    );
-  }
 
-const latestOtp =
-  await this.authRepository.findLatestOtp(
-    dto.receiver,
-    OtpPurpose.LOGIN,
-  );
-
- if (
-  latestOtp &&
-  latestOtp.status === OtpStatus.PENDING &&
-  latestOtp.expiresAt > new Date()
-) {
-  return {
-    success: true,
-    alreadySent: true,
-    message:
-      "OTP already sent. Please check your email.",
-  };
-}
-
-  const otp = OtpUtil.generate();
-
-  console.log('Generated OTP:', otp);
-
-  const otpHash = OtpUtil.hash(otp);
-
-  const expiresAt = OtpUtil.expiry();
-
-  await this.authRepository.createOtp({
+  private ensureUserCanLogin(
     user: {
-      connect: {
-        id: user.id,
-      },
+      status: UserStatus;
     },
-    receiver: dto.receiver,
-    otpHash,
-    purpose: OtpPurpose.LOGIN,
-    channel: dto.channel,
-    expiresAt,
-  });
+  ): void {
+    if (
+      user.status ===
+      UserStatus.SUSPENDED
+    ) {
+      throw new ForbiddenException(
+        'Your account has been suspended.',
+      );
+    }
 
-  //console.log('OTP:', otp);
-
-  return {
-  success: true,
-  alreadySent: false,
-  message: "OTP sent successfully.",
-};
-}
-
-
-//forget password OTP
-async forgotPassword(
-  dto: ForgotPasswordDto,
-) {
-  // 1. Find user
-  const user =
-    await this.authRepository.findUserByIdentifier(
-      dto.receiver,
-    );
-
-  if (!user) {
-    throw new NotFoundException(
-      'User not found.',
-    );
+    if (
+      user.status !==
+      UserStatus.ACTIVE
+    ) {
+      throw new ForbiddenException(
+        'Your account is not active.',
+      );
+    }
   }
 
-  // 2. Check existing RESET_PASSWORD OTP
-  const latestOtp =
-    await this.authRepository.findLatestOtp(
-      dto.receiver,
-      OtpPurpose.RESET_PASSWORD,
-    );
 
-  if (
-    latestOtp &&
-    latestOtp.status === OtpStatus.PENDING &&
-    latestOtp.expiresAt > new Date()
+
+  private async validateOtp(
+    receiver: string,
+    enteredOtp: string,
+    purpose: OtpPurpose,
   ) {
-    throw new ConflictException(
-      'OTP already sent. Please wait before requesting a new OTP.',
-    );
-  }
+    const latestOtp =
+      await this.authRepository.findLatestOtp(
+        receiver,
+        purpose,
+      );
 
-  // 3. Generate OTP
-  const otp = OtpUtil.generate();
+    if (!latestOtp) {
+      throw new NotFoundException(
+        'OTP not found or already used.',
+      );
+    }
 
-  console.log(
-    'Reset OTP:',
-    otp,
-  );
+    if (
+      latestOtp.expiresAt <=
+      new Date()
+    ) {
+      await this.authRepository.updateOtp(
+        latestOtp.id,
+        {
+          status:
+            OtpStatus.EXPIRED,
+        },
+      );
 
-  // 4. Hash OTP
-  const otpHash =
-    OtpUtil.hash(otp);
+      throw new BadRequestException(
+        'OTP has expired.',
+      );
+    }
 
-  // 5. Expiry
-  const expiresAt =
-    OtpUtil.expiry();
+    if (
+      latestOtp.attemptCount >=
+      latestOtp.maxAttempts
+    ) {
+      await this.authRepository.updateOtp(
+        latestOtp.id,
+        {
+          status:
+            OtpStatus.FAILED,
+        },
+      );
 
-  // 6. Save OTP
-  await this.authRepository.createOtp({
-    user: {
-      connect: {
-        id: user.id,
-      },
-    },
+      throw new BadRequestException(
+        'Maximum OTP attempts exceeded.',
+      );
+    }
 
-    receiver: dto.receiver,
+    const matched =
+      OtpUtil.compare(
+        enteredOtp,
+        latestOtp.otpHash,
+      );
 
-    otpHash,
+    if (!matched) {
+      const updatedOtp =
+        await this.authRepository.incrementOtpAttempt(
+          latestOtp.id,
+          latestOtp.attemptCount,
+          latestOtp.maxAttempts,
+        );
 
-    purpose:
-      OtpPurpose.RESET_PASSWORD,
+      const remainingAttempts =
+        Math.max(
+          updatedOtp.maxAttempts -
+            updatedOtp.attemptCount,
+          0,
+        );
 
-    channel: dto.channel,
+      if (
+        updatedOtp.status ===
+        OtpStatus.FAILED
+      ) {
+        throw new BadRequestException(
+          'Maximum OTP attempts exceeded.',
+        );
+      }
 
-    expiresAt,
-  });
+      throw new BadRequestException(
+        `Invalid OTP. ${remainingAttempts} attempt(s) remaining.`,
+      );
+    }
 
-  return {
-    message:
-      'Password reset OTP sent successfully.',
-  };
-}
-
-
-//Reset OTP
-async verifyResetOtp(
-  dto: VerifyResetOtpDto,
-) {
-  // 1. Find latest OTP
-  const latestOtp =
-    await this.authRepository.findLatestOtp(
-      dto.receiver,
-      OtpPurpose.RESET_PASSWORD,
-    );
-
-  if (!latestOtp) {
-    throw new NotFoundException(
-      'OTP not found.',
-    );
-  }
-
-  // 2. Check status
-  if (
-    latestOtp.status !== OtpStatus.PENDING
-  ) {
-    throw new BadRequestException(
-      'OTP already used.',
-    );
-  }
-
-  // 3. Check expiry
-  if (
-    latestOtp.expiresAt <
-    new Date()
-  ) {
-    throw new BadRequestException(
-      'OTP has expired.',
-    );
-  }
-
-  // 4. Verify OTP
-  const matched = OtpUtil.compare(
-    dto.otp,
-    latestOtp.otpHash,
-  );
-
-  if (!matched) {
-    throw new BadRequestException(
-      'Invalid OTP.',
-    );
-  }
-
-  // 5. Mark OTP verified
-  await this.authRepository.updateOtp(
-    latestOtp.id,
-    {
-      status: OtpStatus.VERIFIED,
-      verifiedAt: new Date(),
-    },
-  );
-
-  // 6. User exists?
-  if (!latestOtp.user) {
-    throw new NotFoundException(
-      'User not found.',
-    );
-  }
-
-  const user = latestOtp.user;
-
-  // 7. Generate reset token
-  const resetToken =
-    await this.jwtService.signAsync(
+    await this.authRepository.updateOtp(
+      latestOtp.id,
       {
-        sub: user.id.toString(),
+        status:
+          OtpStatus.VERIFIED,
+
+        verifiedAt:
+          new Date(),
       },
+    );
+
+    if (!latestOtp.user) {
+      throw new NotFoundException(
+        'User not found.',
+      );
+    }
+
+    return {
+      otp:
+        latestOtp,
+
+      user:
+        latestOtp.user,
+    };
+  }
+
+
+
+  private getLoginMethod(
+    channel: OtpChannel,
+  ): LoginMethod {
+    return channel ===
+      OtpChannel.WHATSAPP
+      ? LoginMethod.WHATSAPP_OTP
+      : LoginMethod.EMAIL_OTP;
+  }
+
+
+
+  private getRefreshTokenExpiry():
+    Date {
+    /*
+     * Current config 30 days hai.
+     * Baad me env duration parser use kar sakte ho.
+     */
+    return new Date(
+      Date.now() +
+        30 *
+          24 *
+          60 *
+          60 *
+          1000,
+    );
+  }
+
+
+
+  async sendOtp(
+    dto: SendOtpDto,
+  ) {
+    const receiver =
+      dto.receiver.trim().toLowerCase();
+
+    const user =
+      await this.authRepository.findUserByIdentifier(
+        receiver,
+      );
+
+    if (!user) {
+      throw new NotFoundException(
+        'User not found.',
+      );
+    }
+
+    this.ensureUserCanLogin(
+      user,
+    );
+
+    const latestOtp =
+      await this.authRepository.findLatestOtp(
+        receiver,
+        OtpPurpose.LOGIN,
+      );
+
+    if (
+      latestOtp &&
+      latestOtp.expiresAt >
+        new Date()
+    ) {
+      return {
+        success: true,
+        alreadySent: true,
+
+        message:
+          dto.channel ===
+          OtpChannel.EMAIL
+            ? 'OTP already sent. Please check your email.'
+            : 'OTP already sent. Please check WhatsApp.',
+      };
+    }
+
+    /*
+     * Pending but expired OTP records ko
+     * expire karke fresh OTP create karo.
+     */
+    await this.authRepository.expirePendingOtps(
+      receiver,
+      OtpPurpose.LOGIN,
+    );
+
+    const otp =
+      OtpUtil.generate();
+
+    const otpHash =
+      OtpUtil.hash(otp);
+
+    const expiresAt =
+      OtpUtil.expiry();
+
+    await this.authRepository.createOtp({
+      user: {
+        connect: {
+          id:
+            user.id,
+        },
+      },
+
+      receiver,
+
+      otpHash,
+
+      purpose:
+        OtpPurpose.LOGIN,
+
+      channel:
+        dto.channel,
+
+      expiresAt,
+    });
+
+    if (
+      dto.channel ===
+      OtpChannel.EMAIL
+    ) {
+      await this.mailService.sendLoginOtp({
+        to:
+          receiver,
+
+        displayName:
+          user.displayName ??
+          'User',
+
+        otp,
+
+        expiresInMinutes:
+          5,
+      });
+    } else {
+      /*
+       * WhatsApp service integrate hone par
+       * yahan actual message send karna.
+       */
+      throw new BadRequestException(
+        'WhatsApp OTP is not configured.',
+      );
+    }
+
+    return {
+      success: true,
+      alreadySent: false,
+      message:
+        'OTP sent successfully.',
+    };
+  }
+
+
+
+  async verifyOtp(
+    dto: VerifyOtpDto,
+  ) {
+    const receiver =
+      dto.receiver.trim().toLowerCase();
+
+    const {
+      otp,
+      user,
+    } = await this.validateOtp(
+      receiver,
+      dto.otp,
+      OtpPurpose.LOGIN,
+    );
+
+    this.ensureUserCanLogin(
+      user,
+    );
+
+    const payload:
+      JwtPayload = {
+        sub:
+          user.id.toString(),
+
+        companyId:
+          user.companyId
+            ? user.companyId.toString()
+            : undefined,
+
+        userType:
+          user.userType,
+
+        /*
+         * JwtPayload interface me roleId
+         * add karne ke baad uncomment karo.
+         */
+        // roleId:
+        //   user.roleId
+        //     ? user.roleId.toString()
+        //     : undefined,
+      };
+
+    const accessToken =
+      await this.generateAccessToken(
+        payload,
+      );
+
+    const refreshToken =
+      await this.generateRefreshToken(
+        payload,
+      );
+
+    const refreshTokenHash =
+      TokenUtil.hash(
+        refreshToken,
+      );
+
+    await this.authRepository.createRefreshToken({
+      user: {
+        connect: {
+          id:
+            user.id,
+        },
+      },
+
+      tokenHash:
+        refreshTokenHash,
+
+      expiresAt:
+        this.getRefreshTokenExpiry(),
+    });
+
+    await this.authRepository.createLoginHistory({
+      user: {
+        connect: {
+          id:
+            user.id,
+        },
+      },
+
+      receiver,
+
+      loginMethod:
+        this.getLoginMethod(
+          otp.channel,
+        ),
+
+      status:
+        LoginStatus.SUCCESS,
+
+      loginAt:
+        new Date(),
+    });
+
+    return {
+      message:
+        'Login successful.',
+
+      accessToken,
+
+      refreshToken,
+    };
+  }
+
+
+
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ) {
+    const receiver =
+      dto.receiver.trim().toLowerCase();
+
+    const user =
+      await this.authRepository.findUserByIdentifier(
+        receiver,
+      );
+
+    if (!user) {
+      throw new NotFoundException(
+        'User not found.',
+      );
+    }
+
+    this.ensureUserCanLogin(
+      user,
+    );
+
+    const latestOtp =
+      await this.authRepository.findLatestOtp(
+        receiver,
+        OtpPurpose.RESET_PASSWORD,
+      );
+
+    if (
+      latestOtp &&
+      latestOtp.expiresAt >
+        new Date()
+    ) {
+      throw new ConflictException(
+        'OTP already sent. Please wait before requesting a new OTP.',
+      );
+    }
+
+    await this.authRepository.expirePendingOtps(
+      receiver,
+      OtpPurpose.RESET_PASSWORD,
+    );
+
+    const otp =
+      OtpUtil.generate();
+
+    const otpHash =
+      OtpUtil.hash(otp);
+
+    const expiresAt =
+      OtpUtil.expiry();
+
+    await this.authRepository.createOtp({
+      user: {
+        connect: {
+          id:
+            user.id,
+        },
+      },
+
+      receiver,
+
+      otpHash,
+
+      purpose:
+        OtpPurpose.RESET_PASSWORD,
+
+      channel:
+        dto.channel,
+
+      expiresAt,
+    });
+
+    if (
+      dto.channel ===
+      OtpChannel.EMAIL
+    ) {
+      await this.mailService.sendResetPasswordOtp({
+        to:
+          receiver,
+
+        displayName:
+          user.displayName ??
+          'User',
+
+        otp,
+
+        expiresInMinutes:
+          5,
+      });
+    } else {
+      throw new BadRequestException(
+        'WhatsApp OTP is not configured.',
+      );
+    }
+
+    return {
+      message:
+        'Password reset OTP sent successfully.',
+    };
+  }
+
+
+
+  async verifyResetOtp(
+    dto: VerifyResetOtpDto,
+  ) {
+    const receiver =
+      dto.receiver.trim().toLowerCase();
+
+    const {
+      user,
+    } = await this.validateOtp(
+      receiver,
+      dto.otp,
+      OtpPurpose.RESET_PASSWORD,
+    );
+
+    this.ensureUserCanLogin(
+      user,
+    );
+
+    const resetToken =
+      await this.jwtService.signAsync(
+        {
+          sub:
+            user.id.toString(),
+
+          purpose:
+            OtpPurpose.RESET_PASSWORD,
+        },
+        {
+          secret:
+            jwtConfig.accessSecret,
+
+          expiresIn:
+            '10m',
+        },
+      );
+
+    return {
+      message:
+        'OTP verified successfully.',
+
+      resetToken,
+    };
+  }
+
+
+
+  private async generateAccessToken(
+    payload: JwtPayload,
+  ): Promise<string> {
+    return this.jwtService.signAsync(
+      payload,
       {
         secret:
           jwtConfig.accessSecret,
-        expiresIn: '10m',
+
+        expiresIn:
+          jwtConfig.accessExpiresIn as any,
       },
     );
-
-  return {
-    message:
-      'OTP verified successfully.',
-    resetToken,
-  };
-}
-
-
-
-
- async verifyOtp(dto: VerifyOtpDto) {
-  // 1. Find latest OTP
-const latestOtp =
-  await this.authRepository.findLatestOtp(
-    dto.receiver,
-    OtpPurpose.LOGIN,
-  );
-
-  if (!latestOtp) {
-    throw new NotFoundException(
-      'OTP not found.',
-    );
   }
 
-  // 2. Check OTP Status
-  if (latestOtp.status !== OtpStatus.PENDING) {
-    throw new BadRequestException(
-      'OTP already used.',
-    );
-  }
 
-  // 3. Check Expiry
-  if (latestOtp.expiresAt < new Date()) {
-    throw new BadRequestException(
-      'OTP has expired.',
-    );
-  }
-
-  // 4. Compare OTP
-  const matched = OtpUtil.compare(
-    dto.otp,
-    latestOtp.otpHash,
-  );
-
-  if (!matched) {
-    throw new BadRequestException(
-      'Invalid OTP.',
-    );
-  }
-
-  await this.authRepository.updateOtp(
-  latestOtp.id,
-  {
-    status: OtpStatus.VERIFIED,
-    verifiedAt: new Date(),
-  },
-);
-
-
-if (!latestOtp.user) {
-  throw new NotFoundException('User not found.');
-}
-
-
-const user = latestOtp.user;
-
-
-const payload: JwtPayload = {
-  sub: user.id.toString(),
-  companyId: user.companyId
-    ? user.companyId.toString()
-    : undefined,
-  userType: user.userType,
-};
-const accessToken =
-  await this.generateAccessToken(payload);
-
-const refreshToken =
-  await this.generateRefreshToken(payload);
-
-  const refreshTokenHash =
-  TokenUtil.hash(refreshToken);
-
-  await this.authRepository.createRefreshToken({
-  user: {
-    connect: {
-      id: user.id,
-    },
-  },
-
-  tokenHash: refreshTokenHash,
-
-  expiresAt: new Date(
-    Date.now() + 30 * 24 * 60 * 60 * 1000,
-  ),
-});
-
-
-await this.authRepository.createLoginHistory({
-  user: {
-    connect: {
-      id: user.id,
-    },
-  },
-
-  receiver: dto.receiver,
-
- loginMethod: LoginMethod.EMAIL_OTP,
-
-  status: LoginStatus.SUCCESS,
-
-  loginAt: new Date(),
-});
-
-return {
-  message: 'Login successful.',
-  accessToken,
-  refreshToken,
-};
-}
-
-
-
- private async generateAccessToken(
-    payload: JwtPayload,
-  ): Promise<string> {
-    return this.jwtService.signAsync(payload, {
-      secret: jwtConfig.accessSecret,
-      expiresIn: jwtConfig.accessExpiresIn as any,
-    });
-  }
 
   private async generateRefreshToken(
     payload: JwtPayload,
   ): Promise<string> {
-    return this.jwtService.signAsync(payload, {
-      secret: jwtConfig.refreshSecret,
-      expiresIn: jwtConfig.refreshExpiresIn as any,
-    });
-  }
-
-
-   async profile(user: any) {
-  return {
-    id: user.id.toString(),
-    uuid: user.uuid,
-    email: user.email,
-    companyId: user.companyId
-      ? user.companyId.toString()
-      : null,
-    displayName: user.displayName,
-    status: user.status,
-  };
-}
-
-// REFRESH TOKEN FUNCTION
- async refresh(
-  dto: RefreshTokenDto,
-) {
-
-
-  let payload: JwtPayload;
-
-try {
-  payload =
-    await this.jwtService.verifyAsync(
-      dto.refreshToken,
+    return this.jwtService.signAsync(
+      payload,
       {
-        secret: jwtConfig.refreshSecret,
+        secret:
+          jwtConfig.refreshSecret,
+
+        expiresIn:
+          jwtConfig.refreshExpiresIn as any,
       },
-    );
-    console.log('A');
-} catch {
-  throw new UnauthorizedException(
-    'Invalid refresh token.',
-  );
-}
-
-  // 1. Hash incoming refresh token
-  const tokenHash = TokenUtil.hash(
-    dto.refreshToken,
-  );
-
-  // 2. Find refresh token
-  const storedToken =
-    await this.authRepository.findRefreshTokenByHash(
-      tokenHash,
-    );
-    console.log('B');
-
-  if (!storedToken) {
-    throw new UnauthorizedException(
-      'Invalid refresh token.',
     );
   }
 
-  // 3. Check expiry
-  if (
-    storedToken.expiresAt <
-    new Date()
+
+
+  async profile(
+    user: any,
   ) {
-    throw new UnauthorizedException(
-      'Refresh token expired.',
-    );
+    return {
+      id:
+        user.id.toString(),
+
+      uuid:
+        user.uuid,
+
+      email:
+        user.email,
+
+      mobile:
+        user.mobile,
+
+      companyId:
+        user.companyId
+          ? user.companyId.toString()
+          : null,
+
+      employeeId:
+        user.employeeId
+          ? user.employeeId.toString()
+          : null,
+
+      roleId:
+        user.roleId
+          ? user.roleId.toString()
+          : null,
+
+      userType:
+        user.userType,
+
+      displayName:
+        user.displayName,
+
+      profilePhoto:
+        user.profilePhoto,
+
+      status:
+        user.status,
+    };
   }
 
-  // 4. User exists?
-  if (!storedToken.user) {
-    throw new UnauthorizedException(
-      'User not found.',
+
+
+  async refresh(
+    dto: RefreshTokenDto,
+  ) {
+    let payload:
+      JwtPayload;
+
+    try {
+      payload =
+        await this.jwtService.verifyAsync<JwtPayload>(
+          dto.refreshToken,
+          {
+            secret:
+              jwtConfig.refreshSecret,
+          },
+        );
+    } catch {
+      throw new UnauthorizedException(
+        'Invalid or expired refresh token.',
+      );
+    }
+
+    const tokenHash =
+      TokenUtil.hash(
+        dto.refreshToken,
+      );
+
+    const storedToken =
+      await this.authRepository.findRefreshTokenByHash(
+        tokenHash,
+      );
+
+    if (!storedToken) {
+      throw new UnauthorizedException(
+        'Invalid or expired refresh token.',
+      );
+    }
+
+    if (!storedToken.user) {
+      throw new UnauthorizedException(
+        'User not found.',
+      );
+    }
+
+    const user =
+      storedToken.user;
+
+    this.ensureUserCanLogin(
+      user,
     );
-  }
 
-  const user = storedToken.user;
+    if (
+      payload.sub !==
+      user.id.toString()
+    ) {
+      throw new UnauthorizedException(
+        'Invalid refresh token.',
+      );
+    }
 
+    /*
+     * Refresh-token rotation:
+     * old token revoke karke new token create.
+     */
+    await this.authRepository.updateRefreshToken(
+      storedToken.id,
+      {
+        status:
+          RefreshTokenStatus.REVOKED,
 
-  // 7. Update last used
-await this.authRepository.updateRefreshToken(
-  storedToken.id,
-  {
-    status: RefreshTokenStatus.REVOKED,
-    revokedAt: new Date(),
-    lastUsedAt: new Date(),
-  },
-);
+        revokedAt:
+          new Date(),
 
-console.log('C');
-
-const newPayload: JwtPayload = {
-  sub: user.id.toString(),
-  companyId: user.companyId
-    ? user.companyId.toString()
-    : undefined,
-  userType: user.userType,
-};
-
-const accessToken =
-  await this.generateAccessToken(
-    newPayload,
-  );
-
-  console.log('D');
-
-const newRefreshToken =
-  await this.generateRefreshToken(
-    newPayload,
-  );
-
-  console.log('E');
-
-const newRefreshTokenHash =
-  TokenUtil.hash(
-    newRefreshToken,
-  );
-
-  console.log('F');
-
-try {
-  await this.authRepository.createRefreshToken({
-    user: {
-      connect: {
-        id: user.id,
+        lastUsedAt:
+          new Date(),
       },
-    },
-    tokenHash: newRefreshTokenHash,
-    expiresAt: new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000,
-    ),
-  });
-  
-
-
-
-  console.log('Refresh token saved');
-} catch (error) {
-  console.error('Create Refresh Token Error:', error);
-  throw error;
-}
-
-  // 8. Return
-  return {
-  message: 'Token refreshed successfully.',
-  accessToken,
-  refreshToken: newRefreshToken,
-  };
-}
-
-
-async logout(
-  user: any,
-  dto: LogoutDto,
-) {
-  // 1. Hash refresh token
-  const tokenHash = TokenUtil.hash(
-    dto.refreshToken,
-  );
-
-  // 2. Find token
-  const storedToken =
-    await this.authRepository.findRefreshTokenByHash(
-      tokenHash,
     );
 
-  if (!storedToken) {
-    throw new UnauthorizedException(
-      'Invalid refresh token.',
-    );
+    const newPayload:
+      JwtPayload = {
+        sub:
+          user.id.toString(),
+
+        companyId:
+          user.companyId
+            ? user.companyId.toString()
+            : undefined,
+
+        userType:
+          user.userType,
+      };
+
+    const accessToken =
+      await this.generateAccessToken(
+        newPayload,
+      );
+
+    const newRefreshToken =
+      await this.generateRefreshToken(
+        newPayload,
+      );
+
+    const newRefreshTokenHash =
+      TokenUtil.hash(
+        newRefreshToken,
+      );
+
+    await this.authRepository.createRefreshToken({
+      user: {
+        connect: {
+          id:
+            user.id,
+        },
+      },
+
+      tokenHash:
+        newRefreshTokenHash,
+
+      expiresAt:
+        this.getRefreshTokenExpiry(),
+    });
+
+    return {
+      message:
+        'Token refreshed successfully.',
+
+      accessToken,
+
+      refreshToken:
+        newRefreshToken,
+    };
   }
 
-  // 3. Ensure token belongs to logged-in user
-  if (storedToken.userId !== user.id) {
-    throw new UnauthorizedException(
-      'Invalid token.',
+
+
+  async logout(
+    user: any,
+    dto: LogoutDto,
+  ) {
+    const tokenHash =
+      TokenUtil.hash(
+        dto.refreshToken,
+      );
+
+    const storedToken =
+      await this.authRepository.findRefreshTokenByHash(
+        tokenHash,
+      );
+
+    if (!storedToken) {
+      throw new UnauthorizedException(
+        'Invalid refresh token.',
+      );
+    }
+
+    if (
+      storedToken.userId !==
+      user.id
+    ) {
+      throw new UnauthorizedException(
+        'Invalid token.',
+      );
+    }
+
+    await this.authRepository.revokeRefreshToken(
+      storedToken.id,
     );
+
+    await this.authRepository.updateLoginHistory(
+      user.id,
+    );
+
+    return {
+      message:
+        'Logout successful.',
+    };
   }
 
-  // 4. Revoke token
-  await this.authRepository.revokeRefreshToken(
-    storedToken.id,
-  );
 
 
+  async logoutAll(
+    user: any,
+  ) {
+    await this.authRepository.revokeAllRefreshTokens(
+      user.id,
+    );
 
-  await this.authRepository.updateLoginHistory(
-  user.id,
-);
+    await this.authRepository.updateLoginHistory(
+      user.id,
+    );
 
-  return {
-    message: 'Logout successful.',
-  };
-}
-
-
-async logoutAll(
-  user: any,
-) {
-  await this.authRepository.revokeAllRefreshTokens(
-    user.id,
-  );
-
-  await this.authRepository.updateLoginHistory(
-  user.id,
-);
-
-  return {
-    message:
-      'Logged out from all devices successfully.',
-  };
-}
+    return {
+      message:
+        'Logged out from all devices successfully.',
+    };
+  }
 }

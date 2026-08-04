@@ -12,34 +12,44 @@ interface Props {
 const LoginForm = ({
   onSuccess,
 }: Props) => {
-  const [receiver, setReceiver] =
-    useState("");
+  const [
+    receiver,
+    setReceiver,
+  ] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
   ) => {
     e.preventDefault();
 
-    if (!receiver.trim()) {
+    const email =
+      receiver.trim().toLowerCase();
+
+    if (!email) {
       setError(
-        "Email is required.",
+        "Email address is required.",
       );
       return;
     }
 
     try {
       setLoading(true);
+
       setError("");
 
       const response =
         await sendOtp({
-          receiver,
+          receiver: email,
           channel: "EMAIL",
         });
 
@@ -47,12 +57,11 @@ const LoginForm = ({
         response.message,
       );
 
-      onSuccess(receiver);
+      onSuccess(email);
     } catch (err: any) {
       setError(
-        err.response?.data
-          ?.message ??
-          "Unable to send OTP.",
+        err.response?.data?.message ??
+          "Unable to send OTP. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -60,22 +69,24 @@ const LoginForm = ({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-    >
-
+    <form onSubmit={handleSubmit}>
       <Input
         id="email"
         label="Email Address"
         type="email"
-        placeholder="Enter your email"
+        placeholder="Enter your email address"
         value={receiver}
-        onChange={(e) =>
+        onChange={(e) => {
           setReceiver(
             e.target.value,
-          )
-        }
+          );
+
+          if (error) {
+            setError("");
+          }
+        }}
         error={error}
+        autoComplete="email"
         autoFocus
       />
 

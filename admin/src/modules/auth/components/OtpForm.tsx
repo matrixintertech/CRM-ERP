@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-import Button from "@/shared/components/Button";
-import Input from "@/shared/components/Input";
+import {
+  useRef,
+  useState,
+} from "react";
 
 import {
-  verifyOtp,
+  useNavigate,
+} from "react-router-dom";
+
+import OtpInput from "react-otp-input";
+
+import Button from "@/shared/components/Button";
+
+import {
   getProfile,
+  verifyOtp,
 } from "../api/auth.api";
 
-import { useAuth } from "@/app/providers/AuthProvider";
+import {
+  useAuth,
+} from "@/app/providers/AuthProvider";
+
+import styles from "../styles/LoginPage.module.css";
 
 interface Props {
   receiver: string;
@@ -20,7 +31,8 @@ const OtpForm = ({
   receiver,
   onBack,
 }: Props) => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const {
     login,
@@ -36,26 +48,38 @@ const OtpForm = ({
   const [error, setError] =
     useState("");
 
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
-  ) => {
-    e.preventDefault();
+  /*
+   * Same 6-digit OTP ko multiple times
+   * automatically submit hone se rokta hai.
+   */
+  const verifyingRef =
+    useRef(false);
 
-    if (otp.length !== 6) {
-      setError(
-        "Please enter a valid 6-digit OTP.",
-      );
+  const handleVerifyOtp = async (
+    otpValue: string,
+  ) => {
+    if (
+      otpValue.length !== 6 ||
+      verifyingRef.current
+    ) {
       return;
     }
 
     try {
+      verifyingRef.current = true;
+
       setLoading(true);
       setError("");
 
       const response =
         await verifyOtp({
-          receiver,
-          otp,
+          receiver:
+            receiver
+              .trim()
+              .toLowerCase(),
+
+          otp:
+            otpValue,
         });
 
       login(
@@ -63,9 +87,9 @@ const OtpForm = ({
       );
 
       localStorage.setItem(
-  "refreshToken",
-  response.data.refreshToken,
-);
+        "refreshToken",
+        response.data.refreshToken,
+      );
 
       const profile =
         await getProfile();
@@ -74,74 +98,152 @@ const OtpForm = ({
         profile.data,
       );
 
-      navigate("/dashboard");
-    } catch (err: any) {
+      navigate(
+        "/dashboard",
+        {
+          replace: true,
+        },
+      );
+    } catch (err: unknown) {
+      const apiError =
+        err as {
+          response?: {
+            data?: {
+              message?: string;
+            };
+          };
+        };
+
       setError(
-        err.response?.data
+        apiError.response?.data
           ?.message ??
           "Invalid OTP.",
       );
+
+      setOtp("");
     } finally {
+      verifyingRef.current = false;
+
       setLoading(false);
     }
   };
 
+  const handleOtpChange = (
+    value: string,
+  ) => {
+    const numericOtp =
+      value
+        .replace(
+          /\D/g,
+          "",
+        )
+        .slice(
+          0,
+          6,
+        );
+
+    setError("");
+    setOtp(numericOtp);
+
+    if (
+      numericOtp.length === 6
+    ) {
+      void handleVerifyOtp(
+        numericOtp,
+      );
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit}>
-      <h3>Verify OTP</h3>
+    <div>
+      <h3>
+        Verify OTP
+      </h3>
 
       <p>
-        Enter the 6-digit verification
-        code sent to
+        Enter the 6-digit
+        verification code sent to
       </p>
 
       <p
-        style={{
-          fontWeight: 600,
-          marginBottom: 24,
-        }}
+        className={
+          styles.otpReceiver
+        }
       >
         {receiver}
       </p>
 
-      <Input
-        id="otp"
-        label="One-Time Password"
-        type="text"
-        placeholder="Enter 6-digit OTP"
-        maxLength={6}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        value={otp}
-        onChange={(e) =>
-          setOtp(
-            e.target.value.replace(
-              /\D/g,
-              "",
-            ),
-          )
+      <div
+        className={
+          styles.otpWrapper
         }
-        error={error}
-        autoFocus
-      />
-
-      <Button
-        type="submit"
-        fullWidth
-        loading={loading}
       >
-        Verify OTP
-      </Button>
+        <label
+          className={
+            styles.otpLabel
+          }
+        >
+          One-Time Password
+        </label>
+
+        <OtpInput
+          value={otp}
+          onChange={
+            handleOtpChange
+          }
+          numInputs={6}
+          shouldAutoFocus
+          inputType="tel"
+          containerStyle={
+            styles.otpContainer
+          }
+          renderInput={(
+            inputProps,
+          ) => (
+            <input
+              {...inputProps}
+              disabled={loading}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              className={
+                styles.otpInput
+              }
+              aria-label="OTP digit"
+            />
+          )}
+        />
+
+        {error && (
+          <p
+            className={
+              styles.otpError
+            }
+          >
+            {error}
+          </p>
+        )}
+
+        {loading && (
+          <p
+            className={
+              styles.otpStatus
+            }
+          >
+            Verifying OTP...
+          </p>
+        )}
+      </div>
 
       <Button
         type="button"
         variant="outline"
         fullWidth
+        disabled={loading}
         onClick={onBack}
       >
         Change Email
       </Button>
-    </form>
+    </div>
   );
 };
 

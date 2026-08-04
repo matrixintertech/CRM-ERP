@@ -59,6 +59,11 @@ import { DepartmentModule } from "./modules/department/department.module";
 //Employee
 import { EmployeeModule } from "./modules/employee/employee.module";
 
+//Project category
+import {
+  ProjectCategoryModule,
+} from './modules/project-category/project-category.module';
+
 
 @Module({
   imports: [
@@ -86,7 +91,8 @@ import { EmployeeModule } from "./modules/employee/employee.module";
     ProjectModule,
     DesignationModule,
     DepartmentModule,
-    EmployeeModule
+    EmployeeModule,
+    ProjectCategoryModule,
 
   ],
   controllers: [AppController],

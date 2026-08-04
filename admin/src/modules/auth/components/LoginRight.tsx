@@ -12,14 +12,31 @@ const LoginRight = ({
   return (
     <div className={styles.right}>
       <div className={styles.loginBox}>
-
-        <h2>Matrix CRM</h2>
+        <h2>
+          Welcome Back
+        </h2>
 
         <p className={styles.subtitle}>
-          Sign in using your registered account.
+          Sign in securely using
+          your registered email
+          address. We'll send a
+          one-time verification
+          code to continue.
         </p>
 
         {children}
+
+        <div
+          style={{
+            marginTop: 24,
+            textAlign: "center",
+            fontSize: 13,
+            color: "#6b7280",
+          }}
+        >
+          Protected by secure
+          OTP authentication
+        </div>
       </div>
     </div>
   );

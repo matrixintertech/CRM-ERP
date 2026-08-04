@@ -29,22 +29,26 @@
 }
 
 .brand h1 {
+  margin: 0 0 20px;
+
   font-size: 52px;
   font-weight: 700;
-
-  margin-bottom: 20px;
+  line-height: 1.1;
 }
 
-.brand p {
+.brand > p {
+  margin: 0 0 40px;
+
   font-size: 20px;
   line-height: 1.7;
 
-  margin-bottom: 48px;
-
-  opacity: .95;
+  opacity: 0.95;
 }
 
 .brand ul {
+  margin: 0;
+  padding: 0;
+
   list-style: none;
 }
 
@@ -54,9 +58,10 @@
 
   gap: 12px;
 
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 
   font-size: 18px;
+  line-height: 1.5;
 }
 
 /* Right Section */
@@ -71,46 +76,6 @@
   background: #f8fafc;
 }
 
-.card {
-  width: 100%;
-  max-width: 620px;
-
-  padding: 48px;
-
-  background: var(--color-white);
-
-  border: 1px solid var(--color-border);
-
-  border-radius: 16px;
-
-  box-shadow: var(--shadow-lg);
-}
-
-.card form {
-  width: 100%;
-
-  display: flex;
-  flex-direction: column;
-
-  gap: 20px;
-}
-
-.card h2,
-.card h3 {
-  margin: 0;
-
-  font-size: 30px;
-  font-weight: 700;
-
-  color: var(--color-text);
-}
-
-.card p {
-  color: var(--color-text-light);
-
-  line-height: 1.6;
-}
-
 .loginBox {
   width: 100%;
   max-width: 650px;
@@ -120,20 +85,80 @@
   background: var(--color-white);
 
   border: 1px solid var(--color-border);
-
   border-radius: 16px;
 
   box-shadow: var(--shadow-lg);
-  
+}
+
+.loginBox h2,
+.loginBox h3 {
+  margin: 0;
+
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin: 12px 0 28px;
+
+  color: var(--color-text-light);
+
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 .loginBox form {
   display: flex;
   flex-direction: column;
+
   gap: 24px;
 }
 
+.loginBox form h3 {
+  margin-bottom: 4px;
+}
+
+.loginBox form p {
+  margin: 0;
+
+  color: var(--color-text-light);
+
+  line-height: 1.6;
+}
+
+/* Optional OTP status text */
+
+.otpStatus {
+  margin-top: -8px;
+
+  color: var(--color-text-light);
+
+  font-size: 14px;
+  text-align: center;
+}
+
 /* Responsive */
+
+@media (max-width: 1200px) {
+  .container {
+    grid-template-columns: 50% 50%;
+  }
+
+  .left {
+    padding: 56px;
+  }
+
+  .right {
+    padding: 40px;
+  }
+
+  .loginBox {
+    padding: 44px;
+  }
+}
 
 @media (max-width: 992px) {
   .container {
@@ -145,11 +170,164 @@
   }
 
   .right {
+    min-height: 100vh;
+
     padding: 24px;
   }
 
-  .card {
-    max-width: 100%;
-    padding: 32px;
+  .loginBox {
+    max-width: 620px;
+
+    padding: 36px;
+  }
+}
+
+@media (max-width: 576px) {
+  .right {
+    align-items: flex-start;
+
+    padding: 16px;
+  }
+
+  .loginBox {
+    margin-top: 32px;
+    padding: 28px 22px;
+
+    border-radius: 12px;
+  }
+
+  .loginBox h2,
+  .loginBox h3 {
+    font-size: 26px;
+  }
+
+  .subtitle {
+    margin-bottom: 24px;
+
+    font-size: 14px;
+  }
+}
+
+/* OTP BOX */
+.otpReceiver {
+  margin: 4px 0 24px;
+
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+
+  word-break: break-word;
+}
+
+.otpWrapper {
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+
+  margin-bottom: 24px;
+}
+
+.otpLabel {
+  color: var(--color-text);
+
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.otpContainer {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+  width: 100%;
+}
+
+.otpInput {
+  width: 54px !important;
+  height: 58px;
+
+  padding: 0;
+
+  background: var(--color-white);
+
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+
+  color: var(--color-text);
+
+  font-size: 24px;
+  font-weight: 700;
+
+  text-align: center;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.otpInput:focus {
+  outline: none;
+
+  border-color: var(--color-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(37, 99, 235, 0.15);
+}
+
+.otpInput:disabled {
+  background: #f3f4f6;
+
+  color: #6b7280;
+
+  cursor: not-allowed;
+}
+
+.otpError {
+  margin: 0;
+
+  color: #dc2626;
+
+  font-size: 13px;
+}
+
+.otpStatus {
+  margin: 0;
+
+  color: var(--color-text-light);
+
+  font-size: 14px;
+  text-align: center;
+}
+
+@media (max-width: 576px) {
+  .otpContainer {
+    gap: 6px;
+  }
+
+  .otpInput {
+    width: 42px !important;
+    height: 50px;
+
+    border-radius: 8px;
+
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .otpContainer {
+    gap: 4px;
+  }
+
+  .otpInput {
+    width: 38px !important;
+    height: 46px;
+
+    font-size: 18px;
   }
 }

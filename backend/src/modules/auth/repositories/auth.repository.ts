@@ -1,23 +1,41 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { OtpPurpose, RefreshTokenStatus, LoginStatus  } from '@prisma/client';
+import {
+  LoginStatus,
+  OtpPurpose,
+  OtpStatus,
+  Prisma,
+  RefreshTokenStatus,
+  User,
+} from '@prisma/client';
+
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
+
 
 @Injectable()
 export class AuthRepository {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {}
 
+
+
   /**
-   * Find user by email or mobile
+   * Find a non-deleted user
+   * by email or mobile.
    */
   async findUserByIdentifier(
     identifier: string,
   ): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
+        deletedAt: null,
+
         OR: [
           {
             email: identifier,
@@ -30,8 +48,10 @@ export class AuthRepository {
     });
   }
 
+
+
   /**
-   * Create OTP
+   * Create OTP.
    */
   async createOtp(
     data: Prisma.OtpCreateInput,
@@ -41,131 +61,294 @@ export class AuthRepository {
     });
   }
 
+
+
   /**
-   * Get latest OTP
+   * Find latest pending OTP
+   * for receiver and purpose.
    */
-async findLatestOtp(
-  receiver: string,
-  purpose: OtpPurpose,
-) {
- return this.prisma.otp.findFirst({
-  where: {
-    receiver,
-    purpose,
-  },
-  include: {
-    user: true,
-  },
-  orderBy: {
-    createdAt: 'desc',
-  },
-});
-}
+  async findLatestOtp(
+    receiver: string,
+    purpose: OtpPurpose,
+  ) {
+    return this.prisma.otp.findFirst({
+      where: {
+        receiver,
+        purpose,
+        status:
+          OtpStatus.PENDING,
+      },
+
+      include: {
+        user: true,
+      },
+
+      orderBy: {
+        createdAt:
+          'desc',
+      },
+    });
+  }
+
+
+
+  /**
+   * Update one OTP.
+   */
   async updateOtp(
-  id: bigint,
-  data: Prisma.OtpUpdateInput,
-) {
-  return this.prisma.otp.update({
-    where: {
-      id,
-    },
-    data,
-  });
-}
+    id: bigint,
+    data: Prisma.OtpUpdateInput,
+  ) {
+    return this.prisma.otp.update({
+      where: {
+        id,
+      },
+
+      data,
+    });
+  }
 
 
-async createRefreshToken(
-  data: Prisma.RefreshTokenCreateInput,
-) {
-  return this.prisma.refreshToken.create({
-    data,
-  });
-}
+
+  /**
+   * Expire all previous pending OTPs
+   * for same receiver and purpose.
+   */
+  async expirePendingOtps(
+    receiver: string,
+    purpose: OtpPurpose,
+  ) {
+    return this.prisma.otp.updateMany({
+      where: {
+        receiver,
+        purpose,
+        status:
+          OtpStatus.PENDING,
+      },
+
+      data: {
+        status:
+          OtpStatus.EXPIRED,
+      },
+    });
+  }
 
 
- async findRefreshTokenByHash(
-  tokenHash: string,
-) {
-  return this.prisma.refreshToken.findFirst({
-    where: {
-      tokenHash,
-      status: 'ACTIVE',
-    },
-    include: {
-      user: true,
-    },
-  });
-}
+
+  /**
+   * Increment OTP attempt count.
+   * Marks OTP failed when max
+   * attempts are reached.
+   */
+  async incrementOtpAttempt(
+    id: bigint,
+    attemptCount: number,
+    maxAttempts: number,
+  ) {
+    const nextAttemptCount =
+      attemptCount + 1;
+
+    return this.prisma.otp.update({
+      where: {
+        id,
+      },
+
+      data: {
+        attemptCount:
+          nextAttemptCount,
+
+        ...(nextAttemptCount >=
+          maxAttempts && {
+          status:
+            OtpStatus.FAILED,
+        }),
+      },
+    });
+  }
 
 
-async updateRefreshToken(
-  id: bigint,
-  data: Prisma.RefreshTokenUpdateInput,
-) {
-  return this.prisma.refreshToken.update({
-    where: {
-      id,
-    },
-    data,
-  });
-}
+
+  /**
+   * Create refresh token.
+   */
+  async createRefreshToken(
+    data:
+      Prisma.RefreshTokenCreateInput,
+  ) {
+    return this.prisma.refreshToken.create({
+      data,
+    });
+  }
 
 
-async revokeRefreshToken(
-  id: bigint,
-) {
-  return this.prisma.refreshToken.update({
-    where: {
-      id,
-    },
-    data: {
-      status: RefreshTokenStatus.REVOKED,
-      revokedAt: new Date(),
-    },
-  });
-}
+
+  /**
+   * Find active and non-expired
+   * refresh token by hash.
+   */
+  async findRefreshTokenByHash(
+    tokenHash: string,
+  ) {
+    return this.prisma.refreshToken.findFirst({
+      where: {
+        tokenHash,
+
+        status:
+          RefreshTokenStatus.ACTIVE,
+
+        expiresAt: {
+          gt:
+            new Date(),
+        },
+      },
+
+      include: {
+        user: true,
+      },
+    });
+  }
 
 
-async revokeAllRefreshTokens(
-  userId: bigint,
-) {
-  return this.prisma.refreshToken.updateMany({
-    where: {
-      userId,
-      status: RefreshTokenStatus.ACTIVE,
-    },
-    data: {
-      status: RefreshTokenStatus.REVOKED,
-      revokedAt: new Date(),
-    },
-  });
-}
+
+  /**
+   * Update one refresh token.
+   */
+  async updateRefreshToken(
+    id: bigint,
+    data:
+      Prisma.RefreshTokenUpdateInput,
+  ) {
+    return this.prisma.refreshToken.update({
+      where: {
+        id,
+      },
+
+      data,
+    });
+  }
 
 
-async createLoginHistory(
-  data: Prisma.LoginHistoryCreateInput,
-) {
-  return this.prisma.loginHistory.create({
-    data,
-  });
-}
+
+  /**
+   * Revoke one refresh token.
+   */
+  async revokeRefreshToken(
+    id: bigint,
+  ) {
+    return this.prisma.refreshToken.update({
+      where: {
+        id,
+      },
+
+      data: {
+        status:
+          RefreshTokenStatus.REVOKED,
+
+        revokedAt:
+          new Date(),
+      },
+    });
+  }
 
 
-async updateLoginHistory(
-  userId: bigint,
-) {
-  return this.prisma.loginHistory.updateMany({
-    where: {
-      userId,
-      status: LoginStatus.SUCCESS,
-      logoutAt: null,
-    },
-    data: {
-      status: LoginStatus.LOGOUT,
-      logoutAt: new Date(),
-    },
-  });
-}
 
-  
+  /**
+   * Revoke all active refresh tokens
+   * for one user.
+   */
+  async revokeAllRefreshTokens(
+    userId: bigint,
+  ) {
+    return this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+
+        status:
+          RefreshTokenStatus.ACTIVE,
+      },
+
+      data: {
+        status:
+          RefreshTokenStatus.REVOKED,
+
+        revokedAt:
+          new Date(),
+      },
+    });
+  }
+
+
+
+  /**
+   * Mark expired active tokens
+   * as expired.
+   */
+  async expireRefreshTokens(
+    userId?: bigint,
+  ) {
+    return this.prisma.refreshToken.updateMany({
+      where: {
+        status:
+          RefreshTokenStatus.ACTIVE,
+
+        expiresAt: {
+          lte:
+            new Date(),
+        },
+
+        ...(userId !== undefined && {
+          userId,
+        }),
+      },
+
+      data: {
+        status:
+          RefreshTokenStatus.EXPIRED,
+      },
+    });
+  }
+
+
+
+  /**
+   * Create login history.
+   */
+  async createLoginHistory(
+    data:
+      Prisma.LoginHistoryCreateInput,
+  ) {
+    return this.prisma.loginHistory.create({
+      data,
+    });
+  }
+
+
+
+  /**
+   * Mark active login history
+   * records as logged out.
+   */
+  async updateLoginHistory(
+    userId: bigint,
+  ) {
+    return this.prisma.loginHistory.updateMany({
+      where: {
+        userId,
+
+        status:
+          LoginStatus.SUCCESS,
+
+        logoutAt:
+          null,
+      },
+
+      data: {
+        status:
+          LoginStatus.LOGOUT,
+
+        logoutAt:
+          new Date(),
+      },
+    });
+  }
 }

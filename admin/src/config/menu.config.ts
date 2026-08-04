@@ -1,5 +1,23 @@
 import type { ElementType } from "react";
 
+import {
+  Building2,
+  Building,
+  Boxes,
+  Briefcase,
+  ChartColumn,
+  FolderKanban,
+  Globe,
+  Landmark,
+  LayoutDashboard,
+  Map,
+  MapPinned,
+  Settings,
+  ShieldCheck,
+  UserCog,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 export interface MenuItem {
   id: string;
@@ -18,85 +36,103 @@ export const menu: MenuItem[] = [
     id: "dashboard",
     title: "Dashboard",
     path: "/dashboard",
+    icon: LayoutDashboard,
   },
+
   {
     id: "companies",
     title: "Companies",
     path: "/companies",
+    icon: Building2,
   },
 
-   {
-  id: "modules",
-  title: "Modules",
-  path: "/modules",
-},
+  {
+    id: "modules",
+    title: "Modules",
+    path: "/modules",
+    icon: Boxes,
+  },
 
- {
+  {
     id: "Subscription-plan",
     title: "Subscription Plans",
     path: "/subscription-plans",
+    icon: Landmark,
   },
 
+  {
+    id: "master",
+    title: "Master",
+    path: "#",
+    icon: Globe,
+    children: [
+      {
+        id: "states",
+        title: "States",
+        path: "/master/states",
+        icon: MapPinned,
+      },
+      {
+        id: "cities",
+        title: "Cities",
+        path: "/master/cities",
+        icon: Map,
+      },
+    ],
+  },
 
   {
-  id: "master",
-  title: "Master",
-  path: "#",
-  children: [
-    {
-      id: "states",
-      title: "States",
-      path: "/master/states",
-    },
-    {
-      id: "cities",
-      title: "Cities",
-      path: "/master/cities",
-    },
-  ],
-},
+    id: "crm",
+    title: "CRM",
+    path: "#",
+    icon: FolderKanban,
+    children: [
+      {
+        id: "clients",
+        title: "Clients",
+        path: "/clients",
+        icon: Users,
+      },
 
+      {
+        id: "projects",
+        title: "Projects",
+        path: "/projects",
+        icon: FolderKanban,
+      },
 
-{
-  id: "crm",
-  title: "CRM",
-  path: "#",
-  children: [
-    {
-      id: "clients",
-      title: "Clients",
-      path: "/clients",
-    },
-
-    {
-      id: "projects",
-      title: "Projects",
-      path: "/projects",
-    },
-  ],
-},
-
-
+      {
+        id: "projects-categories",
+        title: "Projects Categories",
+        path: "/project-categories",
+        icon: Boxes,
+      },
+    ],
+  },
 
   {
     id: "hr",
     title: "HR",
     path: "#",
+    icon: Briefcase,
     children: [
       {
         id: "departments",
         title: "Departments",
         path: "/departments",
+        icon: Building,
       },
       {
         id: "designations",
         title: "Designations",
         path: "/designations",
+        icon: ShieldCheck,
       },
       {
         id: "employees",
         title: "Employees",
         path: "/employees",
+        icon: Users,
       },
     ],
   },
@@ -105,45 +141,70 @@ export const menu: MenuItem[] = [
     id: "inventory",
     title: "Inventory",
     path: "/inventory",
+    icon: Boxes,
   },
+
   {
     id: "finance",
     title: "Finance",
     path: "/finance",
+    icon: Landmark,
   },
+
   {
     id: "reports",
     title: "Reports",
     path: "/reports",
+    icon: ChartColumn,
   },
- {
-  id: "settings",
-  title: "Settings",
-  path: "#",
-  children: [
-    {
-      id: "company-profile",
-      title: "Company Profile",
-      path: "/settings/company-profile",
-    },
-    {
-      id: "organization-unit",
-      title: "Organization Unit",
-      path: "/settings/organization-units",
-    },
 
-     {
-      id: "roles",
-      title: "Roles",
-      path: "/settings/roles",
-    },
+  {
+    id: "settings",
+    title: "Settings",
+    path: "#",
+    icon: Settings,
+    children: [
+      {
+        id: "users",
+        title: "Users",
+        path: "/settings/users",
+        icon: UserCog,
+      },
 
-     {
-      id: "permissions",
-      title: "Permissions",
-      path: "/settings/permissions",
-    },
-    
-  ],
-},
+      {
+        id: "company-profile",
+        title: "Company Profile",
+        path: "/settings/company-profile",
+        icon: Building2,
+      },
+
+      {
+        id: "organization-unit",
+        title: "Organization Unit",
+        path: "/settings/organization-units",
+        icon: Building,
+      },
+
+      {
+        id: "roles",
+        title: "Roles",
+        path: "/settings/roles",
+        icon: ShieldCheck,
+      },
+
+      {
+        id: "permissions",
+        title: "Permissions",
+        path: "/settings/permissions",
+        icon: ShieldCheck,
+      },
+
+      {
+        id: "user-profile",
+        title: "User Profile",
+        path: "/settings/profile",
+        icon: UserRound,
+      },
+    ],
+  },
 ];
