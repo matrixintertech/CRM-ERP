@@ -11,9 +11,21 @@ import type {
 
 interface User {
   id: string;
+
+  uuid?: string;
+
   displayName: string;
-  companyId?: string;
-  userType?: string;
+
+  email?: string | null;
+  mobile?: string | null;
+
+  profilePhoto?: string | null;
+
+  companyId?: string | null;
+
+  userType?: string | null;
+
+  status?: string | null;
 }
 
 interface AuthContextType {
