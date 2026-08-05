@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useState,
 } from "react";
 
@@ -62,143 +63,175 @@ export const useProjectCategories = () => {
       }),
     );
 
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
+  const fetchCategories =
+    useCallback(async () => {
+      try {
+        setLoading(true);
 
-      const data =
-        await getProjectCategories();
+        const data =
+          await getProjectCategories();
 
-      setCategories(
-        data.categories ?? [],
-      );
-
-      return data;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategory = async (
-    uuid: string,
-  ) => {
-    try {
-      setLoading(true);
-
-      const data =
-        await getProjectCategoryByUuid(
-          uuid,
+        setCategories(
+          data.categories ?? [],
         );
 
-      setSelectedCategory(
-        data.category,
-      );
-
-      return data.category;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const create = async (
-    payload:
-      CreateProjectCategoryDto,
-  ) => {
-    try {
-      setLoading(true);
-
-      const data =
-        await createProjectCategory(
-          payload,
+        return data;
+      } catch (error) {
+        notify.error(
+          "Failed to load project categories.",
         );
 
-      notify.success(
-        "Project category created successfully.",
-      );
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
-      return data.category;
-    } catch (error) {
-      notify.error(
-        "Failed to create project category.",
-      );
+  const fetchCategory =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        try {
+          setLoading(true);
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+          const data =
+            await getProjectCategoryByUuid(
+              uuid,
+            );
 
-  const update = async (
-    uuid: string,
-    payload:
-      UpdateProjectCategoryDto,
-  ) => {
-    try {
-      setLoading(true);
+          setSelectedCategory(
+            data.category,
+          );
 
-      const data =
-        await updateProjectCategory(
-          uuid,
-          payload,
-        );
+          return data.category;
+        } catch (error) {
+          notify.error(
+            "Failed to load project category.",
+          );
 
-      notify.success(
-        "Project category updated successfully.",
-      );
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
 
-      return data.category;
-    } catch (error) {
-      notify.error(
-        "Failed to update project category.",
-      );
+  const create =
+    useCallback(
+      async (
+        payload:
+          CreateProjectCategoryDto,
+      ) => {
+        try {
+          setLoading(true);
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+          const data =
+            await createProjectCategory(
+              payload,
+            );
 
-  const remove = async (
-    uuid: string,
-  ) => {
-    try {
-      setLoading(true);
+          notify.success(
+            "Project category created successfully.",
+          );
 
-      await deleteProjectCategory(
-        uuid,
-      );
+          return data.category;
+        } catch (error) {
+          notify.error(
+            "Failed to create project category.",
+          );
 
-      setCategories(
-        (previous) =>
-          previous.filter(
-            (category) =>
-              category.uuid !== uuid,
-          ),
-      );
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
 
-      notify.success(
-        "Project category deleted successfully.",
-      );
-    } catch (error) {
-      notify.error(
-        "Failed to delete project category.",
-      );
+  const update =
+    useCallback(
+      async (
+        uuid: string,
+        payload:
+          UpdateProjectCategoryDto,
+      ) => {
+        try {
+          setLoading(true);
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+          const data =
+            await updateProjectCategory(
+              uuid,
+              payload,
+            );
 
-  const resetForm = () => {
-    setFormData({
-      ...initialFormData,
-    });
-  };
+          notify.success(
+            "Project category updated successfully.",
+          );
 
-  const clearSelectedCategory = () => {
-    setSelectedCategory(null);
-  };
+          return data.category;
+        } catch (error) {
+          notify.error(
+            "Failed to update project category.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
+
+  const remove =
+    useCallback(
+      async (
+        uuid: string,
+      ) => {
+        try {
+          setLoading(true);
+
+          await deleteProjectCategory(
+            uuid,
+          );
+
+          setCategories(
+            (previous) =>
+              previous.filter(
+                (category) =>
+                  category.uuid !==
+                  uuid,
+              ),
+          );
+
+          notify.success(
+            "Project category deleted successfully.",
+          );
+        } catch (error) {
+          notify.error(
+            "Failed to delete project category.",
+          );
+
+          throw error;
+        } finally {
+          setLoading(false);
+        }
+      },
+      [],
+    );
+
+  const resetForm =
+    useCallback(() => {
+      setFormData({
+        ...initialFormData,
+      });
+    }, []);
+
+  const clearSelectedCategory =
+    useCallback(() => {
+      setSelectedCategory(null);
+    }, []);
 
   return {
     loading,
