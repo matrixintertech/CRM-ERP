@@ -1,10 +1,13 @@
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
 
 import styles from "./Table.module.css";
 
 export interface Column<T> {
   key: keyof T | string;
   title: string;
+
   render?: (
     value: unknown,
     row: T,
@@ -14,35 +17,58 @@ export interface Column<T> {
 interface TableProps<T> {
   columns: Column<T>[];
   data: T[];
+
+  loading?: boolean;
+
+  emptyMessage?: string;
+
+  rowKey?: (
+    row: T,
+    index: number,
+  ) => string | number;
 }
 
 const Table = <T,>({
   columns,
   data,
+  loading = false,
+  emptyMessage = "No records found.",
+  rowKey,
 }: TableProps<T>) => {
   return (
     <div className={styles.wrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column.key.toString()}>
-                {column.title}
-              </th>
-            ))}
+            {columns.map(
+              (column) => (
+                <th
+                  key={column.key.toString()}
+                >
+                  {column.title}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
 
         <tbody>
-          {data.length === 0 ? (
+          {loading ? (
             <tr>
               <td
-                colSpan={
-                  columns.length
-                }
+                colSpan={columns.length}
                 className={styles.empty}
               >
-                No records found.
+                Loading...
+              </td>
+            </tr>
+          ) : data.length === 0 ? (
+            <tr>
+              <td
+                colSpan={columns.length}
+                className={styles.empty}
+              >
+                {emptyMessage}
               </td>
             </tr>
           ) : (
@@ -51,7 +77,16 @@ const Table = <T,>({
                 row,
                 rowIndex,
               ) => (
-                <tr key={rowIndex}>
+                <tr
+                  key={
+                    rowKey
+                      ? rowKey(
+                          row,
+                          rowIndex,
+                        )
+                      : rowIndex
+                  }
+                >
                   {columns.map(
                     (column) => {
                       const value =
@@ -60,11 +95,15 @@ const Table = <T,>({
                             string,
                             unknown
                           >
-                        )[column.key.toString()];
+                        )[
+                          column.key.toString()
+                        ];
 
                       return (
                         <td
-                          key={column.key.toString()}
+                          key={
+                            column.key.toString()
+                          }
                         >
                           {column.render
                             ? column.render(
@@ -72,7 +111,8 @@ const Table = <T,>({
                                 row,
                               )
                             : String(
-                                value ?? "",
+                                value ??
+                                  "",
                               )}
                         </td>
                       );

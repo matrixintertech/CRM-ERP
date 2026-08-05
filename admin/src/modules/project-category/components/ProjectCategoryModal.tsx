@@ -1,15 +1,18 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
 import ProjectCategoryForm from "./ProjectCategoryForm";
 
 import type {
-  CreateProjectCategoryRequest,
+  ProjectCategoryFormData,
 } from "../types/project-category.types";
 
-
 interface Props {
-
   title: string;
 
   open: boolean;
@@ -18,26 +21,16 @@ interface Props {
 
   loading: boolean;
 
+  formData: ProjectCategoryFormData;
 
-  formData:
-    CreateProjectCategoryRequest;
-
-
-  setFormData:
-    React.Dispatch<
-      React.SetStateAction<
-        CreateProjectCategoryRequest
-      >
-    >;
-
+  setFormData: Dispatch<
+    SetStateAction<ProjectCategoryFormData>
+  >;
 
   onClose: () => void;
 
   onSubmit: () => void;
-
 }
-
-
 
 const ProjectCategoryModal = ({
   title,
@@ -50,83 +43,46 @@ const ProjectCategoryModal = ({
 
   onClose,
   onSubmit,
-
 }: Props) => {
-
-
   return (
-
     <Modal
       open={open}
       title={title}
       onClose={onClose}
       size="md"
     >
-
       <ProjectCategoryForm
-        formData={
-          formData
-        }
-
-        setFormData={
-          setFormData
-        }
-
-        isEdit={
-          isEdit
-        }
+        formData={formData}
+        setFormData={setFormData}
+        isEdit={isEdit}
       />
-
 
       <div
         style={{
-          display:
-            "flex",
-
-          justifyContent:
-            "flex-end",
-
-          gap:
-            12,
-
-          marginTop:
-            24,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 12,
+          marginTop: 24,
         }}
       >
-
         <Button
           variant="secondary"
-          onClick={
-            onClose
-          }
+          onClick={onClose}
         >
           Cancel
         </Button>
 
-
         <Button
-          loading={
-            loading
-          }
-
-          onClick={
-            onSubmit
-          }
+          loading={loading}
+          onClick={onSubmit}
         >
-
           {isEdit
             ? "Update Category"
             : "Create Category"}
-
         </Button>
-
       </div>
-
-
     </Modal>
-
   );
 };
-
 
 export default ProjectCategoryModal;

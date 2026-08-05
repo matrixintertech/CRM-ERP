@@ -2,8 +2,7 @@ import api from "@/shared/services/axios";
 
 
 import type {
-  Module,
-  AssignedModulesResponse,
+  Module
 } from "../types/subscription-module.types";
 
 export const getModules = async (): Promise<Module[]> => {
