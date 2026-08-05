@@ -64,3 +64,13 @@ docker compose \
   //for install packages
   
   docker compose -f docker/docker-compose.yml exec admin npm install react-otp-input
+
+
+  <!-- VPS Migrations -->
+  git pull
+
+docker compose build
+
+docker compose run --rm backend npx prisma migrate deploy
+
+docker compose up -d
