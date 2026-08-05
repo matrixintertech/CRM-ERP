@@ -1,3 +1,8 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
@@ -20,10 +25,6 @@ import type {
   Designation,
 } from "../../designation/types/designation.types";
 
-import type {
-  Role,
-} from "../../role/types/role.types";
-
 interface Props {
   title: string;
   isEdit: boolean;
@@ -34,15 +35,15 @@ interface Props {
   editingUuid?: string | null;
 
   employees: Employee[];
-  organizationUnits: OrganizationUnit[];
+  organizationUnits:
+    OrganizationUnit[];
   departments: Department[];
   designations: Designation[];
-  roles: Role[];
 
   formData: CreateEmployeeDto;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<CreateEmployeeDto>
+  setFormData: Dispatch<
+    SetStateAction<CreateEmployeeDto>
   >;
 
   onClose: () => void;
@@ -59,7 +60,6 @@ const EmployeeModal = ({
   organizationUnits,
   departments,
   designations,
-  roles,
   formData,
   setFormData,
   onClose,
@@ -86,7 +86,6 @@ const EmployeeModal = ({
         }
         departments={departments}
         designations={designations}
-        roles={roles}
         editingUuid={editingUuid}
         formData={formData}
         setFormData={setFormData}
