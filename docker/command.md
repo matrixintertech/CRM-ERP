@@ -13,6 +13,22 @@ Auto deployment (optional)
 <!-- End -->
 
 
+<!-- VPS -->
+cd /var/www/CRM-ERP
+git pull origin main
+
+cd docker
+
+docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  up -d --build backend
+
+  after verify
+  docker ps
+docker logs --tail 100 matrix-crm-prod-backend
+
+
 
 
 
