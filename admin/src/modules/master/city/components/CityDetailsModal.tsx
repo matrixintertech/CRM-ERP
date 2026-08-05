@@ -19,7 +19,11 @@ const formatDate = (
 ) => {
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return "-";
   }
 
@@ -59,20 +63,19 @@ const CityDetailsModal = ({
             <strong>State</strong>
 
             <p>
-              {city.state?.name ?? "-"}
+              {city.state?.name ??
+                "-"}
             </p>
           </div>
 
           <div className={styles.item}>
-            <strong>City Name</strong>
+            <strong>
+              City Name
+            </strong>
 
-            <p>{city.name || "-"}</p>
-          </div>
-
-          <div className={styles.item}>
-            <strong>City Code</strong>
-
-            <p>{city.code || "-"}</p>
+            <p>
+              {city.name || "-"}
+            </p>
           </div>
 
           <div className={styles.item}>
@@ -90,7 +93,9 @@ const CityDetailsModal = ({
           </div>
 
           <div className={styles.item}>
-            <strong>Created At</strong>
+            <strong>
+              Created At
+            </strong>
 
             <p>
               {formatDate(
@@ -100,7 +105,9 @@ const CityDetailsModal = ({
           </div>
 
           <div className={styles.item}>
-            <strong>Updated At</strong>
+            <strong>
+              Updated At
+            </strong>
 
             <p>
               {formatDate(
