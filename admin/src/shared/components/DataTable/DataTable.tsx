@@ -42,8 +42,7 @@ function DataTable<T extends object>({
                 style={{
                   width: column.width,
                   textAlign:
-                    column.align ??
-                    "left",
+                    column.align ?? "left",
                 }}
               >
                 {column.title}
@@ -68,58 +67,49 @@ function DataTable<T extends object>({
               </td>
             </tr>
           ) : (
-            data.map(
-              (
-                row,
-                index,
-              ) => (
-                <tr
-                  key={String(
-                    row[keyField],
-                  )}
-                >
-                  {showSerialNumber && (
+            data.map((row, index) => (
+              <tr
+                key={String(
+                  row[keyField],
+                )}
+              >
+                {showSerialNumber && (
+                  <td
+                    style={{
+                      textAlign:
+                        "center",
+                    }}
+                  >
+                    {index + 1}
+                  </td>
+                )}
+
+                {columns.map(
+                  (column) => (
                     <td
+                      key={String(
+                        column.key,
+                      )}
                       style={{
                         textAlign:
-                          "center",
+                          column.align ??
+                          "left",
                       }}
                     >
-                      {index + 1}
+                      {column.render
+                        ? column.render(
+                            row,
+                          )
+                        : String(
+                            row[
+                              column.key as keyof T
+                            ] ?? "",
+                          )}
                     </td>
-                  )}
-
-                  {columns.map(
-                    (
-                      column,
-                    ) => (
-                      <td
-                        key={String(
-                          column.key,
-                        )}
-                        style={{
-                          textAlign:
-                            column.align ??
-                            "left",
-                        }}
-                      >
-                        {column.render
-                          ? column.render(
-                              row,
-                              index,
-                            )
-                          : String(
-                              row[
-                                column.key as keyof T
-                              ] ??
-                                "",
-                            )}
-                      </td>
-                    ),
-                  )}
-                </tr>
-              ),
-            )
+                  ),
+                )}
+              </tr>
+            ))
           )}
         </tbody>
       </table>
