@@ -1,22 +1,16 @@
+import type {
+  ReactNode,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Badge from "@/shared/components/Badge";
-
 import Modal from "@/shared/components/Modal";
 
-import styles from "./CompanyDetailsModal.module.css";
+import type {
+  Company,
+} from "../types/company.types";
 
-interface Company {
-  id: string;
-  uuid: string;
-  name: string;
-  code: string;
-  email: string;
-  mobile: string;
-  logo?: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import styles from "./CompanyDetailsModal.module.css";
 
 interface Props {
   open: boolean;
@@ -25,96 +19,9 @@ interface Props {
   onClose: () => void;
 }
 
-const CompanyDetailsModal = ({
-  open,
-  loading,
-  company,
-  onClose,
-}: Props) => {
-  if (!open) return null;
-
-return (
-  <Modal
-    open={open}
-    title="Company Details"
-    size="md"
-    onClose={onClose}
-    footer={
-      <Button
-        onClick={onClose}
-      >
-        Close
-      </Button>
-    }
-  >
-    {loading ? (
-      <div className={styles.loading}>
-        Loading...
-      </div>
-    ) : (
-      company && (
-        <div className={styles.body}>
-          {/* Company Header */}
-
-          <div className={styles.companyHeader}>
-            <div className={styles.avatar}>
-              {company.name
-                .charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <div className={styles.companyInfo}>
-              <h3>{company.name}</h3>
-
-              <p>{company.code}</p>
-            </div>
-
-            <Badge
-              status={company.status}
-            />
-          </div>
-
-          {/* Details */}
-
-          <div className={styles.grid}>
-            <InfoItem
-              label="Email"
-              value={
-                company.email || "-"
-              }
-            />
-
-            <InfoItem
-              label="Mobile"
-              value={
-                company.mobile || "-"
-              }
-            />
-
-            <InfoItem
-              label="Created"
-              value={new Date(
-                company.createdAt,
-              ).toLocaleString()}
-            />
-
-            <InfoItem
-              label="Updated"
-              value={new Date(
-                company.updatedAt,
-              ).toLocaleString()}
-            />
-          </div>
-        </div>
-      )
-    )}
-  </Modal>
-);
-};
-
 interface InfoItemProps {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
 }
 
 const InfoItem = ({
@@ -132,5 +39,143 @@ const InfoItem = ({
   </div>
 );
 
-export default CompanyDetailsModal;
+const CompanyDetailsModal = ({
+  open,
+  loading,
+  company,
+  onClose,
+}: Props) => {
+  if (!open) {
+    return null;
+  }
 
+  return (
+    <Modal
+      open={open}
+      title="Company Details"
+      size="md"
+      onClose={onClose}
+      footer={
+        <Button
+          onClick={onClose}
+        >
+          Close
+        </Button>
+      }
+    >
+      {loading ? (
+        <div
+          className={
+            styles.loading
+          }
+        >
+          Loading...
+        </div>
+      ) : !company ? (
+        <div
+          className={
+            styles.loading
+          }
+        >
+          Company not found.
+        </div>
+      ) : (
+        <div
+          className={
+            styles.body
+          }
+        >
+          <div
+            className={
+              styles.companyHeader
+            }
+          >
+            <div
+              className={
+                styles.avatar
+              }
+            >
+              {company.name
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <div
+              className={
+                styles.companyInfo
+              }
+            >
+              <h3>
+                {company.name}
+              </h3>
+
+              <p>
+                {company.code}
+              </p>
+            </div>
+
+            <Badge
+              status={
+                company.status
+              }
+            />
+          </div>
+
+          <div
+            className={
+              styles.grid
+            }
+          >
+            <InfoItem
+              label="Email"
+              value={
+                company.email ??
+                "-"
+              }
+            />
+
+            <InfoItem
+              label="Mobile"
+              value={
+                company.mobile ??
+                "-"
+              }
+            />
+
+            <InfoItem
+              label="Type"
+              value={
+                company.type ??
+                "-"
+              }
+            />
+
+            <InfoItem
+              label="Created"
+              value={
+                new Date(
+                  company.createdAt,
+                ).toLocaleString(
+                  "en-IN",
+                )
+              }
+            />
+
+            <InfoItem
+              label="Updated"
+              value={
+                new Date(
+                  company.updatedAt,
+                ).toLocaleString(
+                  "en-IN",
+                )
+              }
+            />
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+export default CompanyDetailsModal;
