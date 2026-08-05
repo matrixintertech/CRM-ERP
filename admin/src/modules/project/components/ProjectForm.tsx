@@ -1,482 +1,258 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
 import type {
-  CreateProjectRequest,
+  ProjectFormData,
+  Status,
 } from "../types/project.types";
 
 import styles from "./ProjectForm.module.css";
-
 
 interface Option {
   label: string;
   value: string;
 }
 
+interface DropdownItem {
+  uuid: string;
+  name: string;
+}
 
 interface Props {
+  formData: ProjectFormData;
 
-  formData:
-    CreateProjectRequest;
+  setFormData: Dispatch<
+    SetStateAction<ProjectFormData>
+  >;
 
-
-  setFormData:
-    React.Dispatch<
-      React.SetStateAction<CreateProjectRequest>
-    >;
-
-
-  clientOptions:
-    Option[];
-
-
-  categoryOptions:
-    Option[];
-
-
-  branchOptions:
-    Option[];
-
-
-  stateOptions:
-    Option[];
-
-
-  cityOptions:
-    Option[];
-
-
+  clientOptions: DropdownItem[];
+  categoryOptions: Option[];
+  branchOptions: Option[];
+  stateOptions: DropdownItem[];
+  cityOptions: DropdownItem[];
 
   onStateChange: (
     stateUuid: string,
   ) => Promise<void>;
 
-
-
   isEdit?: boolean;
-
 }
-
-
 
 const ProjectForm = ({
   formData,
   setFormData,
-
   clientOptions,
   categoryOptions,
   branchOptions,
-
   stateOptions,
   cityOptions,
-
   onStateChange,
-
   isEdit = false,
-
 }: Props) => {
-
-
   const mappedClientOptions =
-    clientOptions.map(
-      (item:any)=>({
-        label:item.name,
-        value:item.uuid,
-      }),
-    );
-
-
-
-  const mappedCategoryOptions =
-  categoryOptions;
-
-
-const mappedBranchOptions =
-  branchOptions;
-
-
+    clientOptions.map((item) => ({
+      label: item.name,
+      value: item.uuid,
+    }));
 
   const mappedStateOptions =
-    stateOptions.map(
-      (item:any)=>({
-        label:item.name,
-        value:item.uuid,
-      }),
-    );
-
-
+    stateOptions.map((item) => ({
+      label: item.name,
+      value: item.uuid,
+    }));
 
   const mappedCityOptions =
-    cityOptions.map(
-      (item:any)=>({
-        label:item.name,
-        value:item.uuid,
-      }),
-    );
-
-
+    cityOptions.map((item) => ({
+      label: item.name,
+      value: item.uuid,
+    }));
 
   return (
-
     <div className={styles.form}>
-
-
-      {/* Client */}
-
       <Select
-
         label="Client"
-
-        value={
-          formData.clientUuid
+        value={formData.clientUuid}
+        options={mappedClientOptions}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            clientUuid:
+              event.target.value,
+          }))
         }
-
-        options={
-          mappedClientOptions
-        }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              clientUuid:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
-      {/* Project Category */}
-
       <Select
-
         label="Project Category"
-
-        value={
-          formData.categoryUuid
+        value={formData.categoryUuid}
+        options={categoryOptions}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            categoryUuid:
+              event.target.value,
+          }))
         }
-
-        options={
-          mappedCategoryOptions
-        }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              categoryUuid:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
-      {/* Branch */}
-
       <Select
-
         label="Branch"
-
         value={
           formData.organizationUnitUuid
         }
-
-        options={
-          mappedBranchOptions
+        options={branchOptions}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            organizationUnitUuid:
+              event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              organizationUnitUuid:
-                e.target.value,
-            }),
-          )
-        }
-
       />
-
-
-
-
-      {/* Project Name */}
 
       <Input
-
         label="Project Name"
-
-        value={
-          formData.name
+        value={formData.name}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            name: event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              name:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
-      {/* Location */}
-
       <Select
-
         label="State"
-
-        value={
-          formData.stateUuid ?? ""
-        }
-
-        options={
-          mappedStateOptions
-        }
-
-        onChange={async(e)=>{
-
+        value={formData.stateUuid ?? ""}
+        options={mappedStateOptions}
+        onChange={async (event) => {
           const stateUuid =
-            e.target.value;
+            event.target.value;
 
-
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              stateUuid,
-
-              cityUuid:"",
-            }),
-          );
-
+          setFormData((previous) => ({
+            ...previous,
+            stateUuid,
+            cityUuid: "",
+          }));
 
           await onStateChange(
             stateUuid,
           );
-
         }}
-
       />
-
-
 
       <Select
-
         label="City"
-
-        value={
-          formData.cityUuid ?? ""
+        value={formData.cityUuid ?? ""}
+        options={mappedCityOptions}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            cityUuid:
+              event.target.value,
+          }))
         }
-
-        options={
-          mappedCityOptions
-        }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              cityUuid:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
       <Input
-
         label="Pincode"
-
-        value={
-          formData.pincode ?? ""
+        value={formData.pincode ?? ""}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            pincode:
+              event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              pincode:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
       <Input
-
         label="Address"
-
-        value={
-          formData.address ?? ""
+        value={formData.address ?? ""}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            address:
+              event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              address:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
-
-      {/* Timeline */}
-
       <Input
-
         type="date"
-
         label="Start Date"
-
-        value={
-          formData.startDate ?? ""
+        value={formData.startDate ?? ""}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            startDate:
+              event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              startDate:
-                e.target.value,
-            }),
-          )
-        }
-
       />
 
-
-
       <Input
-
         type="date"
-
         label="Expected End Date"
-
         value={
-          formData.expectedEndDate ?? ""
+          formData.expectedEndDate ??
+          ""
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              expectedEndDate:
-                e.target.value,
-            }),
-          )
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            expectedEndDate:
+              event.target.value,
+          }))
         }
-
       />
-
-
-
-
-      {/* Remarks */}
 
       <Input
-
         label="Remarks"
-
-        value={
-          formData.remarks ?? ""
+        value={formData.remarks ?? ""}
+        onChange={(event) =>
+          setFormData((previous) => ({
+            ...previous,
+            remarks:
+              event.target.value,
+          }))
         }
-
-        onChange={(e)=>
-          setFormData(
-            (prev)=>({
-              ...prev,
-
-              remarks:
-                e.target.value,
-            }),
-          )
-        }
-
       />
-
-
-
 
       {isEdit && (
-
         <Select
-
           label="Status"
-
           value={
             formData.status ??
             "ACTIVE"
           }
-
           options={[
             {
-              label:"Active",
-              value:"ACTIVE",
+              label: "Active",
+              value: "ACTIVE",
             },
-
             {
-              label:"Inactive",
-              value:"INACTIVE",
+              label: "Inactive",
+              value: "INACTIVE",
             },
           ]}
-
-          onChange={(e)=>
-            setFormData(
-              (prev)=>({
-                ...prev,
-
-                status:
-                  e.target.value as
-                  | "ACTIVE"
-                  | "INACTIVE",
-              }),
-            )
+          onChange={(event) =>
+            setFormData((previous) => ({
+              ...previous,
+              status:
+                event.target
+                  .value as Status,
+            }))
           }
-
         />
-
       )}
-
     </div>
-
   );
 };
-
 
 export default ProjectForm;
