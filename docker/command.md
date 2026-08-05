@@ -92,3 +92,28 @@ docker compose run --rm backend npx prisma migrate deploy
 docker compose up -d
 
 <!-- test -->
+
+
+<!-- VPS migration -->
+
+cd /var/www/CRM-ERP/docker
+
+docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  exec backend \
+  npx prisma migrate deploy
+
+  <!-- Check Status -->
+  docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  exec backend \
+  npx prisma migrate status
+
+  <!-- Seed Command -->
+  docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  exec backend \
+  node dist/prisma/seed.js
