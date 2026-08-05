@@ -18,11 +18,6 @@ interface Option {
   value: string;
 }
 
-interface DropdownItem {
-  uuid: string;
-  name: string;
-}
-
 interface Props {
   formData: ProjectFormData;
 
@@ -30,11 +25,11 @@ interface Props {
     SetStateAction<ProjectFormData>
   >;
 
-  clientOptions: DropdownItem[];
+  clientOptions: Option[];
   categoryOptions: Option[];
   branchOptions: Option[];
-  stateOptions: DropdownItem[];
-  cityOptions: DropdownItem[];
+  stateOptions: Option[];
+  cityOptions: Option[];
 
   onStateChange: (
     stateUuid: string,
@@ -54,30 +49,12 @@ const ProjectForm = ({
   onStateChange,
   isEdit = false,
 }: Props) => {
-  const mappedClientOptions =
-    clientOptions.map((item) => ({
-      label: item.name,
-      value: item.uuid,
-    }));
-
-  const mappedStateOptions =
-    stateOptions.map((item) => ({
-      label: item.name,
-      value: item.uuid,
-    }));
-
-  const mappedCityOptions =
-    cityOptions.map((item) => ({
-      label: item.name,
-      value: item.uuid,
-    }));
-
   return (
     <div className={styles.form}>
       <Select
         label="Client"
         value={formData.clientUuid}
-        options={mappedClientOptions}
+        options={clientOptions}
         onChange={(event) =>
           setFormData((previous) => ({
             ...previous,
@@ -129,7 +106,7 @@ const ProjectForm = ({
       <Select
         label="State"
         value={formData.stateUuid ?? ""}
-        options={mappedStateOptions}
+        options={stateOptions}
         onChange={async (event) => {
           const stateUuid =
             event.target.value;
@@ -149,7 +126,7 @@ const ProjectForm = ({
       <Select
         label="City"
         value={formData.cityUuid ?? ""}
-        options={mappedCityOptions}
+        options={cityOptions}
         onChange={(event) =>
           setFormData((previous) => ({
             ...previous,

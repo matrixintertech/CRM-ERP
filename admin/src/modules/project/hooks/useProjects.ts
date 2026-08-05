@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -11,15 +14,18 @@ import {
 } from "../api/project.api";
 
 import type {
+  CreateProjectRequest,
   Project,
+  ProjectFormData,
   ProjectListResponse,
   ProjectQuery,
-  CreateProjectRequest,
   UpdateProjectRequest,
 } from "../types/project.types";
 
-const initialFormData: CreateProjectRequest = {
+const initialFormData: ProjectFormData = {
   clientUuid: "",
+  categoryUuid: "",
+  organizationUnitUuid: "",
 
   name: "",
 
@@ -33,127 +39,209 @@ const initialFormData: CreateProjectRequest = {
   expectedEndDate: "",
 
   remarks: "",
+
+  status: "ACTIVE",
 };
 
 export const useProjects = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [total, setTotal] = useState(0);
+  const [projects, setProjects] =
+    useState<Project[]>([]);
 
-  const [selectedProject, setSelectedProject] =
-    useState<Project | null>(null);
+  const [total, setTotal] =
+    useState(0);
 
-  const [loading, setLoading] = useState(false);
+  const [
+    selectedProject,
+    setSelectedProject,
+  ] = useState<Project | null>(null);
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [formData, setFormData] =
-    useState<CreateProjectRequest>(initialFormData);
+    useState<ProjectFormData>(() => ({
+      ...initialFormData,
+    }));
 
-  const fetchProjects = async (
-    params?: ProjectQuery,
-  ): Promise<ProjectListResponse> => {
-    try {
-      setLoading(true);
+  const fetchProjects = useCallback(
+    async (
+      params: ProjectQuery = {},
+    ): Promise<ProjectListResponse> => {
+      try {
+        setLoading(true);
 
-      const data = await getProjects(params ?? {});
+        const data =
+          await getProjects(params);
 
-      setProjects(data.projects);
-      setTotal(data.total);
+        setProjects(
+          data.projects ?? [],
+        );
 
-      return data;
-    } finally {
-      setLoading(false);
-    }
-  };
+        setTotal(
+          data.total ?? 0,
+        );
 
-  const fetchProject = async (uuid: string) => {
-    const data = await getProjectByUuid(uuid);
+        return data;
+      } catch (error) {
+        notify.error(
+          "Failed to load projects.",
+        );
 
-    setSelectedProject(data.project);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-    return data;
-  };
+  const fetchProject = useCallback(
+    async (
+      uuid: string,
+    ): Promise<Project> => {
+      try {
+        setLoading(true);
 
-  const create = async (
-    payload: CreateProjectRequest,
-  ) => {
-    try {
-      setLoading(true);
+        const project =
+          await getProjectByUuid(
+            uuid,
+          );
 
-      const data = await createProject(payload);
+        setSelectedProject(
+          project,
+        );
 
-      notify.success(
-        "Project created successfully.",
-      );
+        return project;
+      } catch (error) {
+        notify.error(
+          "Failed to load project details.",
+        );
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to create project.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-  const update = async (
-    uuid: string,
-    payload: UpdateProjectRequest,
-  ) => {
-    try {
-      setLoading(true);
+  const create = useCallback(
+    async (
+      payload:
+        CreateProjectRequest,
+    ) => {
+      try {
+        setLoading(true);
 
-      const data = await updateProject(
-        uuid,
-        payload,
-      );
+        const data =
+          await createProject(
+            payload,
+          );
 
-      notify.success(
-        "Project updated successfully.",
-      );
+        notify.success(
+          "Project created successfully.",
+        );
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update project.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        return data;
+      } catch (error) {
+        notify.error(
+          "Failed to create project.",
+        );
 
-  const remove = async (uuid: string) => {
-    try {
-      setLoading(true);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-      await deleteProject(uuid);
+  const update = useCallback(
+    async (
+      uuid: string,
+      payload:
+        UpdateProjectRequest,
+    ) => {
+      try {
+        setLoading(true);
 
-      notify.success(
-        "Project deleted successfully.",
-      );
+        const data =
+          await updateProject(
+            uuid,
+            payload,
+          );
 
-      setProjects((prev) =>
-        prev.filter(
-          (project) => project.uuid !== uuid,
-        ),
-      );
+        notify.success(
+          "Project updated successfully.",
+        );
 
-      setTotal((prev) =>
-        prev > 0 ? prev - 1 : 0,
-      );
-    } catch (error) {
-      notify.error(
-        "Failed to delete project.",
-      );
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+        return data;
+      } catch (error) {
+        notify.error(
+          "Failed to update project.",
+        );
 
-  const resetForm = () => {
-    setFormData(initialFormData);
-  };
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const remove = useCallback(
+    async (
+      uuid: string,
+    ) => {
+      try {
+        setLoading(true);
+
+        await deleteProject(uuid);
+
+        setProjects(
+          (previous) =>
+            previous.filter(
+              (project) =>
+                project.uuid !==
+                uuid,
+            ),
+        );
+
+        setTotal(
+          (previous) =>
+            Math.max(
+              previous - 1,
+              0,
+            ),
+        );
+
+        notify.success(
+          "Project deleted successfully.",
+        );
+      } catch (error) {
+        notify.error(
+          "Failed to delete project.",
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const resetForm =
+    useCallback(() => {
+      setFormData({
+        ...initialFormData,
+      });
+    }, []);
+
+  const clearSelectedProject =
+    useCallback(() => {
+      setSelectedProject(null);
+    }, []);
 
   return {
     loading,
@@ -173,5 +261,6 @@ export const useProjects = () => {
     remove,
 
     resetForm,
+    clearSelectedProject,
   };
 };

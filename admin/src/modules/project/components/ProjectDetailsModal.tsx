@@ -1,10 +1,13 @@
+import type {
+  ReactNode,
+} from "react";
+
 import Badge from "@/shared/components/Badge";
 import Modal from "@/shared/components/Modal";
 
 import type {
   Project,
 } from "../types/project.types";
-
 
 interface Props {
   open: boolean;
@@ -13,19 +16,16 @@ interface Props {
   onClose: () => void;
 }
 
-
 interface DetailItemProps {
   label: string;
-  value?: React.ReactNode;
+  value?: ReactNode;
 }
-
 
 const DetailItem = ({
   label,
   value,
 }: DetailItemProps) => (
   <div>
-
     <div
       style={{
         fontSize: 12,
@@ -37,7 +37,6 @@ const DetailItem = ({
       {label}
     </div>
 
-
     <div
       style={{
         fontSize: 14,
@@ -45,13 +44,14 @@ const DetailItem = ({
         color: "#111827",
       }}
     >
-      {value || "-"}
+      {value !== null &&
+      value !== undefined &&
+      value !== ""
+        ? value
+        : "-"}
     </div>
-
   </div>
 );
-
-
 
 const ProjectDetailsModal = ({
   open,
@@ -59,48 +59,29 @@ const ProjectDetailsModal = ({
   project,
   onClose,
 }: Props) => {
-
   return (
-
     <Modal
       open={open}
       title="Project Details"
       onClose={onClose}
       size="lg"
     >
-
       {loading ? (
-
-        <p>
-          Loading...
-        </p>
-
-
+        <p>Loading...</p>
       ) : !project ? (
-
-        <p>
-          No project found.
-        </p>
-
-
+        <p>No project found.</p>
       ) : (
-
         <div
           style={{
-            display:"grid",
-            gap:28,
+            display: "grid",
+            gap: 28,
           }}
         >
-
-
-          {/* General Information */}
-
           <section>
-
             <h3
               style={{
-                marginBottom:16,
-                paddingBottom:8,
+                marginBottom: 16,
+                paddingBottom: 8,
                 borderBottom:
                   "1px solid #e5e7eb",
               }}
@@ -108,31 +89,23 @@ const ProjectDetailsModal = ({
               General Information
             </h3>
 
-
             <div
               style={{
-                display:"grid",
+                display: "grid",
                 gridTemplateColumns:
                   "1fr 1fr",
-                gap:20,
+                gap: 20,
               }}
             >
-
               <DetailItem
                 label="Project Name"
-                value={
-                  project.name
-                }
+                value={project.name}
               />
-
 
               <DetailItem
                 label="SRN"
-                value={
-                  project.srn
-                }
+                value={project.srn}
               />
-
 
               <DetailItem
                 label="Client"
@@ -141,7 +114,6 @@ const ProjectDetailsModal = ({
                 }
               />
 
-
               <DetailItem
                 label="Category"
                 value={
@@ -149,14 +121,13 @@ const ProjectDetailsModal = ({
                 }
               />
 
-
               <DetailItem
                 label="Branch"
                 value={
-                  project.organizationUnit?.name
+                  project.organizationUnit
+                    ?.name
                 }
               />
-
 
               <DetailItem
                 label="Status"
@@ -168,23 +139,14 @@ const ProjectDetailsModal = ({
                   />
                 }
               />
-
             </div>
-
           </section>
 
-
-
-
-
-          {/* Address Information */}
-
           <section>
-
             <h3
               style={{
-                marginBottom:16,
-                paddingBottom:8,
+                marginBottom: 16,
+                paddingBottom: 8,
                 borderBottom:
                   "1px solid #e5e7eb",
               }}
@@ -192,23 +154,20 @@ const ProjectDetailsModal = ({
               Address Information
             </h3>
 
-
             <div
               style={{
-                display:"grid",
+                display: "grid",
                 gridTemplateColumns:
                   "1fr 1fr",
-                gap:20,
+                gap: 20,
               }}
             >
-
               <DetailItem
                 label="State"
                 value={
                   project.state?.name
                 }
               />
-
 
               <DetailItem
                 label="City"
@@ -217,7 +176,6 @@ const ProjectDetailsModal = ({
                 }
               />
 
-
               <DetailItem
                 label="Pincode"
                 value={
@@ -225,30 +183,20 @@ const ProjectDetailsModal = ({
                 }
               />
 
-
               <DetailItem
                 label="Address"
                 value={
                   project.address
                 }
               />
-
             </div>
-
           </section>
 
-
-
-
-
-          {/* Timeline */}
-
           <section>
-
             <h3
               style={{
-                marginBottom:16,
-                paddingBottom:8,
+                marginBottom: 16,
+                paddingBottom: 8,
                 borderBottom:
                   "1px solid #e5e7eb",
               }}
@@ -256,16 +204,14 @@ const ProjectDetailsModal = ({
               Timeline
             </h3>
 
-
             <div
               style={{
-                display:"grid",
+                display: "grid",
                 gridTemplateColumns:
                   "1fr 1fr",
-                gap:20,
+                gap: 20,
               }}
             >
-
               <DetailItem
                 label="Start Date"
                 value={
@@ -279,7 +225,6 @@ const ProjectDetailsModal = ({
                 }
               />
 
-
               <DetailItem
                 label="Expected End Date"
                 value={
@@ -292,23 +237,14 @@ const ProjectDetailsModal = ({
                     : "-"
                 }
               />
-
             </div>
-
           </section>
 
-
-
-
-
-          {/* Remarks */}
-
           <section>
-
             <h3
               style={{
-                marginBottom:16,
-                paddingBottom:8,
+                marginBottom: 16,
+                paddingBottom: 8,
                 borderBottom:
                   "1px solid #e5e7eb",
               }}
@@ -316,28 +252,19 @@ const ProjectDetailsModal = ({
               Remarks
             </h3>
 
-
             <DetailItem
               label="Remarks"
               value={
                 project.remarks
               }
             />
-
           </section>
 
-
-
-
-
-          {/* Audit */}
-
           <section>
-
             <h3
               style={{
-                marginBottom:16,
-                paddingBottom:8,
+                marginBottom: 16,
+                paddingBottom: 8,
                 borderBottom:
                   "1px solid #e5e7eb",
               }}
@@ -345,52 +272,37 @@ const ProjectDetailsModal = ({
               Audit Information
             </h3>
 
-
             <div
               style={{
-                display:"grid",
+                display: "grid",
                 gridTemplateColumns:
                   "1fr 1fr",
-                gap:20,
+                gap: 20,
               }}
             >
-
               <DetailItem
                 label="Created At"
-                value={
-                  new Date(
-                    project.createdAt,
-                  ).toLocaleString(
-                    "en-IN",
-                  )
-                }
+                value={new Date(
+                  project.createdAt,
+                ).toLocaleString(
+                  "en-IN",
+                )}
               />
-
 
               <DetailItem
                 label="Updated At"
-                value={
-                  new Date(
-                    project.updatedAt,
-                  ).toLocaleString(
-                    "en-IN",
-                  )
-                }
+                value={new Date(
+                  project.updatedAt,
+                ).toLocaleString(
+                  "en-IN",
+                )}
               />
-
             </div>
-
           </section>
-
-
         </div>
-
       )}
-
     </Modal>
-
   );
 };
-
 
 export default ProjectDetailsModal;
