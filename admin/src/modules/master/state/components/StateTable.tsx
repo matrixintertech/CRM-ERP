@@ -23,9 +23,7 @@ interface Props {
   loading: boolean;
 
   onView: (uuid: string) => void;
-
   onEdit: (uuid: string) => void;
-
   onDelete: (uuid: string) => void;
 }
 
@@ -52,7 +50,11 @@ const StateTable = ({
         key: "gstCode",
         title: "GST Code",
         render: (value) =>
-          value || "-",
+          value !== null &&
+          value !== undefined &&
+          value !== ""
+            ? String(value)
+            : "-",
       },
       {
         key: "status",
