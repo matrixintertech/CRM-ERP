@@ -1,14 +1,18 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
 
 import ClientForm from "./ClientForm";
 
-import type { CreateClientDto } from "../types/client.types";
-
-interface Option {
-  label: string;
-  value: string;
-}
+import type {
+  CityOption,
+  ClientFormData,
+  StateOption,
+} from "../types/client.types";
 
 interface Props {
   title: string;
@@ -16,14 +20,14 @@ interface Props {
   isEdit: boolean;
   loading: boolean;
 
-  formData: CreateClientDto;
+  formData: ClientFormData;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<CreateClientDto>
+  setFormData: Dispatch<
+    SetStateAction<ClientFormData>
   >;
 
-  stateOptions: Option[];
-  cityOptions: Option[];
+  stateOptions: StateOption[];
+  cityOptions: CityOption[];
 
   onStateChange: (
     stateUuid: string,
@@ -32,7 +36,6 @@ interface Props {
   onClose: () => void;
   onSubmit: () => void;
 }
-
 
 const ClientModal = ({
   title,
@@ -47,7 +50,6 @@ const ClientModal = ({
   onClose,
   onSubmit,
 }: Props) => {
-
   return (
     <Modal
       open={open}
@@ -55,7 +57,7 @@ const ClientModal = ({
       onClose={onClose}
       size="lg"
     >
-    <ClientForm
+      <ClientForm
         formData={formData}
         setFormData={setFormData}
         stateOptions={stateOptions}

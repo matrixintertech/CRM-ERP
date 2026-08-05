@@ -1,24 +1,29 @@
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import type { CreateClientDto } from "../types/client.types";
+import type {
+  CityOption,
+  ClientFormData,
+  ClientStatus,
+  StateOption,
+} from "../types/client.types";
 
 import styles from "./ClientForm.module.css";
 
-interface Option {
-  label: string;
-  value: string;
-}
-
 interface Props {
-  formData: CreateClientDto;
+  formData: ClientFormData;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<CreateClientDto>
+  setFormData: Dispatch<
+    SetStateAction<ClientFormData>
   >;
 
-  stateOptions: Option[];
-  cityOptions: Option[];
+  stateOptions: StateOption[];
+  cityOptions: CityOption[];
 
   onStateChange: (
     stateUuid: string,
@@ -26,8 +31,6 @@ interface Props {
 
   isEdit?: boolean;
 }
-
-
 
 const ClientForm = ({
   formData,
@@ -37,26 +40,20 @@ const ClientForm = ({
   onStateChange,
   isEdit = false,
 }: Props) => {
+  const mappedStateOptions =
+    stateOptions.map((item) => ({
+      label: item.name,
+      value: item.uuid,
+    }));
 
-  console.log("ClientForm formData", formData);
-
-const mappedStateOptions = stateOptions.map((item: any) => ({
-  label: item.name,
-  value: item.uuid,
-}));
-
-const mappedCityOptions = cityOptions.map((item: any) => ({
-  label: item.name,
-  value: item.uuid,
-}));
-
-
-
+  const mappedCityOptions =
+    cityOptions.map((item) => ({
+      label: item.name,
+      value: item.uuid,
+    }));
 
   return (
     <div className={styles.form}>
-      {/* Basic Information */}
-
       <Input
         label="Client Name"
         value={formData.name}
@@ -115,15 +112,14 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
         }
       />
 
-      {/* Tax Information */}
-
       <Input
         label="GST Number"
         value={formData.gstNumber ?? ""}
         onChange={(e) =>
           setFormData((prev) => ({
             ...prev,
-            gstNumber: e.target.value.toUpperCase(),
+            gstNumber:
+              e.target.value.toUpperCase(),
           }))
         }
       />
@@ -134,19 +130,19 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
         onChange={(e) =>
           setFormData((prev) => ({
             ...prev,
-            panNumber: e.target.value.toUpperCase(),
+            panNumber:
+              e.target.value.toUpperCase(),
           }))
         }
       />
-
-      {/* Address */}
 
       <Select
         label="State"
         value={formData.stateUuid ?? ""}
         options={mappedStateOptions}
         onChange={async (e) => {
-          const stateUuid = e.target.value;
+          const stateUuid =
+            e.target.value;
 
           setFormData((prev) => ({
             ...prev,
@@ -154,14 +150,16 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
             cityUuid: "",
           }));
 
-          await onStateChange(stateUuid);
+          await onStateChange(
+            stateUuid,
+          );
         }}
       />
 
       <Select
         label="City"
         value={formData.cityUuid ?? ""}
-         options={mappedCityOptions}
+        options={mappedCityOptions}
         onChange={(e) =>
           setFormData((prev) => ({
             ...prev,
@@ -206,7 +204,10 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
       {isEdit && (
         <Select
           label="Status"
-          value={formData.status ?? "ACTIVE"}
+          value={
+            formData.status ??
+            "ACTIVE"
+          }
           options={[
             {
               label: "Active",
@@ -220,9 +221,9 @@ const mappedCityOptions = cityOptions.map((item: any) => ({
           onChange={(e) =>
             setFormData((prev) => ({
               ...prev,
-              status: e.target.value as
-                | "ACTIVE"
-                | "INACTIVE",
+              status:
+                e.target
+                  .value as ClientStatus,
             }))
           }
         />

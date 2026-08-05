@@ -80,3 +80,8 @@ export interface UpdateClientDto
   extends Partial<CreateClientDto> {
   status?: ClientStatus;
 }
+
+export interface ClientFormData
+  extends CreateClientDto {
+  status?: ClientStatus;
+}

@@ -16,10 +16,12 @@ import { useStates } from "../../master/state/hooks/useStates";
 import { useClients } from "../hooks/useClients";
 
 import type {
+  ClientFormData,
   CreateClientDto,
+  UpdateClientDto,
 } from "../types/client.types";
 
-const initialFormData: CreateClientDto = {
+const initialFormData: ClientFormData = {
   name: "",
   code: "",
   contactName: "",
@@ -32,24 +34,26 @@ const initialFormData: CreateClientDto = {
   pincode: "",
   address: "",
   remarks: "",
+  status: "ACTIVE",
 };
 
 const ClientListPage = () => {
   const {
     loading,
     clients,
-    total,
     selectedClient,
     fetchClients,
     fetchClient,
     create,
     update,
     remove,
+    clearSelectedClient,
   } = useClients();
 
   const {
     dropdown: stateOptions,
-    fetchDropdown: fetchStateDropdown,
+    fetchDropdown:
+      fetchStateDropdown,
   } = useStates();
 
   const {
@@ -58,23 +62,31 @@ const ClientListPage = () => {
       fetchCityDropdown,
   } = useCities();
 
-  const [openModal, setOpenModal] =
-    useState(false);
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
 
   const [
     openDetails,
     setOpenDetails,
   ] = useState(false);
 
-  const [editId, setEditId] =
-    useState<string | null>(null);
+  const [
+    editId,
+    setEditId,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const [formData, setFormData] =
-    useState<CreateClientDto>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+  const [
+    formData,
+    setFormData,
+  ] = useState<ClientFormData>(
+    () => ({
+      ...initialFormData,
+    }),
+  );
 
   useEffect(() => {
     void fetchClients();
@@ -109,6 +121,11 @@ const ClientListPage = () => {
     resetForm();
   };
 
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+    clearSelectedClient();
+  };
+
   const handleStateChange = async (
     stateUuid: string,
   ) => {
@@ -134,63 +151,79 @@ const ClientListPage = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      const payload: CreateClientDto = {
-        name: formData.name.trim(),
+  const getBasePayload =
+    (): CreateClientDto => ({
+      name:
+        formData.name.trim(),
 
-        code: formData.code
+      code:
+        formData.code
           .trim()
           .toUpperCase()
           .replace(/\s+/g, ""),
 
-        contactName:
-          formData.contactName.trim(),
+      contactName:
+        formData.contactName.trim(),
 
-        mobile: formData.mobile.trim(),
+      mobile:
+        formData.mobile.trim(),
 
-        email:
-          formData.email?.trim() ||
-          undefined,
+      email:
+        formData.email?.trim() ||
+        undefined,
 
-        gstNumber:
-          formData.gstNumber?.trim() ||
-          undefined,
+      gstNumber:
+        formData.gstNumber
+          ?.trim() || undefined,
 
-        panNumber:
-          formData.panNumber
-            ?.trim()
-            .toUpperCase() ||
-          undefined,
+      panNumber:
+        formData.panNumber
+          ?.trim()
+          .toUpperCase() ||
+        undefined,
 
-        stateUuid:
-          formData.stateUuid ||
-          undefined,
+      stateUuid:
+        formData.stateUuid ||
+        undefined,
 
-        cityUuid:
-          formData.cityUuid ||
-          undefined,
+      cityUuid:
+        formData.cityUuid ||
+        undefined,
 
-        pincode:
-          formData.pincode?.trim() ||
-          undefined,
+      pincode:
+        formData.pincode?.trim() ||
+        undefined,
 
-        address:
-          formData.address?.trim() ||
-          undefined,
+      address:
+        formData.address?.trim() ||
+        undefined,
 
-        remarks:
-          formData.remarks?.trim() ||
-          undefined,
-      };
+      remarks:
+        formData.remarks?.trim() ||
+        undefined,
+    });
+
+  const handleSubmit = async () => {
+    try {
+      const basePayload =
+        getBasePayload();
 
       if (editId) {
+        const updatePayload:
+          UpdateClientDto = {
+            ...basePayload,
+            status:
+              formData.status,
+          };
+
         await update(
           editId,
-          payload,
+          updatePayload,
         );
       } else {
-        await create(payload);
+        await create(
+          basePayload,
+        );
       }
 
       await fetchClients();
@@ -213,10 +246,6 @@ const ClientListPage = () => {
       const client =
         await fetchClient(uuid);
 
-      if (!client) {
-        return;
-      }
-
       if (client.state?.uuid) {
         await fetchCityDropdown(
           client.state.uuid,
@@ -228,24 +257,39 @@ const ClientListPage = () => {
       setFormData({
         name: client.name,
         code: client.code,
+
         contactName:
           client.contactName,
-        mobile: client.mobile,
-        email: client.email ?? "",
+
+        mobile:
+          client.mobile,
+
+        email:
+          client.email ?? "",
+
         gstNumber:
           client.gstNumber ?? "",
+
         panNumber:
           client.panNumber ?? "",
+
         stateUuid:
           client.state?.uuid ?? "",
+
         cityUuid:
           client.city?.uuid ?? "",
+
         pincode:
           client.pincode ?? "",
+
         address:
           client.address ?? "",
+
         remarks:
           client.remarks ?? "",
+
+        status:
+          client.status,
       });
 
       setOpenModal(true);
@@ -260,20 +304,18 @@ const ClientListPage = () => {
   const handleView = async (
     uuid: string,
   ) => {
+    clearSelectedClient();
+    setOpenDetails(true);
+
     try {
-      const client =
-        await fetchClient(uuid);
-
-      if (!client) {
-        return;
-      }
-
-      setOpenDetails(true);
+      await fetchClient(uuid);
     } catch (error) {
       console.error(
         "Failed to load client details:",
         error,
       );
+
+      setOpenDetails(false);
     }
   };
 
@@ -291,7 +333,6 @@ const ClientListPage = () => {
 
     try {
       await remove(uuid);
-      await fetchClients();
     } catch (error) {
       console.error(
         "Failed to delete client:",
@@ -320,7 +361,6 @@ const ClientListPage = () => {
         <ClientTable
           data={clients}
           loading={loading}
-          total={total}
           onView={handleView}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -343,7 +383,9 @@ const ClientListPage = () => {
         onStateChange={
           handleStateChange
         }
-        onClose={handleCloseModal}
+        onClose={
+          handleCloseModal
+        }
         onSubmit={handleSubmit}
       />
 
@@ -351,8 +393,8 @@ const ClientListPage = () => {
         open={openDetails}
         loading={loading}
         client={selectedClient}
-        onClose={() =>
-          setOpenDetails(false)
+        onClose={
+          handleCloseDetails
         }
       />
     </>
