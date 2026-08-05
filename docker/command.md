@@ -117,3 +117,9 @@ docker compose \
   -f docker-compose.prod.yml \
   exec backend \
   node dist/prisma/seed.js
+
+  <!-- backend restart -->
+  docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  restart backend
