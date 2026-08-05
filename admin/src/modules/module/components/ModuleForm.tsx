@@ -40,7 +40,7 @@ const defaultValues: ModuleFormData = {
   isMenu: true,
   isVisible: true,
   isSystem: false,
-  status: "",
+  status: "ACTIVE",
 };
 
 const ModuleForm = ({
@@ -193,7 +193,7 @@ const ModuleForm = ({
           id="status"
           label="Status"
           name="status"
-          value={form.status ?? ""}
+          value={form.status ?? "ACTIVE"}
           onChange={handleChange}
           showPlaceholder={false}
           options={[
