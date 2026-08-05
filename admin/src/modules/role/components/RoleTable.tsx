@@ -11,14 +11,11 @@ interface Props {
   loading: boolean;
 
   onView: (id: string) => void;
-
   onEdit: (id: string) => void;
-
   onDelete: (id: string) => void;
-
   onPermissions: (
-  id: string,
-) => void;
+    id: string,
+  ) => void;
 }
 
 const RoleTable = ({
@@ -42,7 +39,11 @@ const RoleTable = ({
       key: "description",
       title: "Description",
       render: (value) =>
-        value || "-",
+        value !== null &&
+        value !== undefined &&
+        value !== ""
+          ? String(value)
+          : "-",
     },
     {
       key: "status",
@@ -93,14 +94,16 @@ const RoleTable = ({
           </Button>
 
           <Button
-  size="sm"
-  variant="primary"
-  onClick={() =>
-    onPermissions(row.id)
-  }
->
-  Permissions
-</Button>
+            size="sm"
+            variant="primary"
+            onClick={() =>
+              onPermissions(
+                row.id,
+              )
+            }
+          >
+            Permissions
+          </Button>
         </div>
       ),
     },
