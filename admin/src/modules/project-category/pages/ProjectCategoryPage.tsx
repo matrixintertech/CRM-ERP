@@ -1,4 +1,4 @@
-// src/modules/project-category/pages/ProjectCategoryListPage.tsx
+
 
 import {
   useEffect,
@@ -43,6 +43,7 @@ const ProjectCategoryListPage = () => {
     create,
     update,
     remove,
+    clearSelectedCategory,
   } = useProjectCategories();
 
   const [
@@ -90,8 +91,18 @@ const ProjectCategoryListPage = () => {
       setOpenModal(true);
     };
 
-  const handleSubmit =
-    async () => {
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    resetForm();
+  };
+
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+    clearSelectedCategory();
+  };
+
+  const handleSubmit = async () => {
+    try {
       const basePayload = {
         name:
           formData.name.trim(),
@@ -125,6 +136,7 @@ const ProjectCategoryListPage = () => {
         const payload:
           UpdateProjectCategoryDto = {
             ...basePayload,
+
             status:
               formData.status,
           };
@@ -146,63 +158,74 @@ const ProjectCategoryListPage = () => {
 
       await fetchCategories();
 
-      setOpenModal(false);
-      resetForm();
-    };
+      handleCloseModal();
+    } catch (error) {
+      console.error(
+        "Failed to save project category:",
+        error,
+      );
+    }
+  };
 
   const handleEdit = async (
     uuid: string,
   ) => {
-    const response =
-      await fetchCategory(
-        uuid,
+    try {
+      const category =
+        await fetchCategory(uuid);
+
+      setEditId(uuid);
+
+      setFormData({
+        name:
+          category.name,
+
+        code:
+          category.code,
+
+        description:
+          category.description ??
+          "",
+
+        color:
+          category.color ??
+          "#3B82F6",
+
+        sortOrder:
+          category.sortOrder ??
+          0,
+
+        status:
+          category.status,
+      });
+
+      setOpenModal(true);
+    } catch (error) {
+      console.error(
+        "Failed to load project category:",
+        error,
       );
-
-    const category =
-      "category" in response
-        ? response.category
-        : response;
-
-    if (!category) {
-      return;
     }
-
-    setEditId(uuid);
-
-    setFormData({
-      name:
-        category.name,
-
-      code:
-        category.code,
-
-      description:
-        category.description ??
-        "",
-
-      color:
-        category.color ??
-        "#3B82F6",
-
-      sortOrder:
-        category.sortOrder ??
-        0,
-
-      status:
-        category.status,
-    });
-
-    setOpenModal(true);
   };
 
   const handleView = async (
     uuid: string,
   ) => {
-    await fetchCategory(
-      uuid,
-    );
+    try {
+      clearSelectedCategory();
+      setOpenDetails(true);
 
-    setOpenDetails(true);
+      await fetchCategory(
+        uuid,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load project category details:",
+        error,
+      );
+
+      setOpenDetails(false);
+    }
   };
 
   const handleDelete = async (
@@ -217,16 +240,15 @@ const ProjectCategoryListPage = () => {
       return;
     }
 
-    await remove(uuid);
-
-    await fetchCategories();
+    try {
+      await remove(uuid);
+    } catch (error) {
+      console.error(
+        "Failed to delete project category:",
+        error,
+      );
+    }
   };
-
-  const handleCloseModal =
-    () => {
-      setOpenModal(false);
-      resetForm();
-    };
 
   return (
     <>
@@ -279,10 +301,8 @@ const ProjectCategoryListPage = () => {
         category={
           selectedCategory
         }
-        onClose={() =>
-          setOpenDetails(
-            false,
-          )
+        onClose={
+          handleCloseDetails
         }
       />
     </>
