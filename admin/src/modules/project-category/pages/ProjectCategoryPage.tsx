@@ -5,67 +5,55 @@ import {
   useState,
 } from "react";
 
-import PageHeader from "@/shared/components/PageHeader";
-import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import Card from "@/shared/components/Card";
+import PageHeader from "@/shared/components/PageHeader";
+
+import ProjectCategoryDetailsModal from "../components/ProjectCategoryDetailsModal";
+import ProjectCategoryModal from "../components/ProjectCategoryModal";
+import ProjectCategoryTable from "../components/ProjectCategoryTable";
 
 import {
   useProjectCategories,
 } from "../hooks/useProjectCategory";
 
-import ProjectCategoryTable from "../components/ProjectCategoryTable";
-import ProjectCategoryModal from "../components/ProjectCategoryModal";
-import ProjectCategoryDetailsModal from "../components/ProjectCategoryDetailsModal";
 import type {
   CreateProjectCategoryDto,
+  ProjectCategoryFormData,
+  UpdateProjectCategoryDto,
 } from "../types/project-category.types";
 
-
 const initialFormData:
-  CreateProjectCategoryDto = {
+  ProjectCategoryFormData = {
     name: "",
-
     code: "",
-
     description: "",
-
     color: "#3B82F6",
-
     sortOrder: 0,
+    status: "ACTIVE",
   };
-
 
 const ProjectCategoryListPage = () => {
   const {
     loading,
-
     categories,
-
     selectedCategory,
-
     fetchCategories,
-
     fetchCategory,
-
     create,
-
     update,
-
     remove,
   } = useProjectCategories();
-
 
   const [
     openModal,
     setOpenModal,
   ] = useState(false);
 
-
   const [
     openDetails,
     setOpenDetails,
   ] = useState(false);
-
 
   const [
     editId,
@@ -74,175 +62,171 @@ const ProjectCategoryListPage = () => {
     null,
   );
 
-
   const [
     formData,
     setFormData,
   ] =
-    useState<CreateProjectCategoryRequest>(
-      initialFormData,
+    useState<ProjectCategoryFormData>(
+      () => ({
+        ...initialFormData,
+      }),
     );
 
-
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    void fetchCategories();
+  }, [fetchCategories]);
 
+  const resetForm = () => {
+    setEditId(null);
+
+    setFormData({
+      ...initialFormData,
+    });
+  };
 
   const handleOpenCreateModal =
     () => {
-      setEditId(null);
-
-      setFormData(
-        initialFormData,
-      );
-
+      resetForm();
       setOpenModal(true);
     };
 
-
   const handleSubmit =
     async () => {
-      const payload:
-        CreateProjectCategoryRequest = {
-          name:
-            formData.name.trim(),
+      const basePayload = {
+        name:
+          formData.name.trim(),
 
-          code:
-            formData.code
-              .trim()
-              .toUpperCase()
-              .replace(
-                /\s+/g,
-                "_",
-              ),
-
-          description:
-            formData.description
-              ?.trim() || "",
-
-          color:
-            formData.color || "",
-
-          sortOrder:
-            Number(
-              formData.sortOrder ??
-                0,
+        code:
+          formData.code
+            .trim()
+            .toUpperCase()
+            .replace(
+              /\s+/g,
+              "_",
             ),
-        };
 
+        description:
+          formData.description
+            ?.trim() ||
+          undefined,
+
+        color:
+          formData.color ||
+          undefined,
+
+        sortOrder:
+          Number(
+            formData.sortOrder ??
+              0,
+          ),
+      };
 
       if (editId) {
+        const payload:
+          UpdateProjectCategoryDto = {
+            ...basePayload,
+            status:
+              formData.status,
+          };
+
         await update(
           editId,
           payload,
         );
       } else {
+        const payload:
+          CreateProjectCategoryDto = {
+            ...basePayload,
+          };
+
         await create(
           payload,
         );
       }
 
-
       await fetchCategories();
 
-
       setOpenModal(false);
-
-      setEditId(null);
-
-      setFormData(
-        initialFormData,
-      );
+      resetForm();
     };
 
-
-  const handleEdit =
-    async (
-      uuid: string,
-    ) => {
-      const response =
-        await fetchCategory(
-          uuid,
-        );
-
-
-      if (
-        !response?.category
-      ) {
-        return;
-      }
-
-
-      const category =
-        response.category;
-
-
-      setEditId(
-        uuid,
-      );
-
-
-      setFormData({
-        name:
-          category.name,
-
-        code:
-          category.code,
-
-        description:
-          category.description ??
-          "",
-
-        color:
-          category.color ??
-          "#3B82F6",
-
-        sortOrder:
-          category.sortOrder ??
-          0,
-      });
-
-
-      setOpenModal(true);
-    };
-
-
-  const handleView =
-    async (
-      uuid: string,
-    ) => {
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    const response =
       await fetchCategory(
         uuid,
       );
 
-      setOpenDetails(true);
-    };
+    const category =
+      "category" in response
+        ? response.category
+        : response;
 
+    if (!category) {
+      return;
+    }
 
-  const handleDelete =
-    async (
-      uuid: string,
-    ) => {
-      await remove(
-        uuid,
+    setEditId(uuid);
+
+    setFormData({
+      name:
+        category.name,
+
+      code:
+        category.code,
+
+      description:
+        category.description ??
+        "",
+
+      color:
+        category.color ??
+        "#3B82F6",
+
+      sortOrder:
+        category.sortOrder ??
+        0,
+
+      status:
+        category.status,
+    });
+
+    setOpenModal(true);
+  };
+
+  const handleView = async (
+    uuid: string,
+  ) => {
+    await fetchCategory(
+      uuid,
+    );
+
+    setOpenDetails(true);
+  };
+
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this project category?",
       );
 
-      await fetchCategories();
-    };
+    if (!confirmed) {
+      return;
+    }
 
+    await remove(uuid);
+
+    await fetchCategories();
+  };
 
   const handleCloseModal =
     () => {
       setOpenModal(false);
-
-      setEditId(null);
-
-      setFormData(
-        initialFormData,
-      );
+      resetForm();
     };
-
 
   return (
     <>
@@ -260,70 +244,38 @@ const ProjectCategoryListPage = () => {
         }
       />
 
-
       <Card>
         <ProjectCategoryTable
-          data={
-            categories
-          }
-          loading={
-            loading
-          }
-          total={
-            categories.length
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            handleEdit
-          }
+          data={categories}
+          loading={loading}
+          onView={handleView}
+          onEdit={handleEdit}
           onDelete={
             handleDelete
           }
         />
       </Card>
 
-
       <ProjectCategoryModal
-        open={
-          openModal
-        }
-        loading={
-          loading
-        }
+        open={openModal}
+        loading={loading}
         title={
           editId
             ? "Edit Project Category"
             : "Create Project Category"
         }
-        isEdit={
-          Boolean(
-            editId,
-          )
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
+        isEdit={Boolean(editId)}
+        formData={formData}
+        setFormData={setFormData}
         onClose={
           handleCloseModal
         }
-        onSubmit={
-          handleSubmit
-        }
+        onSubmit={handleSubmit}
       />
 
-
       <ProjectCategoryDetailsModal
-        open={
-          openDetails
-        }
-        loading={
-          loading
-        }
+        open={openDetails}
+        loading={loading}
         category={
           selectedCategory
         }
@@ -336,6 +288,5 @@ const ProjectCategoryListPage = () => {
     </>
   );
 };
-
 
 export default ProjectCategoryListPage;
