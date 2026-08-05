@@ -215,12 +215,9 @@ const SubscriptionForm = ({
                       </li>
                     )}
 
-                    {plan.planType ===
-                      "LIFETIME" && (
-                      <li>
-                        ✓ Lifetime access
-                      </li>
-                    )}
+                    {plan.billingCycle === "LIFETIME" && (
+                        <li>✓ Lifetime access</li>
+                      )}
                   </ul>
 
                   <strong>
