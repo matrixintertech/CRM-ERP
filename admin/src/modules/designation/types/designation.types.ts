@@ -1,3 +1,7 @@
+import type {
+  OrganizationUnitDropdown,
+} from "@/modules/organization-unit/types/organization-unit.types";
+
 export type DesignationStatus =
   | "ACTIVE"
   | "INACTIVE";
@@ -7,7 +11,9 @@ export interface DesignationDepartment {
   name: string;
   code: string;
 
-  organizationUnit?: DesignationOrganizationUnit | null;
+  organizationUnit?:
+    | OrganizationUnitDropdown
+    | null;
 }
 
 export interface Designation {
@@ -16,8 +22,7 @@ export interface Designation {
 
   departmentId: string;
 
-  department:
-    DesignationDepartment;
+  department: DesignationDepartment;
 
   name: string;
   code: string;

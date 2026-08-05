@@ -24,7 +24,6 @@ import Select from "@/shared/components/Select";
 import type { DataTableColumn } from "@/shared/components/DataTable/types";
 
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
-
 import { useCompanies } from "../hooks/useCompanies";
 
 import type {
@@ -70,11 +69,9 @@ const CompanyListPage = () => {
     companies,
     pagination,
     loading,
-
     selectedCompany,
     detailsLoading,
-
-    loadCompanies,
+    fetchCompanies,
     fetchCompany,
   } = useCompanies();
 
@@ -97,12 +94,14 @@ const CompanyListPage = () => {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      void loadCompanies({
+      void fetchCompanies({
         page,
         limit: pageSize,
-        search: search.trim() || undefined,
+        search:
+          search.trim() || undefined,
         status: status || undefined,
-        type: companyType || undefined,
+        type:
+          companyType || undefined,
       });
     }, 300);
 
@@ -114,7 +113,7 @@ const CompanyListPage = () => {
     search,
     status,
     companyType,
-    loadCompanies,
+    fetchCompanies,
   ]);
 
   const handleView = async (
@@ -167,6 +166,18 @@ const CompanyListPage = () => {
     setCompanyType(value);
     setPage(1);
   };
+
+  const modalCompany = useMemo(
+    () =>
+      selectedCompany
+        ? {
+            ...selectedCompany,
+            email:
+              selectedCompany.email ?? "",
+          }
+        : null,
+    [selectedCompany],
+  );
 
   const columns = useMemo<
     DataTableColumn<Company>[]
@@ -223,7 +234,7 @@ const CompanyListPage = () => {
               aria-label={`View ${row.name}`}
               title="View company"
               onClick={() =>
-                handleView(row.id)
+                void handleView(row.id)
               }
             >
               <Eye size={16} />
@@ -343,7 +354,7 @@ const CompanyListPage = () => {
       <CompanyDetailsModal
         open={openDetails}
         loading={detailsLoading}
-        company={selectedCompany}
+        company={modalCompany}
         onClose={() =>
           setOpenDetails(false)
         }
