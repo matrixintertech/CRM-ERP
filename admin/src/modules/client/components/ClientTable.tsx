@@ -42,25 +42,32 @@ const ClientTable = ({
     {
       key: "email",
       title: "Email",
-      render: (value) => value || "-",
+      render: (value) =>
+        value !== null &&
+        value !== undefined &&
+        value !== ""
+          ? String(value)
+          : "-",
     },
     {
       key: "state",
       title: "State",
       render: (_, row) =>
-        row.state?.name || "-",
+        row.state?.name ?? "-",
     },
     {
       key: "city",
       title: "City",
       render: (_, row) =>
-        row.city?.name || "-",
+        row.city?.name ?? "-",
     },
     {
       key: "status",
       title: "Status",
       render: (value) => (
-        <Badge status={String(value)} />
+        <Badge
+          status={String(value)}
+        />
       ),
     },
     {
