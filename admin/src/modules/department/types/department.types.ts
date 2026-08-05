@@ -49,3 +49,12 @@ export interface UpdateDepartmentDto {
 
 export type DepartmentFormData =
   CreateDepartmentDto;
+
+
+  export interface DepartmentQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: DepartmentStatus;
+  organizationUnitUuid?: string;
+}
