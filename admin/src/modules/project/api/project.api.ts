@@ -38,15 +38,19 @@ export const getProjects = async (
 /**
  * Get Project By UUID
  */
+
+interface ProjectDetailsResponse {
+  project: Project;
+}
 export const getProjectByUuid = async (
   uuid: string,
 ): Promise<Project> => {
   const { data } =
-    await api.get<ApiResponse<Project>>(
-      `/projects/${uuid}`,
-    );
+    await api.get<
+      ApiResponse<ProjectDetailsResponse>
+    >(`/projects/${uuid}`);
 
-  return data.data;
+  return data.data.project;
 };
 
 /**
