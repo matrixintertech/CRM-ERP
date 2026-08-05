@@ -74,3 +74,5 @@ docker compose build
 docker compose run --rm backend npx prisma migrate deploy
 
 docker compose up -d
+
+<!-- test -->
