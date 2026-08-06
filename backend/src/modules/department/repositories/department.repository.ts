@@ -1,22 +1,14 @@
-import {
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException } from '@nestjs/common';
 
-import {
-  Prisma,
-  Status,
-} from "@prisma/client";
+import { Prisma, Status } from '@prisma/client';
 
-import { PrismaService } from "src/database/prisma.service";
+import { PrismaService } from 'src/database/prisma.service';
 
-import { CreateDepartmentDto } from "../dto/create-department.dto";
+import { CreateDepartmentDto } from '../dto/create-department.dto';
 
 @Injectable()
 export class DepartmentRepository {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(
     companyId: bigint,
@@ -37,27 +29,29 @@ export class DepartmentRepository {
     });
   }
 
-  async findAll(
-    companyId: bigint,
-  ) {
+  async findAll(companyId?: bigint) {
     return this.prisma.department.findMany({
       where: {
-        companyId,
         deletedAt: null,
+
+        ...(companyId !== undefined
+          ? {
+              companyId,
+            }
+          : {}),
       },
+
       include: {
         organizationUnit: true,
       },
+
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
   }
 
-  async findById(
-    companyId: bigint,
-    id: bigint,
-  ) {
+  async findById(companyId: bigint, id: bigint) {
     return this.prisma.department.findFirst({
       where: {
         id,
@@ -100,10 +94,7 @@ export class DepartmentRepository {
     });
   }
 
-  async findByUuid(
-    companyId: bigint,
-    uuid: string,
-  ) {
+  async findByUuid(companyId: bigint, uuid: string) {
     return this.prisma.department.findFirst({
       where: {
         companyId,
@@ -121,22 +112,19 @@ export class DepartmentRepository {
     id: bigint,
     data: Prisma.DepartmentUpdateInput,
   ) {
-    const department =
-      await this.prisma.department.findFirst({
-        where: {
-          id,
-          companyId,
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-        },
-      });
+    const department = await this.prisma.department.findFirst({
+      where: {
+        id,
+        companyId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
 
     if (!department) {
-      throw new NotFoundException(
-        "Department not found.",
-      );
+      throw new NotFoundException('Department not found.');
     }
 
     return this.prisma.department.update({
@@ -150,26 +138,20 @@ export class DepartmentRepository {
     });
   }
 
-  async softDelete(
-    companyId: bigint,
-    id: bigint,
-  ) {
-    const department =
-      await this.prisma.department.findFirst({
-        where: {
-          id,
-          companyId,
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-        },
-      });
+  async softDelete(companyId: bigint, id: bigint) {
+    const department = await this.prisma.department.findFirst({
+      where: {
+        id,
+        companyId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
 
     if (!department) {
-      throw new NotFoundException(
-        "Department not found.",
-      );
+      throw new NotFoundException('Department not found.');
     }
 
     return this.prisma.department.update({

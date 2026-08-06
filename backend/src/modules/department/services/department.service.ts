@@ -2,279 +2,178 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
-import { CreateDepartmentDto } from "../dto/create-department.dto";
-import { UpdateDepartmentDto } from "../dto/update-department.dto";
+import { CreateDepartmentDto } from '../dto/create-department.dto';
+import { UpdateDepartmentDto } from '../dto/update-department.dto';
 
-import { OrganizationUnitRepository } from "../../organization-unit/repositories/organization-unit.repository";
-import { DepartmentRepository } from "../repositories/department.repository";
+import { OrganizationUnitRepository } from '../../organization-unit/repositories/organization-unit.repository';
+import { DepartmentRepository } from '../repositories/department.repository';
 
 @Injectable()
 export class DepartmentService {
   constructor(
-    private readonly departmentRepository:
-      DepartmentRepository,
+    private readonly departmentRepository: DepartmentRepository,
 
-    private readonly organizationUnitRepository:
-      OrganizationUnitRepository,
+    private readonly organizationUnitRepository: OrganizationUnitRepository,
   ) {}
 
-  async create(
-    companyId: bigint,
-    dto: CreateDepartmentDto,
-  ) {
-    const organizationUnit =
-      await this.organizationUnitRepository.findByUuid(
-        companyId,
-        dto.organizationUnitUuid,
-      );
+  async create(companyId: bigint, dto: CreateDepartmentDto) {
+    const organizationUnit = await this.organizationUnitRepository.findByUuid(
+      companyId,
+      dto.organizationUnitUuid,
+    );
 
     if (!organizationUnit) {
-      throw new NotFoundException(
-        "Organization Unit not found.",
-      );
+      throw new NotFoundException('Organization Unit not found.');
     }
 
-    const normalizedName =
-      dto.name.trim();
+    const normalizedName = dto.name.trim();
 
-    const normalizedCode =
-      dto.code
-        .trim()
-        .toUpperCase();
+    const normalizedCode = dto.code.trim().toUpperCase();
 
-    const existingName =
-      await this.departmentRepository.findByName(
-        companyId,
-        organizationUnit.id,
-        normalizedName,
-      );
-
-    if (existingName) {
-      throw new ConflictException(
-        "Department name already exists.",
-      );
-    }
-
-    const existingCode =
-      await this.departmentRepository.findByCode(
-        companyId,
-        organizationUnit.id,
-        normalizedCode,
-      );
-
-    if (existingCode) {
-      throw new ConflictException(
-        "Department code already exists.",
-      );
-    }
-
-    return this.departmentRepository.create(
+    const existingName = await this.departmentRepository.findByName(
       companyId,
       organizationUnit.id,
-      {
-        ...dto,
-        name: normalizedName,
-        code: normalizedCode,
-      },
+      normalizedName,
     );
-  }
 
-  async findAll(
-    companyId: bigint,
-  ) {
-    return this.departmentRepository.findAll(
+    if (existingName) {
+      throw new ConflictException('Department name already exists.');
+    }
+
+    const existingCode = await this.departmentRepository.findByCode(
       companyId,
+      organizationUnit.id,
+      normalizedCode,
     );
+
+    if (existingCode) {
+      throw new ConflictException('Department code already exists.');
+    }
+
+    return this.departmentRepository.create(companyId, organizationUnit.id, {
+      ...dto,
+      name: normalizedName,
+      code: normalizedCode,
+    });
   }
 
-  async findOne(
-    companyId: bigint,
-    id: bigint,
-  ) {
-    const department =
-      await this.departmentRepository.findById(
-        companyId,
-        id,
-      );
+  async findAll(companyId?: bigint) {
+    return this.departmentRepository.findAll(companyId);
+  }
+
+  async findOne(companyId: bigint, id: bigint) {
+    const department = await this.departmentRepository.findById(companyId, id);
 
     if (!department) {
-      throw new NotFoundException(
-        "Department not found.",
-      );
+      throw new NotFoundException('Department not found.');
     }
 
     return department;
   }
 
-  async update(
-    companyId: bigint,
-    id: bigint,
-    dto: UpdateDepartmentDto,
-  ) {
-    const department =
-      await this.findOne(
-        companyId,
-        id,
-      );
+  async update(companyId: bigint, id: bigint, dto: UpdateDepartmentDto) {
+    const department = await this.findOne(companyId, id);
 
-    let organizationUnitId =
-      department.organizationUnitId;
+    let organizationUnitId = department.organizationUnitId;
 
     if (dto.organizationUnitUuid) {
-      const organizationUnit =
-        await this.organizationUnitRepository.findByUuid(
-          companyId,
-          dto.organizationUnitUuid,
-        );
+      const organizationUnit = await this.organizationUnitRepository.findByUuid(
+        companyId,
+        dto.organizationUnitUuid,
+      );
 
       if (!organizationUnit) {
-        throw new NotFoundException(
-          "Organization Unit not found.",
-        );
+        throw new NotFoundException('Organization Unit not found.');
       }
 
-      organizationUnitId =
-        organizationUnit.id;
+      organizationUnitId = organizationUnit.id;
     }
 
-    const normalizedName =
-      dto.name?.trim();
+    const normalizedName = dto.name?.trim();
 
-    const normalizedCode =
-      dto.code
-        ?.trim()
-        .toUpperCase();
+    const normalizedCode = dto.code?.trim().toUpperCase();
 
     if (normalizedName) {
-      const existingName =
-        await this.departmentRepository.findByName(
-          companyId,
-          organizationUnitId,
-          normalizedName,
-        );
+      const existingName = await this.departmentRepository.findByName(
+        companyId,
+        organizationUnitId,
+        normalizedName,
+      );
 
-      if (
-        existingName &&
-        existingName.id !== id
-      ) {
-        throw new ConflictException(
-          "Department name already exists.",
-        );
+      if (existingName && existingName.id !== id) {
+        throw new ConflictException('Department name already exists.');
       }
     }
 
     if (normalizedCode) {
-      const existingCode =
-        await this.departmentRepository.findByCode(
-          companyId,
-          organizationUnitId,
-          normalizedCode,
-        );
+      const existingCode = await this.departmentRepository.findByCode(
+        companyId,
+        organizationUnitId,
+        normalizedCode,
+      );
 
-      if (
-        existingCode &&
-        existingCode.id !== id
-      ) {
-        throw new ConflictException(
-          "Department code already exists.",
-        );
+      if (existingCode && existingCode.id !== id) {
+        throw new ConflictException('Department code already exists.');
       }
     }
 
-    return this.departmentRepository.update(
-  companyId,
-  id,
-  {
-    ...(normalizedName !== undefined && {
-      name: normalizedName,
-    }),
+    return this.departmentRepository.update(companyId, id, {
+      ...(normalizedName !== undefined && {
+        name: normalizedName,
+      }),
 
-    ...(normalizedCode !== undefined && {
-      code: normalizedCode,
-    }),
+      ...(normalizedCode !== undefined && {
+        code: normalizedCode,
+      }),
 
-    ...(dto.description !== undefined && {
-      description: dto.description,
-    }),
+      ...(dto.description !== undefined && {
+        description: dto.description,
+      }),
 
-    ...(dto.organizationUnitUuid && {
-      organizationUnit: {
-        connect: {
-          id: organizationUnitId,
+      ...(dto.organizationUnitUuid && {
+        organizationUnit: {
+          connect: {
+            id: organizationUnitId,
+          },
         },
-      },
-    }),
-  },
-);
+      }),
+    });
   }
 
-  async delete(
+  async delete(companyId: bigint, id: bigint) {
+    await this.findOne(companyId, id);
+
+    return this.departmentRepository.softDelete(companyId, id);
+  }
+
+  async findByUuid(companyId: bigint, uuid: string) {
+    const department = await this.departmentRepository.findByUuid(
+      companyId,
+      uuid,
+    );
+
+    if (!department) {
+      throw new NotFoundException('Department not found.');
+    }
+
+    return department;
+  }
+
+  async updateByUuid(
     companyId: bigint,
-    id: bigint,
+    uuid: string,
+    dto: UpdateDepartmentDto,
   ) {
-    await this.findOne(
-      companyId,
-      id,
-    );
+    const department = await this.findByUuid(companyId, uuid);
 
-    return this.departmentRepository.softDelete(
-  companyId,
-  id,
-);
+    return this.update(companyId, department.id, dto);
   }
 
-  async findByUuid(
-  companyId: bigint,
-  uuid: string,
-) {
-  const department =
-    await this.departmentRepository.findByUuid(
-      companyId,
-      uuid,
-    );
+  async deleteByUuid(companyId: bigint, uuid: string) {
+    const department = await this.findByUuid(companyId, uuid);
 
-  if (!department) {
-    throw new NotFoundException(
-      "Department not found.",
-    );
+    return this.delete(companyId, department.id);
   }
-
-  return department;
-}
-
-async updateByUuid(
-  companyId: bigint,
-  uuid: string,
-  dto: UpdateDepartmentDto,
-) {
-  const department =
-    await this.findByUuid(
-      companyId,
-      uuid,
-    );
-
-  return this.update(
-    companyId,
-    department.id,
-    dto,
-  );
-}
-
-async deleteByUuid(
-  companyId: bigint,
-  uuid: string,
-) {
-  const department =
-    await this.findByUuid(
-      companyId,
-      uuid,
-    );
-
-  return this.delete(
-    companyId,
-    department.id,
-  );
-}
 }
