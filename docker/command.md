@@ -1,4 +1,3 @@
-
 <!-- Server Command -->
 
 <!-- Setup -->
@@ -12,78 +11,73 @@ Auto deployment (optional)
 
 <!-- End -->
 
-
 <!-- VPS -->
+
 cd /var/www/CRM-ERP
 git pull origin main
 
 cd docker
 
 docker compose \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  up -d --build backend
+ --env-file .env.production \
+ -f docker-compose.prod.yml \
+ up -d --build backend
 
-  after verify
-  docker ps
+after verify
+docker ps
 docker logs --tail 100 matrix-crm-prod-backend
 
-
-
-
-
+docker compose \
+ --env-file docker/.env.production \
+ -f docker/docker-compose.prod.yml \
+ up --build -d
 
 docker compose \
-  --env-file docker/.env.production \
-  -f docker/docker-compose.prod.yml \
-  up --build -d
+ --env-file docker/.env.production \
+ -f docker/docker-compose.prod.yml \
+ exec backend npx prisma migrate deploy
 
+docker compose \
+ --env-file docker/.env.production \
+ -f docker/docker-compose.prod.yml \
+ exec backend npx prisma db seed
 
-  docker compose \
-  --env-file docker/.env.production \
-  -f docker/docker-compose.prod.yml \
-  exec backend npx prisma migrate deploy
-
-  docker compose \
-  --env-file docker/.env.production \
-  -f docker/docker-compose.prod.yml \
-  exec backend npx prisma db seed
-
-
-  docker compose \
-  --env-file docker/.env.production \
-  -f docker/docker-compose.prod.yml \
-  logs -f
-
-
+docker compose \
+ --env-file docker/.env.production \
+ -f docker/docker-compose.prod.yml \
+ logs -f
 
   <!-- Local Dev -->
 
-  docker compose -f docker/docker-compose.yml down
-  docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml down
+docker compose -f docker/docker-compose.yml up -d
 
-  docker compose -f docker/docker-compose.yml up --build backend
-  docker compose -f docker/docker-compose.yml up --build -d admin
+docker compose -f docker/docker-compose.yml up --build backend
+docker compose -f docker/docker-compose.yml up --build -d admin
 
-  for log
-  docker compose -f docker/docker-compose.yml logs -f backend
+for log
+docker compose -f docker/docker-compose.yml logs -f backend
 
-  //format
-  docker compose -f docker/docker-compose.yml exec backend npx prisma format
+//format
+docker compose -f docker/docker-compose.yml exec backend npx prisma format
 
-  //validate
-  docker compose -f docker/docker-compose.yml exec backend npx prisma format
+//validate
+docker compose -f docker/docker-compose.yml exec backend npx prisma format
 
-  //migration example
-  docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev --name add-project-category
+//migration example
+docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev --name add-project-category
 
-  //for install packages
-  
-  docker compose -f docker/docker-compose.yml exec admin npm install react-otp-input
+//for install packages
 
+docker compose -f docker/docker-compose.yml exec admin npm install react-otp-input
+
+  <!-- db seed -->
+
+docker compose exec backend npx prisma db seed
 
   <!-- VPS Migrations -->
-  git pull
+
+git pull
 
 docker compose build
 
@@ -93,33 +87,35 @@ docker compose up -d
 
 <!-- test -->
 
-
 <!-- VPS migration -->
 
 cd /var/www/CRM-ERP/docker
 
 docker compose \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  exec backend \
-  npx prisma migrate deploy
+ --env-file .env.production \
+ -f docker-compose.prod.yml \
+ exec backend \
+ npx prisma migrate deploy
 
   <!-- Check Status -->
-  docker compose \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  exec backend \
-  npx prisma migrate status
+
+docker compose \
+ --env-file .env.production \
+ -f docker-compose.prod.yml \
+ exec backend \
+ npx prisma migrate status
 
   <!-- Seed Command -->
-  docker compose \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  exec backend \
-  node dist/prisma/seed.js
+
+docker compose \
+ --env-file .env.production \
+ -f docker-compose.prod.yml \
+ exec backend \
+ node dist/prisma/seed.js
 
   <!-- backend restart -->
-  docker compose \
-  --env-file .env.production \
-  -f docker-compose.prod.yml \
-  restart backend
+
+docker compose \
+ --env-file .env.production \
+ -f docker-compose.prod.yml \
+ restart backend

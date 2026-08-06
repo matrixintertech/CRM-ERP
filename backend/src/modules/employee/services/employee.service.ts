@@ -3,158 +3,115 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
-import { CreateEmployeeDto } from "../dto/create-employee.dto";
-import { UpdateEmployeeDto } from "../dto/update-employee.dto";
+import { CreateEmployeeDto } from '../dto/create-employee.dto';
+import { UpdateEmployeeDto } from '../dto/update-employee.dto';
 
-import { EmployeeRepository } from "../repositories/employee.repository";
+import { EmployeeRepository } from '../repositories/employee.repository';
 
-import { DepartmentRepository } from "../../department/repositories/department.repository";
-import { DesignationRepository } from "../../designation/repositories/designation.repository";
-import { OrganizationUnitRepository } from "../../organization-unit/repositories/organization-unit.repository";
+import { DepartmentRepository } from '../../department/repositories/department.repository';
+import { DesignationRepository } from '../../designation/repositories/designation.repository';
+import { OrganizationUnitRepository } from '../../organization-unit/repositories/organization-unit.repository';
 
 @Injectable()
 export class EmployeeService {
   constructor(
-    private readonly employeeRepository:
-      EmployeeRepository,
+    private readonly employeeRepository: EmployeeRepository,
 
-    private readonly departmentRepository:
-      DepartmentRepository,
+    private readonly departmentRepository: DepartmentRepository,
 
-    private readonly designationRepository:
-      DesignationRepository,
+    private readonly designationRepository: DesignationRepository,
 
-    private readonly organizationUnitRepository:
-      OrganizationUnitRepository,
+    private readonly organizationUnitRepository: OrganizationUnitRepository,
   ) {}
 
-  async create(
-    companyId: bigint,
-    dto: CreateEmployeeDto,
-  ) {
+  async create(companyId: bigint, dto: CreateEmployeeDto) {
     if (dto.email) {
-      const normalizedEmail =
-        dto.email
-          .trim()
-          .toLowerCase();
+      const normalizedEmail = dto.email.trim().toLowerCase();
 
-      const existingEmail =
-        await this.employeeRepository.findByEmail(
-          companyId,
-          normalizedEmail,
-        );
+      const existingEmail = await this.employeeRepository.findByEmail(
+        companyId,
+        normalizedEmail,
+      );
 
       if (existingEmail) {
-        throw new ConflictException(
-          "Email already exists.",
-        );
+        throw new ConflictException('Email already exists.');
       }
     }
 
-    const normalizedMobile =
-      dto.mobile.trim();
+    const normalizedMobile = dto.mobile.trim();
 
-    const existingMobile =
-      await this.employeeRepository.findByMobile(
-        companyId,
-        normalizedMobile,
-      );
+    const existingMobile = await this.employeeRepository.findByMobile(
+      companyId,
+      normalizedMobile,
+    );
 
     if (existingMobile) {
-      throw new ConflictException(
-        "Mobile already exists.",
-      );
+      throw new ConflictException('Mobile already exists.');
     }
 
-    const organizationUnit =
-      await this.validateOrganizationUnit(
-        companyId,
-        dto.organizationUnitUuid,
-      );
+    const organizationUnit = await this.validateOrganizationUnit(
+      companyId,
+      dto.organizationUnitUuid,
+    );
 
-    const department =
-      await this.validateDepartment(
-        companyId,
-        dto.departmentUuid,
-      );
+    const department = await this.validateDepartment(
+      companyId,
+      dto.departmentUuid,
+    );
 
-    const designation =
-      await this.validateDesignation(
-        companyId,
-        dto.designationUuid,
-      );
+    const designation = await this.validateDesignation(
+      companyId,
+      dto.designationUuid,
+    );
 
-    const manager =
-      await this.validateManager(
-        companyId,
-        dto.managerUuid,
-      );
+    const manager = await this.validateManager(companyId, dto.managerUuid);
 
     if (
       organizationUnit &&
       department &&
-      department.organizationUnitId !==
-        organizationUnit.id
+      department.organizationUnitId !== organizationUnit.id
     ) {
       throw new BadRequestException(
-        "Selected department does not belong to the selected organization unit.",
+        'Selected department does not belong to the selected organization unit.',
       );
     }
 
     if (
       department &&
       designation &&
-      designation.departmentId !==
-        department.id
+      designation.departmentId !== department.id
     ) {
       throw new BadRequestException(
-        "Selected designation does not belong to the selected department.",
+        'Selected designation does not belong to the selected department.',
       );
     }
 
-    const employeeCode =
-      await this.generateEmployeeCode(
-        companyId,
-      );
+    const employeeCode = await this.generateEmployeeCode(companyId);
 
     return this.employeeRepository.create({
       employeeCode,
 
-      firstName:
-        dto.firstName.trim(),
+      firstName: dto.firstName.trim(),
 
-      lastName:
-        dto.lastName?.trim(),
+      lastName: dto.lastName?.trim(),
 
-      displayName:
-        dto.displayName?.trim(),
+      displayName: dto.displayName?.trim(),
 
-      email:
-        dto.email
-          ?.trim()
-          .toLowerCase(),
+      email: dto.email?.trim().toLowerCase(),
 
-      mobile:
-        normalizedMobile,
+      mobile: normalizedMobile,
 
-      gender:
-        dto.gender,
+      gender: dto.gender,
 
-      joiningDate:
-        dto.joiningDate
-          ? new Date(dto.joiningDate)
-          : undefined,
+      joiningDate: dto.joiningDate ? new Date(dto.joiningDate) : undefined,
 
-      employmentType:
-        dto.employmentType,
+      employmentType: dto.employmentType,
 
-      avatarUrl:
-        dto.avatarUrl?.trim(),
+      avatarUrl: dto.avatarUrl?.trim(),
 
-      status:
-        dto.status,
+      status: dto.status,
 
       company: {
         connect: {
@@ -162,109 +119,75 @@ export class EmployeeService {
         },
       },
 
-      organizationUnit:
-        organizationUnit
-          ? {
-              connect: {
-                id:
-                  organizationUnit.id,
-              },
-            }
-          : undefined,
+      organizationUnit: organizationUnit
+        ? {
+            connect: {
+              id: organizationUnit.id,
+            },
+          }
+        : undefined,
 
-      department:
-        department
-          ? {
-              connect: {
-                id:
-                  department.id,
-              },
-            }
-          : undefined,
+      department: department
+        ? {
+            connect: {
+              id: department.id,
+            },
+          }
+        : undefined,
 
-      designation:
-        designation
-          ? {
-              connect: {
-                id:
-                  designation.id,
-              },
-            }
-          : undefined,
+      designation: designation
+        ? {
+            connect: {
+              id: designation.id,
+            },
+          }
+        : undefined,
 
-      manager:
-        manager
-          ? {
-              connect: {
-                id:
-                  manager.id,
-              },
-            }
-          : undefined,
+      manager: manager
+        ? {
+            connect: {
+              id: manager.id,
+            },
+          }
+        : undefined,
     });
   }
 
-  async findAll(
-    companyId: bigint,
-  ) {
-    return this.employeeRepository.findAll({
-      companyId,
-    });
+  async findAll(companyId?: bigint) {
+    return this.employeeRepository.findAll(
+      companyId
+        ? {
+            companyId,
+          }
+        : {},
+    );
   }
 
-  async findOne(
-    companyId: bigint,
-    uuid: string,
-  ) {
-    const employee =
-      await this.employeeRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+  async findOne(companyId: bigint, uuid: string) {
+    const employee = await this.employeeRepository.findByUuid(companyId, uuid);
 
     if (!employee) {
-      throw new NotFoundException(
-        "Employee not found.",
-      );
+      throw new NotFoundException('Employee not found.');
     }
 
     return employee;
   }
 
-  async update(
-    companyId: bigint,
-    uuid: string,
-    dto: UpdateEmployeeDto,
-  ) {
-    const employee =
-      await this.employeeRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+  async update(companyId: bigint, uuid: string, dto: UpdateEmployeeDto) {
+    const employee = await this.employeeRepository.findByUuid(companyId, uuid);
 
     if (!employee) {
-      throw new NotFoundException(
-        "Employee not found.",
-      );
+      throw new NotFoundException('Employee not found.');
     }
 
-    await this.validateEmail(
-      companyId,
-      dto.email,
-      employee.id,
-    );
+    await this.validateEmail(companyId, dto.email, employee.id);
 
     if (dto.mobile) {
-      await this.validateMobile(
-        companyId,
-        dto.mobile,
-        employee.id,
-      );
+      await this.validateMobile(companyId, dto.mobile, employee.id);
     }
 
     const organizationUnit =
-      dto.organizationUnitUuid !==
-      undefined
+      dto.organizationUnitUuid !== undefined
         ? await this.validateOrganizationUnit(
             companyId,
             dto.organizationUnitUuid,
@@ -273,331 +196,226 @@ export class EmployeeService {
 
     const department =
       dto.departmentUuid !== undefined
-        ? await this.validateDepartment(
-            companyId,
-            dto.departmentUuid,
-          )
+        ? await this.validateDepartment(companyId, dto.departmentUuid)
         : undefined;
 
     const designation =
       dto.designationUuid !== undefined
-        ? await this.validateDesignation(
-            companyId,
-            dto.designationUuid,
-          )
+        ? await this.validateDesignation(companyId, dto.designationUuid)
         : undefined;
 
     const manager =
       dto.managerUuid !== undefined
-        ? await this.validateManager(
-            companyId,
-            dto.managerUuid,
-          )
+        ? await this.validateManager(companyId, dto.managerUuid)
         : undefined;
 
-    if (
-      manager &&
-      manager.id === employee.id
-    ) {
+    if (manager && manager.id === employee.id) {
       throw new BadRequestException(
-        "Employee cannot be their own reporting manager.",
+        'Employee cannot be their own reporting manager.',
       );
     }
 
     const finalOrganizationUnitId =
-      dto.organizationUnitUuid !==
-      undefined
-        ? organizationUnit?.id ?? null
+      dto.organizationUnitUuid !== undefined
+        ? (organizationUnit?.id ?? null)
         : employee.organizationUnitId;
 
     const finalDepartmentId =
       dto.departmentUuid !== undefined
-        ? department?.id ?? null
+        ? (department?.id ?? null)
         : employee.departmentId;
 
     if (
       department &&
       finalOrganizationUnitId &&
-      department.organizationUnitId !==
-        finalOrganizationUnitId
+      department.organizationUnitId !== finalOrganizationUnitId
     ) {
       throw new BadRequestException(
-        "Selected department does not belong to the selected organization unit.",
+        'Selected department does not belong to the selected organization unit.',
       );
     }
 
     if (
       designation &&
       finalDepartmentId &&
-      designation.departmentId !==
-        finalDepartmentId
+      designation.departmentId !== finalDepartmentId
     ) {
       throw new BadRequestException(
-        "Selected designation does not belong to the selected department.",
+        'Selected designation does not belong to the selected department.',
       );
     }
 
-    return this.employeeRepository.update(
-      employee.id,
-      {
-        ...(dto.firstName !==
-          undefined && {
-          firstName:
-            dto.firstName.trim(),
-        }),
+    return this.employeeRepository.update(employee.id, {
+      ...(dto.firstName !== undefined && {
+        firstName: dto.firstName.trim(),
+      }),
 
-        ...(dto.lastName !==
-          undefined && {
-          lastName:
-            dto.lastName.trim() ||
-            null,
-        }),
+      ...(dto.lastName !== undefined && {
+        lastName: dto.lastName.trim() || null,
+      }),
 
-        ...(dto.displayName !==
-          undefined && {
-          displayName:
-            dto.displayName.trim() ||
-            null,
-        }),
+      ...(dto.displayName !== undefined && {
+        displayName: dto.displayName.trim() || null,
+      }),
 
-        ...(dto.email !== undefined && {
-          email:
-            dto.email
-              .trim()
-              .toLowerCase() ||
-            null,
-        }),
+      ...(dto.email !== undefined && {
+        email: dto.email.trim().toLowerCase() || null,
+      }),
 
-        ...(dto.mobile !==
-          undefined && {
-          mobile:
-            dto.mobile.trim(),
-        }),
+      ...(dto.mobile !== undefined && {
+        mobile: dto.mobile.trim(),
+      }),
 
-        ...(dto.gender !==
-          undefined && {
-          gender:
-            dto.gender,
-        }),
+      ...(dto.gender !== undefined && {
+        gender: dto.gender,
+      }),
 
-        ...(dto.joiningDate !==
-          undefined && {
-          joiningDate:
-            dto.joiningDate
-              ? new Date(
-                  dto.joiningDate,
-                )
-              : null,
-        }),
+      ...(dto.joiningDate !== undefined && {
+        joiningDate: dto.joiningDate ? new Date(dto.joiningDate) : null,
+      }),
 
-        ...(dto.employmentType !==
-          undefined && {
-          employmentType:
-            dto.employmentType,
-        }),
+      ...(dto.employmentType !== undefined && {
+        employmentType: dto.employmentType,
+      }),
 
-        ...(dto.avatarUrl !==
-          undefined && {
-          avatarUrl:
-            dto.avatarUrl.trim() ||
-            null,
-        }),
+      ...(dto.avatarUrl !== undefined && {
+        avatarUrl: dto.avatarUrl.trim() || null,
+      }),
 
-        ...(dto.status !==
-          undefined && {
-          status:
-            dto.status,
-        }),
+      ...(dto.status !== undefined && {
+        status: dto.status,
+      }),
 
-        ...(dto.organizationUnitUuid !==
-          undefined && {
-          organizationUnit:
-            organizationUnit
-              ? {
-                  connect: {
-                    id:
-                      organizationUnit.id,
-                  },
-                }
-              : {
-                  disconnect: true,
-                },
-        }),
+      ...(dto.organizationUnitUuid !== undefined && {
+        organizationUnit: organizationUnit
+          ? {
+              connect: {
+                id: organizationUnit.id,
+              },
+            }
+          : {
+              disconnect: true,
+            },
+      }),
 
-        ...(dto.departmentUuid !==
-          undefined && {
-          department:
-            department
-              ? {
-                  connect: {
-                    id:
-                      department.id,
-                  },
-                }
-              : {
-                  disconnect: true,
-                },
-        }),
+      ...(dto.departmentUuid !== undefined && {
+        department: department
+          ? {
+              connect: {
+                id: department.id,
+              },
+            }
+          : {
+              disconnect: true,
+            },
+      }),
 
-        ...(dto.designationUuid !==
-          undefined && {
-          designation:
-            designation
-              ? {
-                  connect: {
-                    id:
-                      designation.id,
-                  },
-                }
-              : {
-                  disconnect: true,
-                },
-        }),
+      ...(dto.designationUuid !== undefined && {
+        designation: designation
+          ? {
+              connect: {
+                id: designation.id,
+              },
+            }
+          : {
+              disconnect: true,
+            },
+      }),
 
-        ...(dto.managerUuid !==
-          undefined && {
-          manager:
-            manager
-              ? {
-                  connect: {
-                    id:
-                      manager.id,
-                  },
-                }
-              : {
-                  disconnect: true,
-                },
-        }),
-      },
-    );
+      ...(dto.managerUuid !== undefined && {
+        manager: manager
+          ? {
+              connect: {
+                id: manager.id,
+              },
+            }
+          : {
+              disconnect: true,
+            },
+      }),
+    });
   }
 
-  async remove(
-    companyId: bigint,
-    uuid: string,
-  ) {
-    const employee =
-      await this.employeeRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+  async remove(companyId: bigint, uuid: string) {
+    const employee = await this.employeeRepository.findByUuid(companyId, uuid);
 
     if (!employee) {
-      throw new NotFoundException(
-        "Employee not found.",
-      );
+      throw new NotFoundException('Employee not found.');
     }
 
-    await this.employeeRepository.softDelete(
-      employee.id,
-    );
+    await this.employeeRepository.softDelete(employee.id);
 
     return {
-      message:
-        "Employee deleted successfully.",
+      message: 'Employee deleted successfully.',
     };
   }
 
-  private async generateEmployeeCode(
-    companyId: bigint,
-  ): Promise<string> {
-    const totalEmployees =
-      await this.employeeRepository.count(
-        companyId,
-      );
+  private async generateEmployeeCode(companyId: bigint): Promise<string> {
+    const totalEmployees = await this.employeeRepository.count(companyId);
 
-    return `EMP${String(
-      totalEmployees + 1,
-    ).padStart(5, "0")}`;
+    return `EMP${String(totalEmployees + 1).padStart(5, '0')}`;
   }
 
-  private async validateOrganizationUnit(
-    companyId: bigint,
-    uuid?: string,
-  ) {
+  private async validateOrganizationUnit(companyId: bigint, uuid?: string) {
     if (!uuid) {
       return null;
     }
 
-    const organizationUnit =
-      await this.organizationUnitRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+    const organizationUnit = await this.organizationUnitRepository.findByUuid(
+      companyId,
+      uuid,
+    );
 
     if (!organizationUnit) {
-      throw new NotFoundException(
-        "Organization Unit not found.",
-      );
+      throw new NotFoundException('Organization Unit not found.');
     }
 
     return organizationUnit;
   }
 
-  private async validateDepartment(
-    companyId: bigint,
-    uuid?: string,
-  ) {
+  private async validateDepartment(companyId: bigint, uuid?: string) {
     if (!uuid) {
       return null;
     }
 
-    const department =
-      await this.departmentRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+    const department = await this.departmentRepository.findByUuid(
+      companyId,
+      uuid,
+    );
 
     if (!department) {
-      throw new NotFoundException(
-        "Department not found.",
-      );
+      throw new NotFoundException('Department not found.');
     }
 
     return department;
   }
 
-  private async validateDesignation(
-    companyId: bigint,
-    uuid?: string,
-  ) {
+  private async validateDesignation(companyId: bigint, uuid?: string) {
     if (!uuid) {
       return null;
     }
 
-    const designation =
-      await this.designationRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+    const designation = await this.designationRepository.findByUuid(
+      companyId,
+      uuid,
+    );
 
     if (!designation) {
-      throw new NotFoundException(
-        "Designation not found.",
-      );
+      throw new NotFoundException('Designation not found.');
     }
 
     return designation;
   }
 
-  private async validateManager(
-    companyId: bigint,
-    uuid?: string,
-  ) {
+  private async validateManager(companyId: bigint, uuid?: string) {
     if (!uuid) {
       return null;
     }
 
-    const manager =
-      await this.employeeRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+    const manager = await this.employeeRepository.findByUuid(companyId, uuid);
 
     if (!manager) {
-      throw new NotFoundException(
-        "Reporting Manager not found.",
-      );
+      throw new NotFoundException('Reporting Manager not found.');
     }
 
     return manager;
@@ -612,25 +430,15 @@ export class EmployeeService {
       return;
     }
 
-    const normalizedEmail =
-      email
-        .trim()
-        .toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const employee =
-      await this.employeeRepository.findByEmail(
-        companyId,
-        normalizedEmail,
-      );
+    const employee = await this.employeeRepository.findByEmail(
+      companyId,
+      normalizedEmail,
+    );
 
-    if (
-      employee &&
-      employee.id !==
-        ignoreEmployeeId
-    ) {
-      throw new ConflictException(
-        "Email already exists.",
-      );
+    if (employee && employee.id !== ignoreEmployeeId) {
+      throw new ConflictException('Email already exists.');
     }
   }
 
@@ -639,23 +447,15 @@ export class EmployeeService {
     mobile: string,
     ignoreEmployeeId?: bigint,
   ) {
-    const normalizedMobile =
-      mobile.trim();
+    const normalizedMobile = mobile.trim();
 
-    const employee =
-      await this.employeeRepository.findByMobile(
-        companyId,
-        normalizedMobile,
-      );
+    const employee = await this.employeeRepository.findByMobile(
+      companyId,
+      normalizedMobile,
+    );
 
-    if (
-      employee &&
-      employee.id !==
-        ignoreEmployeeId
-    ) {
-      throw new ConflictException(
-        "Mobile number already exists.",
-      );
+    if (employee && employee.id !== ignoreEmployeeId) {
+      throw new ConflictException('Mobile number already exists.');
     }
   }
 }

@@ -1,20 +1,12 @@
-import {
-  Injectable,
-} from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-import {
-  Prisma,
-  Status,
-} from "@prisma/client";
+import { Prisma, Status } from '@prisma/client';
 
-import { PrismaService } from "src/database/prisma.service";
+import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class EmployeeRepository {
-  constructor(
-    private readonly prisma:
-      PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private readonly employeeInclude = {
     company: true,
@@ -56,38 +48,29 @@ export class EmployeeRepository {
     },
   } satisfies Prisma.EmployeeInclude;
 
-  async create(
-    data: Prisma.EmployeeCreateInput,
-  ) {
+  async create(data: Prisma.EmployeeCreateInput) {
     return this.prisma.employee.create({
       data,
       include: this.employeeInclude,
     });
   }
 
-  async findAll(
-    where:
-      Prisma.EmployeeWhereInput = {},
-  ) {
+  async findAll(where: Prisma.EmployeeWhereInput = {}) {
     return this.prisma.employee.findMany({
       where: {
         ...where,
         deletedAt: null,
       },
 
-      include:
-        this.employeeInclude,
+      include: this.employeeInclude,
 
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
   }
 
-  async findById(
-    companyId: bigint,
-    id: bigint,
-  ) {
+  async findById(companyId: bigint, id: bigint) {
     return this.prisma.employee.findFirst({
       where: {
         id,
@@ -95,15 +78,11 @@ export class EmployeeRepository {
         deletedAt: null,
       },
 
-      include:
-        this.employeeInclude,
+      include: this.employeeInclude,
     });
   }
 
-  async findByUuid(
-    companyId: bigint,
-    uuid: string,
-  ) {
+  async findByUuid(companyId: bigint, uuid: string) {
     return this.prisma.employee.findFirst({
       where: {
         companyId,
@@ -111,15 +90,11 @@ export class EmployeeRepository {
         deletedAt: null,
       },
 
-      include:
-        this.employeeInclude,
+      include: this.employeeInclude,
     });
   }
 
-  async findByEmail(
-    companyId: bigint,
-    email: string,
-  ) {
+  async findByEmail(companyId: bigint, email: string) {
     return this.prisma.employee.findFirst({
       where: {
         companyId,
@@ -129,10 +104,7 @@ export class EmployeeRepository {
     });
   }
 
-  async findByMobile(
-    companyId: bigint,
-    mobile: string,
-  ) {
+  async findByMobile(companyId: bigint, mobile: string) {
     return this.prisma.employee.findFirst({
       where: {
         companyId,
@@ -142,10 +114,7 @@ export class EmployeeRepository {
     });
   }
 
-  async findByEmployeeCode(
-    companyId: bigint,
-    employeeCode: string,
-  ) {
+  async findByEmployeeCode(companyId: bigint, employeeCode: string) {
     return this.prisma.employee.findFirst({
       where: {
         companyId,
@@ -155,10 +124,7 @@ export class EmployeeRepository {
     });
   }
 
-  async update(
-    id: bigint,
-    data: Prisma.EmployeeUpdateInput,
-  ) {
+  async update(id: bigint, data: Prisma.EmployeeUpdateInput) {
     return this.prisma.employee.update({
       where: {
         id,
@@ -166,35 +132,27 @@ export class EmployeeRepository {
 
       data,
 
-      include:
-        this.employeeInclude,
+      include: this.employeeInclude,
     });
   }
 
-  async softDelete(
-    id: bigint,
-  ) {
+  async softDelete(id: bigint) {
     return this.prisma.employee.update({
       where: {
         id,
       },
 
       data: {
-        deletedAt:
-          new Date(),
+        deletedAt: new Date(),
 
-        status:
-          Status.INACTIVE,
+        status: Status.INACTIVE,
       },
 
-      include:
-        this.employeeInclude,
+      include: this.employeeInclude,
     });
   }
 
-  async count(
-    companyId: bigint,
-  ) {
+  async count(companyId: bigint) {
     return this.prisma.employee.count({
       where: {
         companyId,
