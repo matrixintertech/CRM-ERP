@@ -17,11 +17,7 @@ services:
       - postgres_prod_data:/var/lib/postgresql/data
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -64,6 +60,11 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       SMTP_FROM: ${SMTP_FROM}
 
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      MSG91_WHATSAPP_API_URL: ${MSG91_WHATSAPP_API_URL}
+      MSG91_WHATSAPP_INTEGRATED_NUMBER: ${MSG91_WHATSAPP_INTEGRATED_NUMBER}
+      MSG91_WHATSAPP_TEMPLATE_NAME: ${MSG91_WHATSAPP_TEMPLATE_NAME}
+      MSG91_WHATSAPP_TEMPLATE_LANGUAGE: ${MSG91_WHATSAPP_TEMPLATE_LANGUAGE}
 
     ports:
       - "127.0.0.1:3200:3000"
