@@ -2,102 +2,99 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
   Post,
   Req,
   UseGuards,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
-import {
-  ApiBearerAuth,
-  ApiParam,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { AuthGuard } from "@nestjs/passport";
+import { AuthGuard } from '@nestjs/passport';
 
-import type { Request } from "express";
+import type { Request } from 'express';
 
-import { CreateDesignationDto } from "../dto/create-designation.dto";
-import { UpdateDesignationDto } from "../dto/update-designation.dto";
+import { UserType, type User } from '@prisma/client';
 
-import { DesignationService } from "../services/designation.service";
+import { CreateDesignationDto } from '../dto/create-designation.dto';
+import { UpdateDesignationDto } from '../dto/update-designation.dto';
 
-@ApiTags("Designation")
-@ApiBearerAuth("access-token")
-@UseGuards(AuthGuard("jwt"))
-@Controller("designations")
+import { DesignationService } from '../services/designation.service';
+
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
+
+@ApiTags('Designation')
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard('jwt'))
+@Controller('designations')
 export class DesignationController {
-  constructor(
-    private readonly designationService:
-      DesignationService,
-  ) {}
+  constructor(private readonly designationService: DesignationService) {}
+
+  private getCompanyId(user: User): bigint {
+    if (!user.companyId) {
+      throw new ForbiddenException('Company context is missing.');
+    }
+
+    return user.companyId;
+  }
 
   @Post()
-  create(
-    @Req() req: Request,
-    @Body() dto: CreateDesignationDto,
-  ) {
-    return this.designationService.create(
-      (req.user as any).companyId,
-      dto,
-    );
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateDesignationDto) {
+    return this.designationService.create(this.getCompanyId(req.user), dto);
   }
 
   @Get()
-  findAll(
-    @Req() req: Request,
-  ) {
-    return this.designationService.findAll(
-      (req.user as any).companyId,
-    );
+  findAll(@Req() req: AuthenticatedRequest) {
+    const companyId =
+      req.user.userType === UserType.PLATFORM_OWNER
+        ? undefined
+        : this.getCompanyId(req.user);
+
+    return this.designationService.findAll(companyId);
   }
 
-  @Get(":uuid")
+  @Get(':uuid')
   @ApiParam({
-    name: "uuid",
+    name: 'uuid',
     type: String,
   })
-  findOne(
-    @Req() req: Request,
-    @Param("uuid") uuid: string,
-  ) {
+  findOne(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
     return this.designationService.findByUuid(
-      (req.user as any).companyId,
+      this.getCompanyId(req.user),
       uuid,
     );
   }
 
-  @Patch(":uuid")
+  @Patch(':uuid')
   @ApiParam({
-    name: "uuid",
+    name: 'uuid',
     type: String,
   })
   update(
-    @Req() req: Request,
-    @Param("uuid") uuid: string,
+    @Req() req: AuthenticatedRequest,
+    @Param('uuid') uuid: string,
     @Body() dto: UpdateDesignationDto,
   ) {
     return this.designationService.updateByUuid(
-      (req.user as any).companyId,
+      this.getCompanyId(req.user),
       uuid,
       dto,
     );
   }
 
-  @Delete(":uuid")
+  @Delete(':uuid')
   @ApiParam({
-    name: "uuid",
+    name: 'uuid',
     type: String,
   })
-  delete(
-    @Req() req: Request,
-    @Param("uuid") uuid: string,
-  ) {
+  delete(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
     return this.designationService.deleteByUuid(
-      (req.user as any).companyId,
+      this.getCompanyId(req.user),
       uuid,
     );
   }

@@ -1,16 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-import {
-  Prisma,
-} from "@prisma/client";
+import { Prisma } from '@prisma/client';
 
-import { PrismaService } from "src/database/prisma.service";
+import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class DesignationRepository {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private readonly include = {
     department: {
@@ -33,36 +29,33 @@ export class DesignationRepository {
     },
   } satisfies Prisma.DesignationInclude;
 
-  async create(
-    data: Prisma.DesignationCreateInput,
-  ) {
+  async create(data: Prisma.DesignationCreateInput) {
     return this.prisma.designation.create({
       data,
       include: this.include,
     });
   }
 
-  async findAll(
-    companyId: bigint,
-  ) {
+  async findAll(companyId?: bigint) {
     return this.prisma.designation.findMany({
       where: {
-        companyId,
         deletedAt: null,
+
+        ...(companyId !== undefined
+          ? {
+              companyId,
+            }
+          : {}),
       },
 
       include: this.include,
 
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
   }
-
-  async findById(
-    companyId: bigint,
-    id: bigint,
-  ) {
+  async findById(companyId: bigint, id: bigint) {
     return this.prisma.designation.findFirst({
       where: {
         id,
@@ -74,10 +67,7 @@ export class DesignationRepository {
     });
   }
 
-  async findByUuid(
-    companyId: bigint,
-    uuid: string,
-  ) {
+  async findByUuid(companyId: bigint, uuid: string) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -89,11 +79,7 @@ export class DesignationRepository {
     });
   }
 
-  async findByName(
-    companyId: bigint,
-    departmentId: bigint,
-    name: string,
-  ) {
+  async findByName(companyId: bigint, departmentId: bigint, name: string) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -104,11 +90,7 @@ export class DesignationRepository {
     });
   }
 
-  async findByCode(
-    companyId: bigint,
-    departmentId: bigint,
-    code: string,
-  ) {
+  async findByCode(companyId: bigint, departmentId: bigint, code: string) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
@@ -119,10 +101,7 @@ export class DesignationRepository {
     });
   }
 
-  async update(
-    id: bigint,
-    data: Prisma.DesignationUpdateInput,
-  ) {
+  async update(id: bigint, data: Prisma.DesignationUpdateInput) {
     return this.prisma.designation.update({
       where: {
         id,
@@ -134,9 +113,7 @@ export class DesignationRepository {
     });
   }
 
-  async softDelete(
-    id: bigint,
-  ) {
+  async softDelete(id: bigint) {
     return this.prisma.designation.update({
       where: {
         id,
