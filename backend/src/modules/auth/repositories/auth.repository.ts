@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import {
   LoginStatus,
@@ -11,72 +9,52 @@ import {
   User,
 } from '@prisma/client';
 
-import {
-  PrismaService,
-} from 'src/database/prisma.service';
-
+import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class AuthRepository {
-  constructor(
-    private readonly prisma:
-      PrismaService,
-  ) {}
-
-
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Find a non-deleted user
    * by email or mobile.
    */
-  async findUserByIdentifier(
-    identifier: string,
-  ): Promise<User | null> {
+  async findUserByIdentifier(identifiers: string[]): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
         deletedAt: null,
 
-        OR: [
+        OR: identifiers.flatMap((identifier) => [
           {
             email: identifier,
           },
           {
             mobile: identifier,
           },
-        ],
+        ]),
       },
     });
   }
 
-
-
   /**
    * Create OTP.
    */
-  async createOtp(
-    data: Prisma.OtpCreateInput,
-  ) {
+  async createOtp(data: Prisma.OtpCreateInput) {
     return this.prisma.otp.create({
       data,
     });
   }
 
-
-
   /**
    * Find latest pending OTP
    * for receiver and purpose.
    */
-  async findLatestOtp(
-    receiver: string,
-    purpose: OtpPurpose,
-  ) {
+  async findLatestOtp(receiver: string, purpose: OtpPurpose) {
     return this.prisma.otp.findFirst({
       where: {
         receiver,
         purpose,
-        status:
-          OtpStatus.PENDING,
+        status: OtpStatus.PENDING,
       },
 
       include: {
@@ -84,21 +62,15 @@ export class AuthRepository {
       },
 
       orderBy: {
-        createdAt:
-          'desc',
+        createdAt: 'desc',
       },
     });
   }
 
-
-
   /**
    * Update one OTP.
    */
-  async updateOtp(
-    id: bigint,
-    data: Prisma.OtpUpdateInput,
-  ) {
+  async updateOtp(id: bigint, data: Prisma.OtpUpdateInput) {
     return this.prisma.otp.update({
       where: {
         id,
@@ -108,32 +80,23 @@ export class AuthRepository {
     });
   }
 
-
-
   /**
    * Expire all previous pending OTPs
    * for same receiver and purpose.
    */
-  async expirePendingOtps(
-    receiver: string,
-    purpose: OtpPurpose,
-  ) {
+  async expirePendingOtps(receiver: string, purpose: OtpPurpose) {
     return this.prisma.otp.updateMany({
       where: {
         receiver,
         purpose,
-        status:
-          OtpStatus.PENDING,
+        status: OtpStatus.PENDING,
       },
 
       data: {
-        status:
-          OtpStatus.EXPIRED,
+        status: OtpStatus.EXPIRED,
       },
     });
   }
-
-
 
   /**
    * Increment OTP attempt count.
@@ -145,8 +108,7 @@ export class AuthRepository {
     attemptCount: number,
     maxAttempts: number,
   ) {
-    const nextAttemptCount =
-      attemptCount + 1;
+    const nextAttemptCount = attemptCount + 1;
 
     return this.prisma.otp.update({
       where: {
@@ -154,51 +116,37 @@ export class AuthRepository {
       },
 
       data: {
-        attemptCount:
-          nextAttemptCount,
+        attemptCount: nextAttemptCount,
 
-        ...(nextAttemptCount >=
-          maxAttempts && {
-          status:
-            OtpStatus.FAILED,
+        ...(nextAttemptCount >= maxAttempts && {
+          status: OtpStatus.FAILED,
         }),
       },
     });
   }
 
-
-
   /**
    * Create refresh token.
    */
-  async createRefreshToken(
-    data:
-      Prisma.RefreshTokenCreateInput,
-  ) {
+  async createRefreshToken(data: Prisma.RefreshTokenCreateInput) {
     return this.prisma.refreshToken.create({
       data,
     });
   }
 
-
-
   /**
    * Find active and non-expired
    * refresh token by hash.
    */
-  async findRefreshTokenByHash(
-    tokenHash: string,
-  ) {
+  async findRefreshTokenByHash(tokenHash: string) {
     return this.prisma.refreshToken.findFirst({
       where: {
         tokenHash,
 
-        status:
-          RefreshTokenStatus.ACTIVE,
+        status: RefreshTokenStatus.ACTIVE,
 
         expiresAt: {
-          gt:
-            new Date(),
+          gt: new Date(),
         },
       },
 
@@ -208,16 +156,10 @@ export class AuthRepository {
     });
   }
 
-
-
   /**
    * Update one refresh token.
    */
-  async updateRefreshToken(
-    id: bigint,
-    data:
-      Prisma.RefreshTokenUpdateInput,
-  ) {
+  async updateRefreshToken(id: bigint, data: Prisma.RefreshTokenUpdateInput) {
     return this.prisma.refreshToken.update({
       where: {
         id,
@@ -227,73 +169,54 @@ export class AuthRepository {
     });
   }
 
-
-
   /**
    * Revoke one refresh token.
    */
-  async revokeRefreshToken(
-    id: bigint,
-  ) {
+  async revokeRefreshToken(id: bigint) {
     return this.prisma.refreshToken.update({
       where: {
         id,
       },
 
       data: {
-        status:
-          RefreshTokenStatus.REVOKED,
+        status: RefreshTokenStatus.REVOKED,
 
-        revokedAt:
-          new Date(),
+        revokedAt: new Date(),
       },
     });
   }
-
-
 
   /**
    * Revoke all active refresh tokens
    * for one user.
    */
-  async revokeAllRefreshTokens(
-    userId: bigint,
-  ) {
+  async revokeAllRefreshTokens(userId: bigint) {
     return this.prisma.refreshToken.updateMany({
       where: {
         userId,
 
-        status:
-          RefreshTokenStatus.ACTIVE,
+        status: RefreshTokenStatus.ACTIVE,
       },
 
       data: {
-        status:
-          RefreshTokenStatus.REVOKED,
+        status: RefreshTokenStatus.REVOKED,
 
-        revokedAt:
-          new Date(),
+        revokedAt: new Date(),
       },
     });
   }
-
-
 
   /**
    * Mark expired active tokens
    * as expired.
    */
-  async expireRefreshTokens(
-    userId?: bigint,
-  ) {
+  async expireRefreshTokens(userId?: bigint) {
     return this.prisma.refreshToken.updateMany({
       where: {
-        status:
-          RefreshTokenStatus.ACTIVE,
+        status: RefreshTokenStatus.ACTIVE,
 
         expiresAt: {
-          lte:
-            new Date(),
+          lte: new Date(),
         },
 
         ...(userId !== undefined && {
@@ -302,52 +225,38 @@ export class AuthRepository {
       },
 
       data: {
-        status:
-          RefreshTokenStatus.EXPIRED,
+        status: RefreshTokenStatus.EXPIRED,
       },
     });
   }
 
-
-
   /**
    * Create login history.
    */
-  async createLoginHistory(
-    data:
-      Prisma.LoginHistoryCreateInput,
-  ) {
+  async createLoginHistory(data: Prisma.LoginHistoryCreateInput) {
     return this.prisma.loginHistory.create({
       data,
     });
   }
 
-
-
   /**
    * Mark active login history
    * records as logged out.
    */
-  async updateLoginHistory(
-    userId: bigint,
-  ) {
+  async updateLoginHistory(userId: bigint) {
     return this.prisma.loginHistory.updateMany({
       where: {
         userId,
 
-        status:
-          LoginStatus.SUCCESS,
+        status: LoginStatus.SUCCESS,
 
-        logoutAt:
-          null,
+        logoutAt: null,
       },
 
       data: {
-        status:
-          LoginStatus.LOGOUT,
+        status: LoginStatus.LOGOUT,
 
-        logoutAt:
-          new Date(),
+        logoutAt: new Date(),
       },
     });
   }

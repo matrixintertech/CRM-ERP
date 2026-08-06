@@ -8,25 +8,17 @@ import OtpForm from "../components/OtpForm";
 import styles from "../styles/LoginPage.module.css";
 
 const LoginPage = () => {
-  const [receiver, setReceiver] =
-    useState("");
+  const [identifier, setIdentifier] = useState("");
 
   return (
     <div className={styles.container}>
       <LoginLeft />
 
       <LoginRight>
-        {receiver ? (
-          <OtpForm
-            receiver={receiver}
-            onBack={() =>
-              setReceiver("")
-            }
-          />
+        {identifier ? (
+          <OtpForm identifier={identifier} onBack={() => setIdentifier("")} />
         ) : (
-          <LoginForm
-            onSuccess={setReceiver}
-          />
+          <LoginForm onSuccess={setIdentifier} />
         )}
       </LoginRight>
     </div>

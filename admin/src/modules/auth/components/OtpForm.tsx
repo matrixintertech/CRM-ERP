@@ -1,67 +1,37 @@
-import {
-  useRef,
-  useState,
-} from "react";
+import { useRef, useState } from "react";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import OtpInput from "react-otp-input";
 
 import Button from "@/shared/components/Button";
 
-import {
-  getProfile,
-  verifyOtp,
-} from "../api/auth.api";
+import { getProfile, verifyOtp } from "../api/auth.api";
 
-import {
-  useAuth,
-} from "@/app/providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 import styles from "../styles/LoginPage.module.css";
 
 interface Props {
-  receiver: string;
+  identifier: string;
   onBack: () => void;
 }
 
-const OtpForm = ({
-  receiver,
-  onBack,
-}: Props) => {
-  const navigate =
-    useNavigate();
+const OtpForm = ({ identifier, onBack }: Props) => {
+  const navigate = useNavigate();
 
-  const {
-    login,
-    setCurrentUser,
-  } = useAuth();
+  const { login, setCurrentUser } = useAuth();
 
-  const [otp, setOtp] =
-    useState("");
+  const [otp, setOtp] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
-  /*
-   * Same 6-digit OTP ko multiple times
-   * automatically submit hone se rokta hai.
-   */
-  const verifyingRef =
-    useRef(false);
+  const verifyingRef = useRef(false);
 
-  const handleVerifyOtp = async (
-    otpValue: string,
-  ) => {
-    if (
-      otpValue.length !== 6 ||
-      verifyingRef.current
-    ) {
+  const handleVerifyOtp = async (otpValue: string) => {
+    if (otpValue.length !== 6 || verifyingRef.current) {
       return;
     }
 
@@ -71,167 +41,85 @@ const OtpForm = ({
       setLoading(true);
       setError("");
 
-      const response =
-        await verifyOtp({
-          receiver:
-            receiver
-              .trim()
-              .toLowerCase(),
+      const response = await verifyOtp({
+        identifier: identifier.trim(),
 
-          otp:
-            otpValue,
-        });
+        otp: otpValue,
+      });
 
-      login(
-        response.data.accessToken,
-      );
+      login(response.data.accessToken);
 
-      localStorage.setItem(
-        "refreshToken",
-        response.data.refreshToken,
-      );
+      localStorage.setItem("refreshToken", response.data.refreshToken);
 
-      const profile =
-        await getProfile();
+      const profile = await getProfile();
 
-      setCurrentUser(
-        profile.data,
-      );
+      setCurrentUser(profile.data);
 
-      navigate(
-        "/dashboard",
-        {
-          replace: true,
-        },
-      );
-    } catch (err: unknown) {
-      const apiError =
-        err as {
-          response?: {
-            data?: {
-              message?: string;
-            };
+      navigate("/dashboard", {
+        replace: true,
+      });
+    } catch (error: unknown) {
+      const apiError = error as {
+        response?: {
+          data?: {
+            message?: string;
           };
         };
+      };
 
-      setError(
-        apiError.response?.data
-          ?.message ??
-          "Invalid OTP.",
-      );
+      setError(apiError.response?.data?.message ?? "Invalid OTP.");
 
       setOtp("");
     } finally {
       verifyingRef.current = false;
-
       setLoading(false);
     }
   };
 
-  const handleOtpChange = (
-    value: string,
-  ) => {
-    const numericOtp =
-      value
-        .replace(
-          /\D/g,
-          "",
-        )
-        .slice(
-          0,
-          6,
-        );
+  const handleOtpChange = (value: string) => {
+    const numericOtp = value.replace(/\D/g, "").slice(0, 6);
 
     setError("");
     setOtp(numericOtp);
 
-    if (
-      numericOtp.length === 6
-    ) {
-      void handleVerifyOtp(
-        numericOtp,
-      );
+    if (numericOtp.length === 6) {
+      void handleVerifyOtp(numericOtp);
     }
   };
 
   return (
     <div>
-      <h3>
-        Verify OTP
-      </h3>
+      <h3>Verify OTP</h3>
 
-      <p>
-        Enter the 6-digit
-        verification code sent to
-      </p>
+      <p>Enter the 6-digit verification code sent to</p>
 
-      <p
-        className={
-          styles.otpReceiver
-        }
-      >
-        {receiver}
-      </p>
+      <p className={styles.otpReceiver}>{identifier}</p>
 
-      <div
-        className={
-          styles.otpWrapper
-        }
-      >
-        <label
-          className={
-            styles.otpLabel
-          }
-        >
-          One-Time Password
-        </label>
+      <div className={styles.otpWrapper}>
+        <label className={styles.otpLabel}>One-Time Password</label>
 
         <OtpInput
           value={otp}
-          onChange={
-            handleOtpChange
-          }
+          onChange={handleOtpChange}
           numInputs={6}
           shouldAutoFocus
           inputType="tel"
-          containerStyle={
-            styles.otpContainer
-          }
-          renderInput={(
-            inputProps,
-          ) => (
+          containerStyle={styles.otpContainer}
+          renderInput={(inputProps) => (
             <input
               {...inputProps}
               disabled={loading}
               inputMode="numeric"
               autoComplete="one-time-code"
-              className={
-                styles.otpInput
-              }
+              className={styles.otpInput}
               aria-label="OTP digit"
             />
           )}
         />
 
-        {error && (
-          <p
-            className={
-              styles.otpError
-            }
-          >
-            {error}
-          </p>
-        )}
+        {error && <p className={styles.otpError}>{error}</p>}
 
-        {loading && (
-          <p
-            className={
-              styles.otpStatus
-            }
-          >
-            Verifying OTP...
-          </p>
-        )}
+        {loading && <p className={styles.otpStatus}>Verifying OTP...</p>}
       </div>
 
       <Button
@@ -241,7 +129,7 @@ const OtpForm = ({
         disabled={loading}
         onClick={onBack}
       >
-        Change Email
+        Change Email or Mobile
       </Button>
     </div>
   );

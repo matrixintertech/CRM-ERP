@@ -6,22 +6,16 @@ interface Props {
   children: ReactNode;
 }
 
-const LoginRight = ({
-  children,
-}: Props) => {
+const LoginRight = ({ children }: Props) => {
   return (
     <div className={styles.right}>
       <div className={styles.loginBox}>
-        <h2>
-          Welcome Back
-        </h2>
+        <h2>Welcome Back</h2>
 
         <p className={styles.subtitle}>
-          Sign in securely using
-          your registered email
-          address. We'll send a
-          one-time verification
-          code to continue.
+          Sign in securely using your registered email address or mobile number.
+          We'll send a one-time verification code to your email or WhatsApp to
+          continue.
         </p>
 
         {children}
@@ -34,8 +28,7 @@ const LoginRight = ({
             color: "#6b7280",
           }}
         >
-          Protected by secure
-          OTP authentication
+          Protected by secure OTP authentication
         </div>
       </div>
     </div>

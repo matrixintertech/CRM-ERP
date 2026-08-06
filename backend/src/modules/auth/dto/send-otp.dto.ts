@@ -1,10 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { OtpChannel } from '@prisma/client';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsString,
-} from 'class-validator';
+
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class SendOtpDto {
   @ApiProperty({
@@ -13,12 +9,5 @@ export class SendOtpDto {
   })
   @IsString()
   @IsNotEmpty()
-  receiver: string;
-
-  @ApiProperty({
-    enum: OtpChannel,
-    example: OtpChannel.EMAIL,
-  })
-  @IsEnum(OtpChannel)
-  channel: OtpChannel;
+  identifier: string;
 }

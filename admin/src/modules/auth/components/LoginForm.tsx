@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import Button from "@/shared/components/Button";
 import Input from "@/shared/components/Input";
@@ -6,61 +6,39 @@ import Input from "@/shared/components/Input";
 import { sendOtp } from "../api/auth.api";
 
 interface Props {
-  onSuccess: (receiver: string) => void;
+  onSuccess: (identifier: string) => void;
 }
 
-const LoginForm = ({
-  onSuccess,
-}: Props) => {
-  const [
-    receiver,
-    setReceiver,
-  ] = useState("");
+const LoginForm = ({ onSuccess }: Props) => {
+  const [identifier, setIdentifier] = useState("");
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
-  ) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-    const email =
-      receiver.trim().toLowerCase();
+    const normalizedIdentifier = identifier.trim();
 
-    if (!email) {
-      setError(
-        "Email address is required.",
-      );
+    if (!normalizedIdentifier) {
+      setError("Email address or mobile number is required.");
+
       return;
     }
 
     try {
       setLoading(true);
-
       setError("");
 
-      const response =
-        await sendOtp({
-          receiver: email,
-          channel: "EMAIL",
-        });
+      await sendOtp({
+        identifier: normalizedIdentifier,
+      });
 
-      console.log(
-        response.message,
-      );
-
-      onSuccess(email);
-    } catch (err: any) {
+      onSuccess(normalizedIdentifier);
+    } catch (error: any) {
       setError(
-        err.response?.data?.message ??
+        error.response?.data?.message ??
           "Unable to send OTP. Please try again.",
       );
     } finally {
@@ -71,30 +49,24 @@ const LoginForm = ({
   return (
     <form onSubmit={handleSubmit}>
       <Input
-        id="email"
-        label="Email Address"
-        type="email"
-        placeholder="Enter your email address"
-        value={receiver}
-        onChange={(e) => {
-          setReceiver(
-            e.target.value,
-          );
+        id="identifier"
+        label="Email or Mobile Number"
+        type="text"
+        placeholder="Enter email or mobile number"
+        value={identifier}
+        onChange={(event) => {
+          setIdentifier(event.target.value);
 
           if (error) {
             setError("");
           }
         }}
         error={error}
-        autoComplete="email"
+        autoComplete="username"
         autoFocus
       />
 
-      <Button
-        type="submit"
-        fullWidth
-        loading={loading}
-      >
+      <Button type="submit" fullWidth loading={loading}>
         Send OTP
       </Button>
     </form>
