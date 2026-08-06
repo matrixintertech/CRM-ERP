@@ -9,13 +9,63 @@
 
   background: var(--color-white);
 
-  border-bottom: 1px solid
-    var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 
   box-shadow: var(--shadow-sm);
 
   position: relative;
   z-index: 100;
+}
+
+/* Left section */
+
+.left {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  min-width: 0;
+}
+
+/* Mobile menu button */
+
+.menuButton {
+  width: 40px;
+  height: 40px;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 40px;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: var(--color-text-light);
+
+  cursor: pointer;
+
+  transition: var(--transition);
+}
+
+.menuButton:hover {
+  background: #f3f4f6;
+
+  border-color: #e5e7eb;
+
+  color: var(--color-text);
+}
+
+.menuButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+
+  outline-offset: 2px;
 }
 
 /* Logo */
@@ -25,6 +75,8 @@
   align-items: center;
 
   gap: 10px;
+
+  min-width: 0;
 
   padding: 0;
 
@@ -45,6 +97,8 @@
   align-items: center;
   justify-content: center;
 
+  flex: 0 0 36px;
+
   border-radius: 10px;
 
   background: var(--color-primary);
@@ -57,10 +111,13 @@
 }
 
 .logoText {
+  overflow: hidden;
+
   font-size: 20px;
   font-weight: 700;
   line-height: 1;
 
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -69,6 +126,8 @@
 .right {
   display: flex;
   align-items: center;
+
+  flex-shrink: 0;
 
   gap: 14px;
 }
@@ -84,6 +143,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
+  flex: 0 0 40px;
 
   padding: 0;
 
@@ -109,6 +170,7 @@
 
 .iconButton:focus-visible {
   outline: 2px solid var(--color-primary);
+
   outline-offset: 2px;
 }
 
@@ -127,6 +189,7 @@
   padding: 0 4px;
 
   border: 2px solid var(--color-white);
+
   border-radius: 999px;
 
   background: #dc2626;
@@ -145,12 +208,12 @@
 }
 
 .profile {
+  min-height: 46px;
+
   display: flex;
   align-items: center;
 
   gap: 11px;
-
-  min-height: 46px;
 
   padding: 5px 10px 5px 6px;
 
@@ -174,6 +237,7 @@
 
 .profile:focus-visible {
   outline: 2px solid var(--color-primary);
+
   outline-offset: 2px;
 }
 
@@ -219,14 +283,15 @@
   max-width: 180px;
 
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   color: #111827;
 
   font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .role {
@@ -235,13 +300,14 @@
   margin-top: 2px;
 
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   color: #6b7280;
 
   font-size: 12px;
   line-height: 1.25;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chevron {
@@ -270,6 +336,7 @@
   background: var(--color-white);
 
   border: 1px solid var(--color-border);
+
   border-radius: 12px;
 
   box-shadow: var(--shadow-md);
@@ -283,25 +350,27 @@
 
 .dropdownName {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   color: #111827;
 
   font-size: 14px;
   font-weight: 700;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdownEmail {
   margin-top: 4px;
 
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   color: #6b7280;
 
   font-size: 12px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdownDivider {
@@ -343,6 +412,7 @@
 
 .dropdown button:focus-visible {
   outline: 2px solid var(--color-primary);
+
   outline-offset: -2px;
 }
 
@@ -361,6 +431,14 @@
     padding: 0 16px;
   }
 
+  .left {
+    gap: 8px;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+
   .logoText {
     display: none;
   }
@@ -376,14 +454,19 @@
   }
 
   .dropdown {
-    width: min(
-      260px,
-      calc(100vw - 32px)
-    );
+    width: min(260px, calc(100vw - 32px));
   }
 }
 
 @media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+
+  .left {
+    gap: 6px;
+  }
+
   .right {
     gap: 8px;
   }
@@ -396,8 +479,26 @@
     display: none;
   }
 
-  .iconButton {
+  .iconButton,
+  .menuButton {
     width: 38px;
     height: 38px;
+
+    flex-basis: 38px;
+  }
+
+  .logoMark {
+    width: 34px;
+    height: 34px;
+
+    flex-basis: 34px;
+  }
+
+  .avatar,
+  .avatarImage {
+    width: 36px;
+    height: 36px;
+
+    flex-basis: 36px;
   }
 }

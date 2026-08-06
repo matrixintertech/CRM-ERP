@@ -1,6 +1,6 @@
 .layout {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
 
   display: flex;
   flex-direction: column;
@@ -13,15 +13,36 @@
 
   display: flex;
 
+  min-height: 0;
+
   overflow: hidden;
 }
 
 .content {
   flex: 1;
 
+  min-width: 0;
+
   overflow-y: auto;
+  overflow-x: hidden;
 
   padding: 24px;
 
   background: var(--color-background);
+}
+
+/* Tablet */
+
+@media (max-width: 768px) {
+  .content {
+    padding: 20px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+  .content {
+    padding: 16px;
+  }
 }
