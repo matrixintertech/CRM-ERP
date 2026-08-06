@@ -1,24 +1,19 @@
-import {
-  useEffect,
-} from "react";
+import { useEffect } from "react";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Badge from "@/shared/components/Badge";
 import Card from "@/shared/components/Card";
 import PageHeader from "@/shared/components/PageHeader";
 
-import {
-  useProfile,
-} from "../hooks/useProfile";
+import { useProfile } from "../hooks/useProfile";
 
 interface DetailItemProps {
   label: string;
   value?: React.ReactNode;
 }
 
-const DetailItem = ({
-  label,
-  value,
-}: DetailItemProps) => (
+const DetailItem = ({ label, value }: DetailItemProps) => (
   <div>
     <div
       style={{
@@ -44,9 +39,7 @@ const DetailItem = ({
   </div>
 );
 
-const formatEnumValue = (
-  value?: string | null,
-) => {
+const formatEnumValue = (value?: string | null) => {
   if (!value) {
     return "-";
   }
@@ -54,20 +47,13 @@ const formatEnumValue = (
   return value
     .toLowerCase()
     .split("_")
-    .map(
-      (part) =>
-        part.charAt(0).toUpperCase() +
-        part.slice(1),
-    )
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 };
 
 const ProfilePage = () => {
-  const {
-    loading,
-    profile,
-    fetchProfile,
-  } = useProfile();
+  useDocumentTitle("User Profile");
+  const { loading, profile, fetchProfile } = useProfile();
 
   useEffect(() => {
     void fetchProfile();
@@ -82,13 +68,9 @@ const ProfilePage = () => {
 
       <Card>
         {loading ? (
-          <p>
-            Loading profile...
-          </p>
+          <p>Loading profile...</p>
         ) : !profile ? (
-          <p>
-            Profile information not found.
-          </p>
+          <p>Profile information not found.</p>
         ) : (
           <div
             style={{
@@ -104,24 +86,19 @@ const ProfilePage = () => {
                 alignItems: "center",
                 gap: 18,
                 paddingBottom: 24,
-                borderBottom:
-                  "1px solid #e5e7eb",
+                borderBottom: "1px solid #e5e7eb",
               }}
             >
               {profile.profilePhoto ? (
                 <img
                   src={profile.profilePhoto}
-                  alt={
-                    profile.displayName ??
-                    "Profile"
-                  }
+                  alt={profile.displayName ?? "Profile"}
                   style={{
                     width: 84,
                     height: 84,
                     borderRadius: "50%",
                     objectFit: "cover",
-                    border:
-                      "1px solid #e5e7eb",
+                    border: "1px solid #e5e7eb",
                   }}
                 />
               ) : (
@@ -132,10 +109,8 @@ const ProfilePage = () => {
                     borderRadius: "50%",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent:
-                      "center",
-                    background:
-                      "#f3f4f6",
+                    justifyContent: "center",
+                    background: "#f3f4f6",
                     color: "#374151",
                     fontSize: 28,
                     fontWeight: 700,
@@ -161,8 +136,7 @@ const ProfilePage = () => {
                   }}
                 >
                   {profile.displayName ??
-                    profile.employee
-                      ?.displayName ??
+                    profile.employee?.displayName ??
                     "User"}
                 </h2>
 
@@ -172,15 +146,10 @@ const ProfilePage = () => {
                     marginBottom: 10,
                   }}
                 >
-                  {profile.role?.name ??
-                    formatEnumValue(
-                      profile.userType,
-                    )}
+                  {profile.role?.name ?? formatEnumValue(profile.userType)}
                 </div>
 
-                <Badge
-                  status={profile.status}
-                />
+                <Badge status={profile.status} />
               </div>
             </section>
 
@@ -191,8 +160,7 @@ const ProfilePage = () => {
                 style={{
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom:
-                    "1px solid #e5e7eb",
+                  borderBottom: "1px solid #e5e7eb",
                 }}
               >
                 Personal Information
@@ -201,49 +169,30 @@ const ProfilePage = () => {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: 20,
                 }}
               >
                 <DetailItem
                   label="Display Name"
-                  value={
-                    profile.displayName ??
-                    profile.employee
-                      ?.displayName
-                  }
+                  value={profile.displayName ?? profile.employee?.displayName}
                 />
 
-                <DetailItem
-                  label="Email"
-                  value={profile.email}
-                />
+                <DetailItem label="Email" value={profile.email} />
 
                 <DetailItem
                   label="Mobile"
-                  value={
-                    profile.mobile ??
-                    profile.employee?.mobile
-                  }
+                  value={profile.mobile ?? profile.employee?.mobile}
                 />
 
                 <DetailItem
                   label="User Type"
-                  value={formatEnumValue(
-                    profile.userType,
-                  )}
+                  value={formatEnumValue(profile.userType)}
                 />
 
                 <DetailItem
                   label="Status"
-                  value={
-                    <Badge
-                      status={
-                        profile.status
-                      }
-                    />
-                  }
+                  value={<Badge status={profile.status} />}
                 />
               </div>
             </section>
@@ -255,8 +204,7 @@ const ProfilePage = () => {
                 style={{
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom:
-                    "1px solid #e5e7eb",
+                  borderBottom: "1px solid #e5e7eb",
                 }}
               >
                 Organization Information
@@ -265,77 +213,46 @@ const ProfilePage = () => {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: 20,
                 }}
               >
-                <DetailItem
-                  label="Company"
-                  value={
-                    profile.company?.name
-                  }
-                />
+                <DetailItem label="Company" value={profile.company?.name} />
 
-                <DetailItem
-                  label="Login Role"
-                  value={
-                    profile.role?.name
-                  }
-                />
+                <DetailItem label="Login Role" value={profile.role?.name} />
 
                 <DetailItem
                   label="Employee Code"
-                  value={
-                    profile.employee
-                      ?.employeeCode
-                  }
+                  value={profile.employee?.employeeCode}
                 />
 
                 <DetailItem
                   label="Branch / Office"
-                  value={
-                    profile.employee
-                      ?.organizationUnit
-                      ?.name
-                  }
+                  value={profile.employee?.organizationUnit?.name}
                 />
 
                 <DetailItem
                   label="Department"
-                  value={
-                    profile.employee
-                      ?.department?.name
-                  }
+                  value={profile.employee?.department?.name}
                 />
 
                 <DetailItem
                   label="Designation"
-                  value={
-                    profile.employee
-                      ?.designation?.name
-                  }
+                  value={profile.employee?.designation?.name}
                 />
 
                 <DetailItem
                   label="Employment Type"
-                  value={formatEnumValue(
-                    profile.employee
-                      ?.employmentType,
-                  )}
+                  value={formatEnumValue(profile.employee?.employmentType)}
                 />
 
                 <DetailItem
                   label="Joining Date"
                   value={
-                    profile.employee
-                      ?.joiningDate
+                    profile.employee?.joiningDate
                       ? new Date(
-                          profile.employee
-                            .joiningDate,
-                        ).toLocaleDateString(
-                          "en-IN",
-                        )
+                          profile.employee.joiningDate,
+                        ).toLocaleDateString("en-IN")
                       : "-"
                   }
                 />
@@ -349,8 +266,7 @@ const ProfilePage = () => {
                 style={{
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom:
-                    "1px solid #e5e7eb",
+                  borderBottom: "1px solid #e5e7eb",
                 }}
               >
                 Account Information
@@ -359,38 +275,25 @@ const ProfilePage = () => {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: 20,
                 }}
               >
                 <DetailItem
                   label="Email Verified"
-                  value={
-                    profile.emailVerified
-                      ? "Yes"
-                      : "No"
-                  }
+                  value={profile.emailVerified ? "Yes" : "No"}
                 />
 
                 <DetailItem
                   label="Mobile Verified"
-                  value={
-                    profile.mobileVerified
-                      ? "Yes"
-                      : "No"
-                  }
+                  value={profile.mobileVerified ? "Yes" : "No"}
                 />
 
                 <DetailItem
                   label="Last Login"
                   value={
                     profile.lastLoginAt
-                      ? new Date(
-                          profile.lastLoginAt,
-                        ).toLocaleString(
-                          "en-IN",
-                        )
+                      ? new Date(profile.lastLoginAt).toLocaleString("en-IN")
                       : "-"
                   }
                 />
@@ -399,11 +302,7 @@ const ProfilePage = () => {
                   label="Account Created"
                   value={
                     profile.createdAt
-                      ? new Date(
-                          profile.createdAt,
-                        ).toLocaleString(
-                          "en-IN",
-                        )
+                      ? new Date(profile.createdAt).toLocaleString("en-IN")
                       : "-"
                   }
                 />

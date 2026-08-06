@@ -1,18 +1,10 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import {
-  CheckSquare,
-  Square,
-} from "lucide-react";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+
+import { CheckSquare, Square } from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
@@ -21,20 +13,16 @@ import Input from "@/shared/components/Input";
 
 import RolePermissionGroup from "../components/RolePermissionGroup";
 
-import {
-  usePermission,
-} from "../../permission/hooks/usePermission";
+import { usePermission } from "../../permission/hooks/usePermission";
 
-import {
-  useRole,
-} from "../hooks/useRoles";
+import { useRole } from "../hooks/useRoles";
 
-import type {
-  PermissionGroup,
-} from "../../permission/types/permission.types";
+import type { PermissionGroup } from "../../permission/types/permission.types";
 
 const RolePermissionPage = () => {
   const navigate = useNavigate();
+
+  useDocumentTitle("Role Permissions");
 
   const { uuid } = useParams<{
     uuid: string;
@@ -53,18 +41,15 @@ const RolePermissionPage = () => {
     assignPermissions,
   } = useRole();
 
-  const [
-    selectedPermissionUuids,
-    setSelectedPermissionUuids,
-  ] = useState<string[]>([]);
+  const [selectedPermissionUuids, setSelectedPermissionUuids] = useState<
+    string[]
+  >([]);
 
-  const [
-    initialPermissionUuids,
-    setInitialPermissionUuids,
-  ] = useState<string[]>([]);
+  const [initialPermissionUuids, setInitialPermissionUuids] = useState<
+    string[]
+  >([]);
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!uuid) {
@@ -73,233 +58,123 @@ const RolePermissionPage = () => {
 
     const loadPage = async () => {
       try {
-        const [
-          ,
-          rolePermissionData,
-        ] = await Promise.all([
+        const [, rolePermissionData] = await Promise.all([
           fetchGroupedPermissions(),
           fetchRolePermissions(uuid),
         ]);
 
-        const permissionUuids =
-          rolePermissionData
-            ?.permissionUuids ?? [];
+        const permissionUuids = rolePermissionData?.permissionUuids ?? [];
 
-        setSelectedPermissionUuids([
-          ...permissionUuids,
-        ]);
+        setSelectedPermissionUuids([...permissionUuids]);
 
-        setInitialPermissionUuids([
-          ...permissionUuids,
-        ]);
+        setInitialPermissionUuids([...permissionUuids]);
       } catch (error: any) {
-        console.error(
-          error?.response?.data ??
-            error,
-        );
+        console.error(error?.response?.data ?? error);
       }
     };
 
     void loadPage();
-  }, [
-    uuid,
-    fetchGroupedPermissions,
-    fetchRolePermissions,
-  ]);
+  }, [uuid, fetchGroupedPermissions, fetchRolePermissions]);
 
-  const filteredGroups =
-    useMemo(() => {
-      const normalizedSearch =
-        search
-          .trim()
-          .toLowerCase();
+  const filteredGroups = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-      if (!normalizedSearch) {
-        return groupedPermissions;
-      }
+    if (!normalizedSearch) {
+      return groupedPermissions;
+    }
 
-      return groupedPermissions
-        .map(
-          (
-            group,
-          ): PermissionGroup => ({
-            ...group,
+    return groupedPermissions
+      .map(
+        (group): PermissionGroup => ({
+          ...group,
 
-            permissions:
-              group.permissions.filter(
-                (permission) =>
-                  permission.name
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ) ||
-                  permission.code
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ) ||
-                  permission.module
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ),
-              ),
-          }),
-        )
-        .filter(
-          (group) =>
-            group.permissions.length >
-            0,
-        );
-    }, [
-      groupedPermissions,
-      search,
-    ]);
+          permissions: group.permissions.filter(
+            (permission) =>
+              permission.name.toLowerCase().includes(normalizedSearch) ||
+              permission.code.toLowerCase().includes(normalizedSearch) ||
+              permission.module.toLowerCase().includes(normalizedSearch),
+          ),
+        }),
+      )
+      .filter((group) => group.permissions.length > 0);
+  }, [groupedPermissions, search]);
 
-  const allPermissionUuids =
-    useMemo(
-      () =>
-        groupedPermissions.flatMap(
-          (group) =>
-            group.permissions.map(
-              (permission) =>
-                permission.uuid,
-            ),
-        ),
-      [groupedPermissions],
-    );
+  const allPermissionUuids = useMemo(
+    () =>
+      groupedPermissions.flatMap((group) =>
+        group.permissions.map((permission) => permission.uuid),
+      ),
+    [groupedPermissions],
+  );
 
-  const visiblePermissionUuids =
-    useMemo(
-      () =>
-        filteredGroups.flatMap(
-          (group) =>
-            group.permissions.map(
-              (permission) =>
-                permission.uuid,
-            ),
-        ),
-      [filteredGroups],
-    );
+  const visiblePermissionUuids = useMemo(
+    () =>
+      filteredGroups.flatMap((group) =>
+        group.permissions.map((permission) => permission.uuid),
+      ),
+    [filteredGroups],
+  );
 
   const isAllVisibleSelected =
-    visiblePermissionUuids.length >
-      0 &&
-    visiblePermissionUuids.every(
-      (permissionUuid) =>
-        selectedPermissionUuids.includes(
-          permissionUuid,
-        ),
+    visiblePermissionUuids.length > 0 &&
+    visiblePermissionUuids.every((permissionUuid) =>
+      selectedPermissionUuids.includes(permissionUuid),
     );
 
-  const hasChanges =
-    useMemo(() => {
-      if (
-        initialPermissionUuids.length !==
-        selectedPermissionUuids.length
-      ) {
-        return true;
-      }
+  const hasChanges = useMemo(() => {
+    if (initialPermissionUuids.length !== selectedPermissionUuids.length) {
+      return true;
+    }
 
-      return !initialPermissionUuids.every(
-        (permissionUuid) =>
-          selectedPermissionUuids.includes(
-            permissionUuid,
-          ),
-      );
-    }, [
-      initialPermissionUuids,
-      selectedPermissionUuids,
-    ]);
+    return !initialPermissionUuids.every((permissionUuid) =>
+      selectedPermissionUuids.includes(permissionUuid),
+    );
+  }, [initialPermissionUuids, selectedPermissionUuids]);
 
-  const togglePermission = (
-    permissionUuid: string,
-  ) => {
-    setSelectedPermissionUuids(
-      (previous) =>
-        previous.includes(
-          permissionUuid,
-        )
-          ? previous.filter(
-              (item) =>
-                item !==
-                permissionUuid,
-            )
-          : [
-              ...previous,
-              permissionUuid,
-            ],
+  const togglePermission = (permissionUuid: string) => {
+    setSelectedPermissionUuids((previous) =>
+      previous.includes(permissionUuid)
+        ? previous.filter((item) => item !== permissionUuid)
+        : [...previous, permissionUuid],
     );
   };
 
-  const toggleGroup = (
-    group: PermissionGroup,
-  ) => {
-    const groupPermissionUuids =
-      group.permissions.map(
-        (permission) =>
-          permission.uuid,
-      );
+  const toggleGroup = (group: PermissionGroup) => {
+    const groupPermissionUuids = group.permissions.map(
+      (permission) => permission.uuid,
+    );
 
     const allGroupSelected =
-      groupPermissionUuids.length >
-        0 &&
-      groupPermissionUuids.every(
-        (permissionUuid) =>
-          selectedPermissionUuids.includes(
-            permissionUuid,
-          ),
+      groupPermissionUuids.length > 0 &&
+      groupPermissionUuids.every((permissionUuid) =>
+        selectedPermissionUuids.includes(permissionUuid),
       );
 
-    setSelectedPermissionUuids(
-      (previous) => {
-        if (allGroupSelected) {
-          return previous.filter(
-            (permissionUuid) =>
-              !groupPermissionUuids.includes(
-                permissionUuid,
-              ),
-          );
-        }
-
-        return Array.from(
-          new Set([
-            ...previous,
-            ...groupPermissionUuids,
-          ]),
+    setSelectedPermissionUuids((previous) => {
+      if (allGroupSelected) {
+        return previous.filter(
+          (permissionUuid) => !groupPermissionUuids.includes(permissionUuid),
         );
-      },
-    );
+      }
+
+      return Array.from(new Set([...previous, ...groupPermissionUuids]));
+    });
   };
 
   const toggleAllVisible = () => {
-    setSelectedPermissionUuids(
-      (previous) => {
-        const allVisibleSelected =
-          visiblePermissionUuids.every(
-            (permissionUuid) =>
-              previous.includes(
-                permissionUuid,
-              ),
-          );
+    setSelectedPermissionUuids((previous) => {
+      const allVisibleSelected = visiblePermissionUuids.every(
+        (permissionUuid) => previous.includes(permissionUuid),
+      );
 
-        if (allVisibleSelected) {
-          return previous.filter(
-            (permissionUuid) =>
-              !visiblePermissionUuids.includes(
-                permissionUuid,
-              ),
-          );
-        }
-
-        return Array.from(
-          new Set([
-            ...previous,
-            ...visiblePermissionUuids,
-          ]),
+      if (allVisibleSelected) {
+        return previous.filter(
+          (permissionUuid) => !visiblePermissionUuids.includes(permissionUuid),
         );
-      },
-    );
+      }
+
+      return Array.from(new Set([...previous, ...visiblePermissionUuids]));
+    });
   };
 
   const handleSave = async () => {
@@ -308,38 +183,23 @@ const RolePermissionPage = () => {
     }
 
     try {
-      await assignPermissions(
-        uuid,
-        {
-          permissionUuids:
-            selectedPermissionUuids,
-        },
-      );
+      await assignPermissions(uuid, {
+        permissionUuids: selectedPermissionUuids,
+      });
 
-      setInitialPermissionUuids([
-        ...selectedPermissionUuids,
-      ]);
+      setInitialPermissionUuids([...selectedPermissionUuids]);
     } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
+      console.error(error?.response?.data ?? error);
     }
   };
 
   const handleReset = () => {
-    setSelectedPermissionUuids([
-      ...initialPermissionUuids,
-    ]);
+    setSelectedPermissionUuids([...initialPermissionUuids]);
   };
 
-  const loading =
-    permissionLoading ||
-    roleLoading;
+  const loading = permissionLoading || roleLoading;
 
-  const role =
-    selectedRolePermissions
-      ?.role;
+  const role = selectedRolePermissions?.role;
 
   if (!uuid) {
     return (
@@ -350,20 +210,14 @@ const RolePermissionPage = () => {
           actions={
             <Button
               variant="secondary"
-              onClick={() =>
-                navigate(
-                  "/settings/roles",
-                )
-              }
+              onClick={() => navigate("/settings/roles")}
             >
               Back
             </Button>
           }
         />
 
-        <Card>
-          Role UUID is missing.
-        </Card>
+        <Card>Role UUID is missing.</Card>
       </>
     );
   }
@@ -373,9 +227,7 @@ const RolePermissionPage = () => {
       <PageHeader
         title="Assign Permissions"
         subtitle={
-          role
-            ? `${role.name} (${role.code})`
-            : "Manage role permissions"
+          role ? `${role.name} (${role.code})` : "Manage role permissions"
         }
         actions={
           <div
@@ -387,21 +239,14 @@ const RolePermissionPage = () => {
           >
             <Button
               variant="secondary"
-              onClick={() =>
-                navigate(
-                  "/settings/roles",
-                )
-              }
+              onClick={() => navigate("/settings/roles")}
             >
               Back
             </Button>
 
             <Button
               variant="secondary"
-              disabled={
-                loading ||
-                !hasChanges
-              }
+              disabled={loading || !hasChanges}
               onClick={handleReset}
             >
               Reset
@@ -409,10 +254,7 @@ const RolePermissionPage = () => {
 
             <Button
               loading={loading}
-              disabled={
-                loading ||
-                !hasChanges
-              }
+              disabled={loading || !hasChanges}
               onClick={handleSave}
             >
               Save Permissions
@@ -432,8 +274,7 @@ const RolePermissionPage = () => {
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
+              justifyContent: "space-between",
               alignItems: "center",
               gap: 16,
               flexWrap: "wrap",
@@ -450,39 +291,23 @@ const RolePermissionPage = () => {
                 name="search"
                 placeholder="Search by name, code or module"
                 value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value,
-                  )
-                }
+                onChange={(event) => setSearch(event.target.value)}
               />
             </div>
 
             <Button
               variant="secondary"
-              disabled={
-                loading ||
-                visiblePermissionUuids.length ===
-                  0
-              }
-              onClick={
-                toggleAllVisible
-              }
+              disabled={loading || visiblePermissionUuids.length === 0}
+              onClick={toggleAllVisible}
             >
               {isAllVisibleSelected ? (
                 <>
-                  <CheckSquare
-                    size={16}
-                  />
-
+                  <CheckSquare size={16} />
                   Clear Visible
                 </>
               ) : (
                 <>
-                  <Square
-                    size={16}
-                  />
-
+                  <Square size={16} />
                   Select Visible
                 </>
               )}
@@ -492,8 +317,7 @@ const RolePermissionPage = () => {
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
+              justifyContent: "space-between",
               alignItems: "center",
               gap: 12,
               flexWrap: "wrap",
@@ -502,62 +326,37 @@ const RolePermissionPage = () => {
           >
             <span>
               Selected permissions:{" "}
-              <strong>
-                {
-                  selectedPermissionUuids.length
-                }
-              </strong>
+              <strong>{selectedPermissionUuids.length}</strong>
             </span>
 
             <span>
-              Total permissions:{" "}
-              <strong>
-                {
-                  allPermissionUuids.length
-                }
-              </strong>
+              Total permissions: <strong>{allPermissionUuids.length}</strong>
             </span>
           </div>
 
-          {loading &&
-          groupedPermissions.length ===
-            0 ? (
-            <div>
-              Loading permissions...
-            </div>
-          ) : filteredGroups.length ===
-            0 ? (
-            <div>
-              No permissions found.
-            </div>
+          {loading && groupedPermissions.length === 0 ? (
+            <div>Loading permissions...</div>
+          ) : filteredGroups.length === 0 ? (
+            <div>No permissions found.</div>
           ) : (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(320px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
                 gap: 20,
                 alignItems: "start",
               }}
             >
-              {filteredGroups.map(
-                (group) => (
-                  <RolePermissionGroup
-                    key={group.module}
-                    group={group}
-                    selectedPermissionUuids={
-                      selectedPermissionUuids
-                    }
-                    disabled={loading}
-                    onTogglePermission={
-                      togglePermission
-                    }
-                    onToggleGroup={
-                      toggleGroup
-                    }
-                  />
-                ),
-              )}
+              {filteredGroups.map((group) => (
+                <RolePermissionGroup
+                  key={group.module}
+                  group={group}
+                  selectedPermissionUuids={selectedPermissionUuids}
+                  disabled={loading}
+                  onTogglePermission={togglePermission}
+                  onToggleGroup={toggleGroup}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -570,8 +369,7 @@ const RolePermissionPage = () => {
             bottom: 16,
             zIndex: 10,
             display: "flex",
-            justifyContent:
-              "flex-end",
+            justifyContent: "flex-end",
             marginTop: 16,
             pointerEvents: "none",
           }}
@@ -582,20 +380,14 @@ const RolePermissionPage = () => {
               alignItems: "center",
               gap: 12,
               padding: "12px 16px",
-              background:
-                "var(--surface, #ffffff)",
-              border:
-                "1px solid var(--border-color, #e5e7eb)",
+              background: "var(--surface, #ffffff)",
+              border: "1px solid var(--border-color, #e5e7eb)",
               borderRadius: 10,
-              boxShadow:
-                "0 8px 30px rgba(0, 0, 0, 0.12)",
+              boxShadow: "0 8px 30px rgba(0, 0, 0, 0.12)",
               pointerEvents: "auto",
             }}
           >
-            <span>
-              Unsaved permission
-              changes
-            </span>
+            <span>Unsaved permission changes</span>
 
             <Button
               variant="secondary"
@@ -605,11 +397,7 @@ const RolePermissionPage = () => {
               Reset
             </Button>
 
-            <Button
-              loading={loading}
-              disabled={loading}
-              onClick={handleSave}
-            >
+            <Button loading={loading} disabled={loading} onClick={handleSave}>
               Save
             </Button>
           </div>

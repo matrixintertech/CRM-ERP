@@ -1,8 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
@@ -10,28 +8,18 @@ import Button from "@/shared/components/Button";
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import {
-  notify,
-} from "@/shared/utils/notify";
+import { notify } from "@/shared/utils/notify";
 
-import {
-  useUsers,
-} from "../hooks/useUsers";
+import { useUsers } from "../hooks/useUsers";
 
-import {
-  useRole,
-} from "../../role/hooks/useRoles";
+import { useRole } from "../../role/hooks/useRoles";
 
-import {
-  updateEmployeeUserAccount,
-} from "../api/employee-user-account.api";
+import { updateEmployeeUserAccount } from "../api/employee-user-account.api";
 
 import UserTable from "../components/UserTable";
 import UserDetailsModal from "../components/UserDetailsModal";
 
-import UserModal, {
-  type UserFormData,
-} from "../components/UserModal";
+import UserModal, { type UserFormData } from "../components/UserModal";
 
 import UserPermissionsModal from "../components/UserPermissionsModal";
 
@@ -42,13 +30,9 @@ import type {
   UserType,
 } from "../types/user.types";
 
-import {
-  getPermissions,
-} from "../../permission/api/permission.api";
+import { getPermissions } from "../../permission/api/permission.api";
 
-
-const initialQuery:
-  UserQueryParams = {
+const initialQuery: UserQueryParams = {
   page: 1,
   limit: 10,
   search: "",
@@ -57,8 +41,8 @@ const initialQuery:
   roleUuid: undefined,
 };
 
-
 const UserListPage = () => {
+  useDocumentTitle("All Users");
   const {
     loading,
 
@@ -79,402 +63,207 @@ const UserListPage = () => {
     clearPermissions,
   } = useUsers();
 
+  const { roles, fetchRoles } = useRole();
 
-  const {
-    roles,
-    fetchRoles,
-  } = useRole();
+  const [query, setQuery] = useState<UserQueryParams>(initialQuery);
 
+  const [searchValue, setSearchValue] = useState("");
 
-  const [
-    query,
-    setQuery,
-  ] =
-    useState<UserQueryParams>(
-      initialQuery,
-    );
+  const [openDetails, setOpenDetails] = useState(false);
 
+  const [openEdit, setOpenEdit] = useState(false);
 
-  const [
-    searchValue,
-    setSearchValue,
-  ] = useState("");
+  const [openPermissions, setOpenPermissions] = useState(false);
 
+  const [permissionUserUuid, setPermissionUserUuid] = useState<string | null>(
+    null,
+  );
 
-  const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
 
-
-  const [
-    openEdit,
-    setOpenEdit,
-  ] = useState(false);
-
-
-  const [
-    openPermissions,
-    setOpenPermissions,
-  ] = useState(false);
-
-
-  const [
-    permissionUserUuid,
-    setPermissionUserUuid,
-  ] =
-    useState<string | null>(
-      null,
-    );
-
-
-    const [
-  allPermissions,
-  setAllPermissions,
-] = useState<Permission[]>([]);
-
-
-  const [
-    accountUpdating,
-    setAccountUpdating,
-  ] = useState(false);
-
+  const [accountUpdating, setAccountUpdating] = useState(false);
 
   useEffect(() => {
-    void Promise.all([
-      fetchUsers(initialQuery),
-      fetchRoles(),
-    ]);
-  }, [
-    fetchUsers,
-    fetchRoles,
-  ]);
+    void Promise.all([fetchUsers(initialQuery), fetchRoles()]);
+  }, [fetchUsers, fetchRoles]);
 
+  const roleOptions = useMemo(
+    () =>
+      roles
+        .filter((role) => role.status === "ACTIVE")
+        .map((role) => ({
+          label: role.name,
 
-  const roleOptions =
-    useMemo(
-      () =>
-        roles
-          .filter(
-            (role) =>
-              role.status ===
-              "ACTIVE",
-          )
-          .map(
-            (role) => ({
-              label:
-                role.name,
+          value: role.uuid,
+        })),
+    [roles],
+  );
 
-              value:
-                role.uuid,
-            }),
-          ),
-      [
-        roles,
-      ],
-    );
+  const handleSearch = async () => {
+    const nextQuery: UserQueryParams = {
+      ...query,
 
+      page: 1,
 
-  const handleSearch =
-    async () => {
-      const nextQuery:
-        UserQueryParams = {
-        ...query,
-
-        page: 1,
-
-        search:
-          searchValue.trim() ||
-          undefined,
-      };
-
-      setQuery(
-        nextQuery,
-      );
-
-      await fetchUsers(
-        nextQuery,
-      );
+      search: searchValue.trim() || undefined,
     };
 
+    setQuery(nextQuery);
 
-  const handleResetFilters =
-    async () => {
-      setSearchValue("");
+    await fetchUsers(nextQuery);
+  };
 
-      setQuery(
-        initialQuery,
-      );
+  const handleResetFilters = async () => {
+    setSearchValue("");
 
-      await fetchUsers(
-        initialQuery,
-      );
-    };
+    setQuery(initialQuery);
 
+    await fetchUsers(initialQuery);
+  };
 
-  const handleFilterChange =
-    async (
-      field:
-        | "status"
-        | "userType"
-        | "roleUuid",
+  const handleFilterChange = async (
+    field: "status" | "userType" | "roleUuid",
 
-      value: string,
-    ) => {
-      const nextQuery:
-        UserQueryParams = {
-        ...query,
-
-        page: 1,
-
-        [field]:
-          value ||
-          undefined,
-      };
-
-      setQuery(
-        nextQuery,
-      );
-
-      await fetchUsers(
-        nextQuery,
-      );
-    };
-
-
-  const handlePageChange =
-    async (
-      nextPage: number,
-    ) => {
-      if (
-        nextPage < 1 ||
-        nextPage >
-          totalPages
-      ) {
-        return;
-      }
-
-      const nextQuery:
-        UserQueryParams = {
-        ...query,
-
-        page:
-          nextPage,
-      };
-
-      setQuery(
-        nextQuery,
-      );
-
-      await fetchUsers(
-        nextQuery,
-      );
-    };
-
-
-  const handleView =
-    async (
-      uuid: string,
-    ) => {
-      clearSelectedUser();
-
-      setOpenDetails(
-        true,
-      );
-
-      try {
-        await fetchUser(
-          uuid,
-        );
-      } catch {
-        setOpenDetails(
-          false,
-        );
-      }
-    };
-
-
-  const handleEdit =
-    async (
-      uuid: string,
-    ) => {
-      clearSelectedUser();
-
-      try {
-        await Promise.all([
-          fetchUser(
-            uuid,
-          ),
-
-          fetchRoles(),
-        ]);
-
-        setOpenEdit(
-          true,
-        );
-      } catch {
-        setOpenEdit(
-          false,
-        );
-      }
-    };
-
-
-const handlePermissions =
-  async (
-    uuid: string,
+    value: string,
   ) => {
-    clearPermissions();
+    const nextQuery: UserQueryParams = {
+      ...query,
 
-    setPermissionUserUuid(
-      uuid,
-    );
+      page: 1,
 
-    setOpenPermissions(
-      true,
-    );
+      [field]: value || undefined,
+    };
+
+    setQuery(nextQuery);
+
+    await fetchUsers(nextQuery);
+  };
+
+  const handlePageChange = async (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages) {
+      return;
+    }
+
+    const nextQuery: UserQueryParams = {
+      ...query,
+
+      page: nextPage,
+    };
+
+    setQuery(nextQuery);
+
+    await fetchUsers(nextQuery);
+  };
+
+  const handleView = async (uuid: string) => {
+    clearSelectedUser();
+
+    setOpenDetails(true);
 
     try {
-      const [
-        ,
-        globalPermissions,
-      ] =
-        await Promise.all([
-          fetchPermissions(
-            uuid,
-          ),
-
-          getPermissions(),
-        ]);
-
-      setAllPermissions(
-        globalPermissions,
-      );
+      await fetchUser(uuid);
     } catch {
-      setOpenPermissions(
-        false,
-      );
-
-      setPermissionUserUuid(
-        null,
-      );
-
-      setAllPermissions(
-        [],
-      );
+      setOpenDetails(false);
     }
   };
 
+  const handleEdit = async (uuid: string) => {
+    clearSelectedUser();
 
-  const handleUpdateAccount =
-    async (
-      formData:
-        UserFormData,
-    ) => {
-      const employeeUuid =
-        selectedUser
-          ?.employee
-          ?.uuid;
+    try {
+      await Promise.all([fetchUser(uuid), fetchRoles()]);
 
-      if (!employeeUuid) {
-        notify.error(
-          "Employee is not linked with this user account.",
-        );
+      setOpenEdit(true);
+    } catch {
+      setOpenEdit(false);
+    }
+  };
 
-        return;
-      }
+  const handlePermissions = async (uuid: string) => {
+    clearPermissions();
 
-      try {
-        setAccountUpdating(
-          true,
-        );
+    setPermissionUserUuid(uuid);
 
-        await updateEmployeeUserAccount(
-          employeeUuid,
-          {
-            roleUuid:
-              formData.roleUuid,
+    setOpenPermissions(true);
 
-            status:
-              formData.status,
-          },
-        );
+    try {
+      const [, globalPermissions] = await Promise.all([
+        fetchPermissions(uuid),
 
-        notify.success(
-          "User account updated successfully.",
-        );
+        getPermissions(),
+      ]);
 
-        await fetchUsers(
-          query,
-        );
+      setAllPermissions(globalPermissions);
+    } catch {
+      setOpenPermissions(false);
 
-        setOpenEdit(
-          false,
-        );
+      setPermissionUserUuid(null);
 
-        clearSelectedUser();
-      } catch (
-        error: unknown
-      ) {
-        const apiError =
-          error as {
-            response?: {
-              data?: {
-                message?: string;
-              };
-            };
-          };
+      setAllPermissions([]);
+    }
+  };
 
-        notify.error(
-          apiError.response
-            ?.data
-            ?.message ??
-            "Failed to update user account.",
-        );
-      } finally {
-        setAccountUpdating(
-          false,
-        );
-      }
-    };
+  const handleUpdateAccount = async (formData: UserFormData) => {
+    const employeeUuid = selectedUser?.employee?.uuid;
 
-const handleSavePermissions =
-  async (
-    permissionUuids:
-      string[],
-  ) => {
-    if (
-      !permissionUserUuid
-    ) {
-      notify.error(
-        "User is not selected.",
-      );
+    if (!employeeUuid) {
+      notify.error("Employee is not linked with this user account.");
 
       return;
     }
 
-    await savePermissions(
-      permissionUserUuid,
-      {
-        permissionUuids,
-      },
-    );
+    try {
+      setAccountUpdating(true);
 
-    setOpenPermissions(
-      false,
-    );
+      await updateEmployeeUserAccount(employeeUuid, {
+        roleUuid: formData.roleUuid,
 
-    setPermissionUserUuid(
-      null,
-    );
+        status: formData.status,
+      });
 
-    setAllPermissions(
-      [],
-    );
+      notify.success("User account updated successfully.");
+
+      await fetchUsers(query);
+
+      setOpenEdit(false);
+
+      clearSelectedUser();
+    } catch (error: unknown) {
+      const apiError = error as {
+        response?: {
+          data?: {
+            message?: string;
+          };
+        };
+      };
+
+      notify.error(
+        apiError.response?.data?.message ?? "Failed to update user account.",
+      );
+    } finally {
+      setAccountUpdating(false);
+    }
+  };
+
+  const handleSavePermissions = async (permissionUuids: string[]) => {
+    if (!permissionUserUuid) {
+      notify.error("User is not selected.");
+
+      return;
+    }
+
+    await savePermissions(permissionUserUuid, {
+      permissionUuids,
+    });
+
+    setOpenPermissions(false);
+
+    setPermissionUserUuid(null);
+
+    setAllPermissions([]);
 
     clearPermissions();
   };
-
 
   return (
     <>
@@ -483,328 +272,205 @@ const handleSavePermissions =
         subtitle="Manage login users, roles and additional permissions"
       />
 
-
       <Card>
         <div
           style={{
-            display:
-              "grid",
+            display: "grid",
 
             gridTemplateColumns:
               "minmax(220px, 1fr) repeat(3, minmax(160px, 220px)) auto auto",
 
-            alignItems:
-              "end",
+            alignItems: "end",
 
-            gap:
-              12,
+            gap: 12,
 
-            marginBottom:
-              24,
+            marginBottom: 24,
           }}
         >
           <Input
             label="Search"
             placeholder="Name, email, mobile or employee code"
-            value={
-              searchValue
-            }
-            onChange={(
-              event,
-            ) =>
-              setSearchValue(
-                event.target
-                  .value,
-              )
-            }
-            onKeyDown={(
-              event,
-            ) => {
-              if (
-                event.key ===
-                "Enter"
-              ) {
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
                 void handleSearch();
               }
             }}
           />
 
-
           <Select
             label="Status"
-            value={
-              query.status ??
-              ""
-            }
+            value={query.status ?? ""}
             options={[
               {
-                label:
-                  "All Statuses",
-                value:
-                  "",
+                label: "All Statuses",
+                value: "",
               },
               {
-                label:
-                  "Active",
-                value:
-                  "ACTIVE",
+                label: "Active",
+                value: "ACTIVE",
               },
               {
-                label:
-                  "Inactive",
-                value:
-                  "INACTIVE",
+                label: "Inactive",
+                value: "INACTIVE",
               },
               {
-                label:
-                  "Pending",
-                value:
-                  "PENDING",
+                label: "Pending",
+                value: "PENDING",
               },
               {
-                label:
-                  "Suspended",
-                value:
-                  "SUSPENDED",
+                label: "Suspended",
+                value: "SUSPENDED",
               },
             ]}
-            onChange={(
-              event,
-            ) =>
+            onChange={(event) =>
               void handleFilterChange(
                 "status",
 
-                event.target
-                  .value as
-                  | UserStatus
-                  | "",
+                event.target.value as UserStatus | "",
               )
             }
           />
-
 
           <Select
             label="User Type"
-            value={
-              query.userType ??
-              ""
-            }
+            value={query.userType ?? ""}
             options={[
               {
-                label:
-                  "All User Types",
-                value:
-                  "",
+                label: "All User Types",
+                value: "",
               },
               {
-                label:
-                  "Platform Owner",
-                value:
-                  "PLATFORM_OWNER",
+                label: "Platform Owner",
+                value: "PLATFORM_OWNER",
               },
               {
-                label:
-                  "Company Admin",
-                value:
-                  "COMPANY_ADMIN",
+                label: "Company Admin",
+                value: "COMPANY_ADMIN",
               },
               {
-                label:
-                  "Employee",
-                value:
-                  "EMPLOYEE",
+                label: "Employee",
+                value: "EMPLOYEE",
               },
               {
-                label:
-                  "Client",
-                value:
-                  "CLIENT",
+                label: "Client",
+                value: "CLIENT",
               },
               {
-                label:
-                  "Vendor",
-                value:
-                  "VENDOR",
+                label: "Vendor",
+                value: "VENDOR",
               },
             ]}
-            onChange={(
-              event,
-            ) =>
+            onChange={(event) =>
               void handleFilterChange(
                 "userType",
 
-                event.target
-                  .value as
-                  | UserType
-                  | "",
+                event.target.value as UserType | "",
               )
             }
           />
 
-
           <Select
             label="Role"
-            value={
-              query.roleUuid ??
-              ""
-            }
+            value={query.roleUuid ?? ""}
             options={[
               {
-                label:
-                  "All Roles",
-                value:
-                  "",
+                label: "All Roles",
+                value: "",
               },
 
               ...roleOptions,
             ]}
-            onChange={(
-              event,
-            ) =>
+            onChange={(event) =>
               void handleFilterChange(
                 "roleUuid",
 
-                event.target
-                  .value,
+                event.target.value,
               )
             }
           />
 
-
-          <Button
-            type="button"
-            loading={loading}
-            onClick={
-              handleSearch
-            }
-          >
+          <Button type="button" loading={loading} onClick={handleSearch}>
             Search
           </Button>
-
 
           <Button
             type="button"
             variant="secondary"
             disabled={loading}
-            onClick={
-              handleResetFilters
-            }
+            onClick={handleResetFilters}
           >
             Reset
           </Button>
         </div>
 
-
         <UserTable
-          data={
-            users
-          }
-          loading={
-            loading
-          }
-          onView={
-            handleView
-          }
-          onEdit={
-            handleEdit
-          }
-          onPermissions={
-            handlePermissions
-          }
+          data={users}
+          loading={loading}
+          onView={handleView}
+          onEdit={handleEdit}
+          onPermissions={handlePermissions}
         />
-
 
         <div
           style={{
-            display:
-              "flex",
+            display: "flex",
 
-            alignItems:
-              "center",
+            alignItems: "center",
 
-            justifyContent:
-              "space-between",
+            justifyContent: "space-between",
 
-            gap:
-              16,
+            gap: 16,
 
-            marginTop:
-              20,
+            marginTop: 20,
           }}
         >
           <div
             style={{
-              color:
-                "#6b7280",
+              color: "#6b7280",
 
-              fontSize:
-                14,
+              fontSize: 14,
             }}
           >
-            Showing{" "}
-            {users.length} of{" "}
-            {total} users
+            Showing {users.length} of {total} users
           </div>
-
 
           <div
             style={{
-              display:
-                "flex",
+              display: "flex",
 
-              alignItems:
-                "center",
+              alignItems: "center",
 
-              gap:
-                10,
+              gap: 10,
             }}
           >
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={
-                loading ||
-                page <= 1
-              }
-              onClick={() =>
-                void handlePageChange(
-                  page - 1,
-                )
-              }
+              disabled={loading || page <= 1}
+              onClick={() => void handlePageChange(page - 1)}
             >
               Previous
             </Button>
 
-
             <span
               style={{
-                fontSize:
-                  14,
+                fontSize: 14,
 
-                color:
-                  "#374151",
+                color: "#374151",
               }}
             >
-              Page {page} of{" "}
-              {totalPages || 1}
+              Page {page} of {totalPages || 1}
             </span>
-
 
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={
-                loading ||
-                page >=
-                  totalPages
-              }
-              onClick={() =>
-                void handlePageChange(
-                  page + 1,
-                )
-              }
+              disabled={loading || page >= totalPages}
+              onClick={() => void handlePageChange(page + 1)}
             >
               Next
             </Button>
@@ -812,88 +478,48 @@ const handleSavePermissions =
         </div>
       </Card>
 
-
       <UserDetailsModal
-        open={
-          openDetails
-        }
-        loading={
-          loading
-        }
-        user={
-          selectedUser
-        }
+        open={openDetails}
+        loading={loading}
+        user={selectedUser}
         onClose={() => {
-          setOpenDetails(
-            false,
-          );
+          setOpenDetails(false);
 
           clearSelectedUser();
         }}
       />
-
 
       <UserModal
-        open={
-          openEdit
-        }
-        loading={
-          accountUpdating
-        }
-        user={
-          selectedUser
-        }
-        roleOptions={
-          roleOptions
-        }
+        open={openEdit}
+        loading={accountUpdating}
+        user={selectedUser}
+        roleOptions={roleOptions}
         onClose={() => {
-          setOpenEdit(
-            false,
-          );
+          setOpenEdit(false);
 
           clearSelectedUser();
         }}
-        onSubmit={
-          handleUpdateAccount
-        }
+        onSubmit={handleUpdateAccount}
       />
 
+      <UserPermissionsModal
+        open={openPermissions}
+        loading={loading}
+        permissions={permissions}
+        allPermissions={allPermissions}
+        onClose={() => {
+          setOpenPermissions(false);
 
-        <UserPermissionsModal
-  open={
-    openPermissions
-  }
-  loading={
-    loading
-  }
-  permissions={
-    permissions
-  }
-  allPermissions={
-    allPermissions
-  }
-  onClose={() => {
-    setOpenPermissions(
-      false,
-    );
+          setPermissionUserUuid(null);
 
-    setPermissionUserUuid(
-      null,
-    );
+          setAllPermissions([]);
 
-    setAllPermissions(
-      [],
-    );
-
-    clearPermissions();
-  }}
-  onSubmit={
-    handleSavePermissions
-  }
-/>
+          clearPermissions();
+        }}
+        onSubmit={handleSavePermissions}
+      />
     </>
   );
 };
-
 
 export default UserListPage;

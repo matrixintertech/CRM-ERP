@@ -1,9 +1,6 @@
+import { useEffect, useState } from "react";
 
-
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -13,9 +10,7 @@ import ProjectCategoryDetailsModal from "../components/ProjectCategoryDetailsMod
 import ProjectCategoryModal from "../components/ProjectCategoryModal";
 import ProjectCategoryTable from "../components/ProjectCategoryTable";
 
-import {
-  useProjectCategories,
-} from "../hooks/useProjectCategory";
+import { useProjectCategories } from "../hooks/useProjectCategory";
 
 import type {
   CreateProjectCategoryDto,
@@ -23,17 +18,17 @@ import type {
   UpdateProjectCategoryDto,
 } from "../types/project-category.types";
 
-const initialFormData:
-  ProjectCategoryFormData = {
-    name: "",
-    code: "",
-    description: "",
-    color: "#3B82F6",
-    sortOrder: 0,
-    status: "ACTIVE",
-  };
+const initialFormData: ProjectCategoryFormData = {
+  name: "",
+  code: "",
+  description: "",
+  color: "#3B82F6",
+  sortOrder: 0,
+  status: "ACTIVE",
+};
 
 const ProjectCategoryListPage = () => {
+  useDocumentTitle("Project Categories");
   const {
     loading,
     categories,
@@ -46,32 +41,15 @@ const ProjectCategoryListPage = () => {
     clearSelectedCategory,
   } = useProjectCategories();
 
-  const [
-    openModal,
-    setOpenModal,
-  ] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
-  const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+  const [openDetails, setOpenDetails] = useState(false);
 
-  const [
-    editId,
-    setEditId,
-  ] = useState<string | null>(
-    null,
-  );
+  const [editId, setEditId] = useState<string | null>(null);
 
-  const [
-    formData,
-    setFormData,
-  ] =
-    useState<ProjectCategoryFormData>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+  const [formData, setFormData] = useState<ProjectCategoryFormData>(() => ({
+    ...initialFormData,
+  }));
 
   useEffect(() => {
     void fetchCategories();
@@ -85,11 +63,10 @@ const ProjectCategoryListPage = () => {
     });
   };
 
-  const handleOpenCreateModal =
-    () => {
-      resetForm();
-      setOpenModal(true);
-    };
+  const handleOpenCreateModal = () => {
+    resetForm();
+    setOpenModal(true);
+  };
 
   const handleCloseModal = () => {
     setOpenModal(false);
@@ -104,137 +81,84 @@ const ProjectCategoryListPage = () => {
   const handleSubmit = async () => {
     try {
       const basePayload = {
-        name:
-          formData.name.trim(),
+        name: formData.name.trim(),
 
-        code:
-          formData.code
-            .trim()
-            .toUpperCase()
-            .replace(
-              /\s+/g,
-              "_",
-            ),
+        code: formData.code.trim().toUpperCase().replace(/\s+/g, "_"),
 
-        description:
-          formData.description
-            ?.trim() ||
-          undefined,
+        description: formData.description?.trim() || undefined,
 
-        color:
-          formData.color ||
-          undefined,
+        color: formData.color || undefined,
 
-        sortOrder:
-          Number(
-            formData.sortOrder ??
-              0,
-          ),
+        sortOrder: Number(formData.sortOrder ?? 0),
       };
 
       if (editId) {
-        const payload:
-          UpdateProjectCategoryDto = {
-            ...basePayload,
+        const payload: UpdateProjectCategoryDto = {
+          ...basePayload,
 
-            status:
-              formData.status,
-          };
+          status: formData.status,
+        };
 
-        await update(
-          editId,
-          payload,
-        );
+        await update(editId, payload);
       } else {
-        const payload:
-          CreateProjectCategoryDto = {
-            ...basePayload,
-          };
+        const payload: CreateProjectCategoryDto = {
+          ...basePayload,
+        };
 
-        await create(
-          payload,
-        );
+        await create(payload);
       }
 
       await fetchCategories();
 
       handleCloseModal();
     } catch (error) {
-      console.error(
-        "Failed to save project category:",
-        error,
-      );
+      console.error("Failed to save project category:", error);
     }
   };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
+  const handleEdit = async (uuid: string) => {
     try {
-      const category =
-        await fetchCategory(uuid);
+      const category = await fetchCategory(uuid);
 
       setEditId(uuid);
 
       setFormData({
-        name:
-          category.name,
+        name: category.name,
 
-        code:
-          category.code,
+        code: category.code,
 
-        description:
-          category.description ??
-          "",
+        description: category.description ?? "",
 
-        color:
-          category.color ??
-          "#3B82F6",
+        color: category.color ?? "#3B82F6",
 
-        sortOrder:
-          category.sortOrder ??
-          0,
+        sortOrder: category.sortOrder ?? 0,
 
-        status:
-          category.status,
+        status: category.status,
       });
 
       setOpenModal(true);
     } catch (error) {
-      console.error(
-        "Failed to load project category:",
-        error,
-      );
+      console.error("Failed to load project category:", error);
     }
   };
 
-  const handleView = async (
-    uuid: string,
-  ) => {
+  const handleView = async (uuid: string) => {
     try {
       clearSelectedCategory();
       setOpenDetails(true);
 
-      await fetchCategory(
-        uuid,
-      );
+      await fetchCategory(uuid);
     } catch (error) {
-      console.error(
-        "Failed to load project category details:",
-        error,
-      );
+      console.error("Failed to load project category details:", error);
 
       setOpenDetails(false);
     }
   };
 
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this project category?",
-      );
+  const handleDelete = async (uuid: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project category?",
+    );
 
     if (!confirmed) {
       return;
@@ -243,10 +167,7 @@ const ProjectCategoryListPage = () => {
     try {
       await remove(uuid);
     } catch (error) {
-      console.error(
-        "Failed to delete project category:",
-        error,
-      );
+      console.error("Failed to delete project category:", error);
     }
   };
 
@@ -256,13 +177,7 @@ const ProjectCategoryListPage = () => {
         title="Project Categories"
         subtitle="Manage project categories"
         actions={
-          <Button
-            onClick={
-              handleOpenCreateModal
-            }
-          >
-            Create Category
-          </Button>
+          <Button onClick={handleOpenCreateModal}>Create Category</Button>
         }
       />
 
@@ -272,38 +187,26 @@ const ProjectCategoryListPage = () => {
           loading={loading}
           onView={handleView}
           onEdit={handleEdit}
-          onDelete={
-            handleDelete
-          }
+          onDelete={handleDelete}
         />
       </Card>
 
       <ProjectCategoryModal
         open={openModal}
         loading={loading}
-        title={
-          editId
-            ? "Edit Project Category"
-            : "Create Project Category"
-        }
+        title={editId ? "Edit Project Category" : "Create Project Category"}
         isEdit={Boolean(editId)}
         formData={formData}
         setFormData={setFormData}
-        onClose={
-          handleCloseModal
-        }
+        onClose={handleCloseModal}
         onSubmit={handleSubmit}
       />
 
       <ProjectCategoryDetailsModal
         open={openDetails}
         loading={loading}
-        category={
-          selectedCategory
-        }
-        onClose={
-          handleCloseDetails
-        }
+        category={selectedCategory}
+        onClose={handleCloseDetails}
       />
     </>
   );

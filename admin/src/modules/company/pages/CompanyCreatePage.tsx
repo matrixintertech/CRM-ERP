@@ -1,9 +1,8 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -13,9 +12,7 @@ import { notify } from "@/shared/utils/notify";
 
 import { useSubscriptionPlans } from "../../subscription-plan/hooks/useSubscriptionPlans";
 
-import {
-  createCompanyOnboarding,
-} from "../api/company.api";
+import { createCompanyOnboarding } from "../api/company.api";
 
 import CompanyForm from "../components/forms/CompanyForm";
 import SubscriptionForm from "../components/forms/SubscriptionForm";
@@ -32,19 +29,15 @@ import styles from "./CompanyCreatePage.module.css";
 
 const TOTAL_STEPS = 4;
 
-const steps = [
-  "Company",
-  "Subscription",
-  "Admin",
-  "Review",
-];
+const steps = ["Company", "Subscription", "Admin", "Review"];
 
 const CompanyCreatePage = () => {
   const navigate = useNavigate();
 
+  useDocumentTitle("Create Company");
+
   const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const {
     subscriptionPlans,
@@ -52,102 +45,70 @@ const CompanyCreatePage = () => {
     loadSubscriptionPlans,
   } = useSubscriptionPlans();
 
-  const [companyForm, setCompanyForm] =
-    useState<CompanyFormData>({
-      name: "",
-      code: "",
-      email: "",
-      mobile: "",
-      logo: "",
-    });
-
-  const [
-    subscriptionForm,
-    setSubscriptionForm,
-  ] = useState<SubscriptionFormData>({
-    subscriptionPlanId: 0,
+  const [companyForm, setCompanyForm] = useState<CompanyFormData>({
+    name: "",
+    code: "",
+    email: "",
+    mobile: "",
+    logo: "",
   });
 
-  const [adminForm, setAdminForm] =
-    useState<CompanyAdminFormData>({
-      displayName: "",
-      email: "",
-      mobile: "",
+  const [subscriptionForm, setSubscriptionForm] =
+    useState<SubscriptionFormData>({
+      subscriptionPlanId: 0,
     });
 
+  const [adminForm, setAdminForm] = useState<CompanyAdminFormData>({
+    displayName: "",
+    email: "",
+    mobile: "",
+  });
+
   useEffect(() => {
-    if (
-      step === 2 &&
-      subscriptionPlans.length === 0
-    ) {
+    if (step === 2 && subscriptionPlans.length === 0) {
       void loadSubscriptionPlans();
     }
-  }, [
-    step,
-    subscriptionPlans.length,
-    loadSubscriptionPlans,
-  ]);
+  }, [step, subscriptionPlans.length, loadSubscriptionPlans]);
 
-  const isValidEmail = (
-    value: string,
-  ) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-      value,
-    );
+  const isValidEmail = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const validateCurrentStep = () => {
     if (step === 1) {
       if (!companyForm.name.trim()) {
-        notify.error(
-          "Company name is required.",
-        );
+        notify.error("Company name is required.");
 
         return false;
       }
 
       if (!companyForm.code.trim()) {
-        notify.error(
-          "Company code is required.",
-        );
+        notify.error("Company code is required.");
 
         return false;
       }
 
       if (!companyForm.email.trim()) {
-        notify.error(
-          "Company email is required.",
-        );
+        notify.error("Company email is required.");
 
         return false;
       }
 
-      if (
-        !isValidEmail(companyForm.email)
-      ) {
-        notify.error(
-          "Enter a valid company email.",
-        );
+      if (!isValidEmail(companyForm.email)) {
+        notify.error("Enter a valid company email.");
 
         return false;
       }
 
       if (!companyForm.mobile.trim()) {
-        notify.error(
-          "Company mobile is required.",
-        );
+        notify.error("Company mobile is required.");
 
         return false;
       }
     }
 
     if (step === 2) {
-      if (
-        subscriptionForm.subscriptionPlanId ===
-        0
-      ) {
-        notify.error(
-          "Please select a subscription plan.",
-        );
+      if (subscriptionForm.subscriptionPlanId === 0) {
+        notify.error("Please select a subscription plan.");
 
         return false;
       }
@@ -155,35 +116,25 @@ const CompanyCreatePage = () => {
 
     if (step === 3) {
       if (!adminForm.displayName.trim()) {
-        notify.error(
-          "Admin display name is required.",
-        );
+        notify.error("Admin display name is required.");
 
         return false;
       }
 
       if (!adminForm.email.trim()) {
-        notify.error(
-          "Admin email is required.",
-        );
+        notify.error("Admin email is required.");
 
         return false;
       }
 
-      if (
-        !isValidEmail(adminForm.email)
-      ) {
-        notify.error(
-          "Enter a valid admin email.",
-        );
+      if (!isValidEmail(adminForm.email)) {
+        notify.error("Enter a valid admin email.");
 
         return false;
       }
 
       if (!adminForm.mobile.trim()) {
-        notify.error(
-          "Admin mobile is required.",
-        );
+        notify.error("Admin mobile is required.");
 
         return false;
       }
@@ -197,39 +148,29 @@ const CompanyCreatePage = () => {
       return;
     }
 
-    setStep((previous) =>
-      Math.min(
-        previous + 1,
-        TOTAL_STEPS,
-      ),
-    );
+    setStep((previous) => Math.min(previous + 1, TOTAL_STEPS));
   };
 
   const previous = () => {
-    setStep((previous) =>
-      Math.max(previous - 1, 1),
-    );
+    setStep((previous) => Math.max(previous - 1, 1));
   };
 
   const handleBack = () => {
     const hasEnteredData = Boolean(
       companyForm.name ||
-        companyForm.code ||
-        companyForm.email ||
-        companyForm.mobile ||
-        companyForm.logo ||
-        adminForm.displayName ||
-        adminForm.email ||
-        adminForm.mobile ||
-        subscriptionForm.subscriptionPlanId >
-          0,
+      companyForm.code ||
+      companyForm.email ||
+      companyForm.mobile ||
+      companyForm.logo ||
+      adminForm.displayName ||
+      adminForm.email ||
+      adminForm.mobile ||
+      subscriptionForm.subscriptionPlanId > 0,
     );
 
     if (
       hasEnteredData &&
-      !window.confirm(
-        "Your entered data will be lost. Continue?",
-      )
+      !window.confirm("Your entered data will be lost. Continue?")
     ) {
       return;
     }
@@ -242,13 +183,8 @@ const CompanyCreatePage = () => {
       return;
     }
 
-    if (
-      subscriptionForm.subscriptionPlanId ===
-      0
-    ) {
-      notify.error(
-        "Please select a subscription plan.",
-      );
+    if (subscriptionForm.subscriptionPlanId === 0) {
+      notify.error("Please select a subscription plan.");
 
       setStep(2);
 
@@ -258,45 +194,31 @@ const CompanyCreatePage = () => {
     try {
       setSubmitting(true);
 
-      const response =
-        await createCompanyOnboarding({
-          company: {
-            name: companyForm.name.trim(),
+      const response = await createCompanyOnboarding({
+        company: {
+          name: companyForm.name.trim(),
 
-            code: companyForm.code
-              .trim()
-              .toUpperCase(),
+          code: companyForm.code.trim().toUpperCase(),
 
-            email: companyForm.email
-              .trim()
-              .toLowerCase(),
+          email: companyForm.email.trim().toLowerCase(),
 
-            mobile:
-              companyForm.mobile.trim(),
+          mobile: companyForm.mobile.trim(),
 
-            logo: companyForm.logo.trim(),
-          },
+          logo: companyForm.logo.trim(),
+        },
 
-          subscription:
-            subscriptionForm,
+        subscription: subscriptionForm,
 
-          admin: {
-            displayName:
-              adminForm.displayName.trim(),
+        admin: {
+          displayName: adminForm.displayName.trim(),
 
-            email: adminForm.email
-              .trim()
-              .toLowerCase(),
+          email: adminForm.email.trim().toLowerCase(),
 
-            mobile:
-              adminForm.mobile.trim(),
-          },
-        });
+          mobile: adminForm.mobile.trim(),
+        },
+      });
 
-      notify.success(
-        response?.message ??
-          "Company created successfully.",
-      );
+      notify.success(response?.message ?? "Company created successfully.");
 
       navigate("/companies");
     } catch (error: unknown) {
@@ -309,23 +231,15 @@ const CompanyCreatePage = () => {
         };
       };
 
-      const backendErrors =
-        apiError.response?.data?.errors;
+      const backendErrors = apiError.response?.data?.errors;
 
-      const message = Array.isArray(
-        backendErrors,
-      )
+      const message = Array.isArray(backendErrors)
         ? backendErrors.join(", ")
-        : apiError.response?.data
-            ?.message ??
-          "Failed to create company.";
+        : (apiError.response?.data?.message ?? "Failed to create company.");
 
       notify.error(message);
 
-      console.error(
-        "Company onboarding failed:",
-        error,
-      );
+      console.error("Company onboarding failed:", error);
     } finally {
       setSubmitting(false);
     }
@@ -349,91 +263,51 @@ const CompanyCreatePage = () => {
 
       <Card>
         <div className={styles.steps}>
-          {steps.map(
-            (label, index) => {
-              const stepNumber =
-                index + 1;
+          {steps.map((label, index) => {
+            const stepNumber = index + 1;
 
-              const stepClassName = [
-                styles.step,
-                stepNumber === step
-                  ? styles.activeStep
-                  : "",
-                stepNumber < step
-                  ? styles.completedStep
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
+            const stepClassName = [
+              styles.step,
+              stepNumber === step ? styles.activeStep : "",
+              stepNumber < step ? styles.completedStep : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
 
-              return (
-                <div
-                  key={label}
-                  className={
-                    stepClassName
-                  }
-                >
-                  <span
-                    className={
-                      styles.stepNumber
-                    }
-                  >
-                    {stepNumber}
-                  </span>
+            return (
+              <div key={label} className={stepClassName}>
+                <span className={styles.stepNumber}>{stepNumber}</span>
 
-                  <span>{label}</span>
-                </div>
-              );
-            },
-          )}
+                <span>{label}</span>
+              </div>
+            );
+          })}
         </div>
 
-        <div
-          className={styles.stepContent}
-        >
+        <div className={styles.stepContent}>
           {step === 1 && (
-            <CompanyForm
-              formData={companyForm}
-              setFormData={
-                setCompanyForm
-              }
-            />
+            <CompanyForm formData={companyForm} setFormData={setCompanyForm} />
           )}
 
           {step === 2 && (
             <SubscriptionForm
-              formData={
-                subscriptionForm
-              }
-              setFormData={
-                setSubscriptionForm
-              }
-              plans={
-                subscriptionPlans
-              }
+              formData={subscriptionForm}
+              setFormData={setSubscriptionForm}
+              plans={subscriptionPlans}
               loading={plansLoading}
             />
           )}
 
           {step === 3 && (
-            <CompanyAdminForm
-              formData={adminForm}
-              setFormData={
-                setAdminForm
-              }
-            />
+            <CompanyAdminForm formData={adminForm} setFormData={setAdminForm} />
           )}
 
           {step === 4 && (
             <ReviewForm
               company={companyForm}
-              subscription={
-                subscriptionForm
-              }
+              subscription={subscriptionForm}
               admin={adminForm}
-              plans={
-                subscriptionPlans
-              }
+              plans={subscriptionPlans}
             />
           )}
         </div>
@@ -441,10 +315,7 @@ const CompanyCreatePage = () => {
         <div className={styles.actions}>
           <Button
             variant="secondary"
-            disabled={
-              step === 1 ||
-              submitting
-            }
+            disabled={step === 1 || submitting}
             onClick={previous}
           >
             Previous
@@ -453,11 +324,7 @@ const CompanyCreatePage = () => {
           {step < TOTAL_STEPS ? (
             <Button
               onClick={next}
-              disabled={
-                submitting ||
-                (step === 2 &&
-                  plansLoading)
-              }
+              disabled={submitting || (step === 2 && plansLoading)}
             >
               Next
             </Button>

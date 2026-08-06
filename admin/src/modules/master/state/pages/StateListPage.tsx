@@ -1,7 +1,6 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -15,9 +14,7 @@ import StateTable from "../components/StateTable";
 
 import { useStates } from "../hooks/useStates";
 
-import type {
-  StateFormData,
-} from "../types/state.types";
+import type { StateFormData } from "../types/state.types";
 
 const initialFormData: StateFormData = {
   name: "",
@@ -27,6 +24,7 @@ const initialFormData: StateFormData = {
 };
 
 const StateListPage = () => {
+  useDocumentTitle("State List");
   const {
     loading,
     states,
@@ -38,23 +36,15 @@ const StateListPage = () => {
     remove,
   } = useStates();
 
-  const [openModal, setOpenModal] =
-    useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
-  const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+  const [openDetails, setOpenDetails] = useState(false);
 
-  const [editId, setEditId] =
-    useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
-  const [formData, setFormData] =
-    useState<StateFormData>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+  const [formData, setFormData] = useState<StateFormData>(() => ({
+    ...initialFormData,
+  }));
 
   useEffect(() => {
     void fetchStates();
@@ -87,18 +77,12 @@ const StateListPage = () => {
       const payload: StateFormData = {
         ...formData,
         name: formData.name.trim(),
-        code: formData.code
-          .trim()
-          .toUpperCase(),
-        gstCode:
-          formData.gstCode.trim(),
+        code: formData.code.trim().toUpperCase(),
+        gstCode: formData.gstCode.trim(),
       };
 
       if (editId) {
-        await update(
-          editId,
-          payload,
-        );
+        await update(editId, payload);
       } else {
         await create(payload);
       }
@@ -107,24 +91,16 @@ const StateListPage = () => {
 
       handleCloseModal();
     } catch (error) {
-      console.error(
-        "Failed to save state:",
-        error,
-      );
+      console.error("Failed to save state:", error);
     }
   };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
+  const handleEdit = async (uuid: string) => {
     try {
-      const state =
-        await fetchState(uuid);
+      const state = await fetchState(uuid);
 
       if (!state) {
-        notify.error(
-          "State not found.",
-        );
+        notify.error("State not found.");
 
         return;
       }
@@ -134,51 +110,36 @@ const StateListPage = () => {
       setFormData({
         name: state.name,
         code: state.code,
-        gstCode:
-          state.gstCode ?? "",
+        gstCode: state.gstCode ?? "",
         status: state.status,
       });
 
       setOpenModal(true);
     } catch (error) {
-      console.error(
-        "Failed to load state:",
-        error,
-      );
+      console.error("Failed to load state:", error);
     }
   };
 
-  const handleView = async (
-    uuid: string,
-  ) => {
+  const handleView = async (uuid: string) => {
     try {
-      const state =
-        await fetchState(uuid);
+      const state = await fetchState(uuid);
 
       if (!state) {
-        notify.error(
-          "State not found.",
-        );
+        notify.error("State not found.");
 
         return;
       }
 
       setOpenDetails(true);
     } catch (error) {
-      console.error(
-        "Failed to load state details:",
-        error,
-      );
+      console.error("Failed to load state details:", error);
     }
   };
 
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this state?",
-      );
+  const handleDelete = async (uuid: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this state?",
+    );
 
     if (!confirmed) {
       return;
@@ -188,10 +149,7 @@ const StateListPage = () => {
       await remove(uuid);
       await fetchStates();
     } catch (error) {
-      console.error(
-        "Failed to delete state:",
-        error,
-      );
+      console.error("Failed to delete state:", error);
     }
   };
 
@@ -200,15 +158,7 @@ const StateListPage = () => {
       <PageHeader
         title="States"
         subtitle="Manage states"
-        actions={
-          <Button
-            onClick={
-              handleOpenCreate
-            }
-          >
-            Create State
-          </Button>
-        }
+        actions={<Button onClick={handleOpenCreate}>Create State</Button>}
       />
 
       <Card>
@@ -224,11 +174,7 @@ const StateListPage = () => {
       <StateModal
         open={openModal}
         loading={loading}
-        title={
-          editId
-            ? "Edit State"
-            : "Create State"
-        }
+        title={editId ? "Edit State" : "Create State"}
         isEdit={Boolean(editId)}
         formData={formData}
         setFormData={setFormData}
@@ -240,9 +186,7 @@ const StateListPage = () => {
         open={openDetails}
         loading={loading}
         state={selectedState}
-        onClose={
-          handleCloseDetails
-        }
+        onClose={handleCloseDetails}
       />
     </>
   );

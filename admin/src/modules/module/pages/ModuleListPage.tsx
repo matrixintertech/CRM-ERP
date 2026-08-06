@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, SquarePen, Trash2 } from "lucide-react";
 
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import ConfirmDialog from "@/shared/components/ConfirmDialog";
@@ -13,29 +15,18 @@ import type { DataTableColumn } from "@/shared/components/DataTable/types";
 import ModuleForm from "../components/ModuleForm";
 import { useModule } from "../hooks/useModules";
 
-import type {
-  Module,
-  ModuleFormData,
-} from "../types/module.types";
+import type { Module, ModuleFormData } from "../types/module.types";
 
 const ModuleListPage = () => {
-  const {
-    loading,
-    modules,
-    fetchModules,
-    create,
-    update,
-    remove,
-  } = useModule();
+  useDocumentTitle("Module Master");
+  const { loading, modules, fetchModules, create, update, remove } =
+    useModule();
 
   const [open, setOpen] = useState(false);
-  const [editingModule, setEditingModule] =
-    useState<Module | null>(null);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
 
-  const [deleteOpen, setDeleteOpen] =
-    useState(false);
-  const [selectedModule, setSelectedModule] =
-    useState<Module | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
 
   useEffect(() => {
     void fetchModules();
@@ -66,31 +57,26 @@ const ModuleListPage = () => {
     setSelectedModule(null);
   };
 
-const handleSubmit = async (
-  values: ModuleFormData,
-) => {
-  try {
-    const payload: ModuleFormData = {
-      ...values,
-      parentId: values.parentId || undefined,
-      status: values.status || "ACTIVE",
-    };
+  const handleSubmit = async (values: ModuleFormData) => {
+    try {
+      const payload: ModuleFormData = {
+        ...values,
+        parentId: values.parentId || undefined,
+        status: values.status || "ACTIVE",
+      };
 
-    if (editingModule) {
-      await update(editingModule.id, payload);
-    } else {
-      await create(payload);
+      if (editingModule) {
+        await update(editingModule.id, payload);
+      } else {
+        await create(payload);
+      }
+
+      await fetchModules();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Failed to save module:", error);
     }
-
-    await fetchModules();
-    handleCloseModal();
-  } catch (error) {
-    console.error(
-      "Failed to save module:",
-      error,
-    );
-  }
-};
+  };
 
   const handleDelete = async () => {
     if (!selectedModule) {
@@ -102,16 +88,11 @@ const handleSubmit = async (
       await fetchModules();
       handleCloseDelete();
     } catch (error) {
-      console.error(
-        "Failed to delete module:",
-        error,
-      );
+      console.error("Failed to delete module:", error);
     }
   };
 
-  const columns = useMemo<
-    DataTableColumn<Module>[]
-  >(
+  const columns = useMemo<DataTableColumn<Module>[]>(
     () => [
       {
         key: "name",
@@ -135,22 +116,19 @@ const handleSubmit = async (
         key: "isMenu",
         title: "Menu",
         align: "center",
-        render: (row) =>
-          row.isMenu ? "Yes" : "No",
+        render: (row) => (row.isMenu ? "Yes" : "No"),
       },
       {
         key: "isVisible",
         title: "Visible",
         align: "center",
-        render: (row) =>
-          row.isVisible ? "Yes" : "No",
+        render: (row) => (row.isVisible ? "Yes" : "No"),
       },
       {
         key: "isSystem",
         title: "System",
         align: "center",
-        render: (row) =>
-          row.isSystem ? "Yes" : "No",
+        render: (row) => (row.isSystem ? "Yes" : "No"),
       },
       {
         key: "status",
@@ -194,11 +172,7 @@ const handleSubmit = async (
   );
 
   const parentModules = useMemo(
-    () =>
-      modules.filter(
-        (module) =>
-          module.id !== editingModule?.id,
-      ),
+    () => modules.filter((module) => module.id !== editingModule?.id),
     [modules, editingModule],
   );
 
@@ -228,11 +202,7 @@ const handleSubmit = async (
 
       <Modal
         open={open}
-        title={
-          editingModule
-            ? "Edit Module"
-            : "Create Module"
-        }
+        title={editingModule ? "Edit Module" : "Create Module"}
         onClose={handleCloseModal}
         footer={
           <>
@@ -244,14 +214,8 @@ const handleSubmit = async (
               Cancel
             </Button>
 
-            <Button
-              type="submit"
-              form="module-form"
-              loading={loading}
-            >
-              {editingModule
-                ? "Update Module"
-                : "Save Module"}
+            <Button type="submit" form="module-form" loading={loading}>
+              {editingModule ? "Update Module" : "Save Module"}
             </Button>
           </>
         }
@@ -263,26 +227,15 @@ const handleSubmit = async (
               ? {
                   name: editingModule.name,
                   code: editingModule.code,
-                  description:
-                    editingModule.description ??
-                    "",
-                  icon:
-                    editingModule.icon ?? "",
-                  route:
-                    editingModule.route ?? "",
-                  parentId:
-                    editingModule.parent?.uuid ??
-                    "",
-                  sortOrder:
-                    editingModule.sortOrder,
-                  isMenu:
-                    editingModule.isMenu,
-                  isVisible:
-                    editingModule.isVisible,
-                  isSystem:
-                    editingModule.isSystem,
-                  status:
-                    editingModule.status,
+                  description: editingModule.description ?? "",
+                  icon: editingModule.icon ?? "",
+                  route: editingModule.route ?? "",
+                  parentId: editingModule.parent?.uuid ?? "",
+                  sortOrder: editingModule.sortOrder,
+                  isMenu: editingModule.isMenu,
+                  isVisible: editingModule.isVisible,
+                  isSystem: editingModule.isSystem,
+                  status: editingModule.status,
                 }
               : undefined
           }

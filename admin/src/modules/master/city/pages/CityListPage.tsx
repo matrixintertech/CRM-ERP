@@ -1,7 +1,6 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -13,9 +12,7 @@ import CityTable from "../components/CityTable";
 
 import { useCities } from "../hooks/useCities";
 
-import type {
-  CityFormData,
-} from "../types/city.types";
+import type { CityFormData } from "../types/city.types";
 
 const initialFormData: CityFormData = {
   stateUuid: "",
@@ -24,6 +21,7 @@ const initialFormData: CityFormData = {
 };
 
 const CityListPage = () => {
+  useDocumentTitle("City List");
   const {
     loading,
     cities,
@@ -35,23 +33,15 @@ const CityListPage = () => {
     remove,
   } = useCities();
 
-  const [openModal, setOpenModal] =
-    useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
-  const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+  const [openDetails, setOpenDetails] = useState(false);
 
-  const [editId, setEditId] =
-    useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
-  const [formData, setFormData] =
-    useState<CityFormData>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+  const [formData, setFormData] = useState<CityFormData>(() => ({
+    ...initialFormData,
+  }));
 
   useEffect(() => {
     void fetchCities();
@@ -79,16 +69,12 @@ const CityListPage = () => {
     try {
       const payload: CityFormData = {
         ...formData,
-        stateUuid:
-          formData.stateUuid.trim(),
+        stateUuid: formData.stateUuid.trim(),
         name: formData.name.trim(),
       };
 
       if (editId) {
-        await update(
-          editId,
-          payload,
-        );
+        await update(editId, payload);
       } else {
         await create(payload);
       }
@@ -97,19 +83,13 @@ const CityListPage = () => {
 
       handleCloseModal();
     } catch (error) {
-      console.error(
-        "Failed to save city:",
-        error,
-      );
+      console.error("Failed to save city:", error);
     }
   };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
+  const handleEdit = async (uuid: string) => {
     try {
-      const city =
-        await fetchCity(uuid);
+      const city = await fetchCity(uuid);
 
       if (!city) {
         return;
@@ -118,27 +98,20 @@ const CityListPage = () => {
       setEditId(uuid);
 
       setFormData({
-        stateUuid:
-          city.stateUuid,
+        stateUuid: city.stateUuid,
         name: city.name,
         status: city.status,
       });
 
       setOpenModal(true);
     } catch (error) {
-      console.error(
-        "Failed to load city:",
-        error,
-      );
+      console.error("Failed to load city:", error);
     }
   };
 
-  const handleView = async (
-    uuid: string,
-  ) => {
+  const handleView = async (uuid: string) => {
     try {
-      const city =
-        await fetchCity(uuid);
+      const city = await fetchCity(uuid);
 
       if (!city) {
         return;
@@ -146,20 +119,14 @@ const CityListPage = () => {
 
       setOpenDetails(true);
     } catch (error) {
-      console.error(
-        "Failed to load city details:",
-        error,
-      );
+      console.error("Failed to load city details:", error);
     }
   };
 
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this city?",
-      );
+  const handleDelete = async (uuid: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this city?",
+    );
 
     if (!confirmed) {
       return;
@@ -169,10 +136,7 @@ const CityListPage = () => {
       await remove(uuid);
       await fetchCities();
     } catch (error) {
-      console.error(
-        "Failed to delete city:",
-        error,
-      );
+      console.error("Failed to delete city:", error);
     }
   };
 
@@ -181,15 +145,7 @@ const CityListPage = () => {
       <PageHeader
         title="Cities"
         subtitle="Manage cities"
-        actions={
-          <Button
-            onClick={
-              handleOpenCreate
-            }
-          >
-            Create City
-          </Button>
-        }
+        actions={<Button onClick={handleOpenCreate}>Create City</Button>}
       />
 
       <Card>
@@ -205,11 +161,7 @@ const CityListPage = () => {
       <CityModal
         open={openModal}
         loading={loading}
-        title={
-          editId
-            ? "Edit City"
-            : "Create City"
-        }
+        title={editId ? "Edit City" : "Create City"}
         isEdit={Boolean(editId)}
         formData={formData}
         setFormData={setFormData}

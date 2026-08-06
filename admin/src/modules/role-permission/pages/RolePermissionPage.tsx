@@ -1,11 +1,7 @@
-import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Card from "@/shared/components/Card";
 import PageHeader from "@/shared/components/PageHeader";
@@ -19,10 +15,11 @@ import { useRolePermissions } from "../hooks/useRolePermissions";
 const RolePermissionPage = () => {
   const navigate = useNavigate();
 
+  useDocumentTitle("Role Permissions");
+
   const { roleId } = useParams();
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
   const {
     loading,
@@ -44,30 +41,16 @@ const RolePermissionPage = () => {
     }
   }, [roleId]);
 
-  const filteredGroups =
-    groupedPermissions
-      .map((group) => ({
-        ...group,
-        permissions:
-          group.permissions.filter(
-            (permission) =>
-              permission.name
-                .toLowerCase()
-                .includes(
-                  search.toLowerCase(),
-                ) ||
-              permission.code
-                .toLowerCase()
-                .includes(
-                  search.toLowerCase(),
-                ),
-          ),
-      }))
-      .filter(
-        (group) =>
-          group.permissions.length >
-          0,
-      );
+  const filteredGroups = groupedPermissions
+    .map((group) => ({
+      ...group,
+      permissions: group.permissions.filter(
+        (permission) =>
+          permission.name.toLowerCase().includes(search.toLowerCase()) ||
+          permission.code.toLowerCase().includes(search.toLowerCase()),
+      ),
+    }))
+    .filter((group) => group.permissions.length > 0);
 
   return (
     <>
@@ -79,59 +62,36 @@ const RolePermissionPage = () => {
       <PermissionToolbar
         roleName="Role Permissions"
         search={search}
-        onSearchChange={
-          setSearch
-        }
-        onBack={() =>
-          navigate(-1)
-        }
+        onSearchChange={setSearch}
+        onBack={() => navigate(-1)}
       />
 
       <Card>
-        {filteredGroups.length ===
-        0 ? (
-          <p>
-            No permissions found.
-          </p>
+        {filteredGroups.length === 0 ? (
+          <p>No permissions found.</p>
         ) : (
-          filteredGroups.map(
-            (group) => (
-              <PermissionGroup
-                key={group.module}
-                module={
-                  group.module
-                }
-                permissions={
-                  group.permissions
-                }
-                selectedPermissions={
-                  selectedPermissions
-                }
-                onToggle={
-                  togglePermission
-                }
-              />
-            ),
-          )
+          filteredGroups.map((group) => (
+            <PermissionGroup
+              key={group.module}
+              module={group.module}
+              permissions={group.permissions}
+              selectedPermissions={selectedPermissions}
+              onToggle={togglePermission}
+            />
+          ))
         )}
 
         <PermissionFooter
           loading={loading}
-          selectedCount={
-            selectedPermissions.length
-          }
+          selectedCount={selectedPermissions.length}
           onReset={() => {
             if (roleId) {
-              fetchPermissions(
-                roleId,
-              );
+              fetchPermissions(roleId);
             }
           }}
           onSave={() => {
             if (roleId) {
-              savePermissions(
-                roleId,
-              );
+              savePermissions(roleId);
             }
           }}
         />

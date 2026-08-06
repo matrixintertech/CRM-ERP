@@ -1,76 +1,44 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import {
-  KeyRound,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+
+import { KeyRound, SquarePen, Trash2 } from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import DataTable from "@/shared/components/DataTable/DataTable";
 
-import type {
-  DataTableColumn,
-} from "@/shared/components/DataTable/types";
+import type { DataTableColumn } from "@/shared/components/DataTable/types";
 
 import RoleModal from "../components/RoleModal";
 
-import {
-  useRole,
-} from "../hooks/useRoles";
+import { useRole } from "../hooks/useRoles";
 
-import type {
-  Role,
-  RoleFormData,
-  UpdateRoleDto,
-} from "../types/role.types";
+import type { Role, RoleFormData, UpdateRoleDto } from "../types/role.types";
 
-const createDefaultForm =
-  (): RoleFormData => ({
-    name: "",
-    code: "",
-    description: "",
-    status: "ACTIVE",
-  });
+const createDefaultForm = (): RoleFormData => ({
+  name: "",
+  code: "",
+  description: "",
+  status: "ACTIVE",
+});
 
 const RolePage = () => {
   const navigate = useNavigate();
 
-  const {
-    loading,
-    roles,
-    fetchRoles,
-    fetchRole,
-    create,
-    update,
-    remove,
-  } = useRole();
+  useDocumentTitle("User Roles");
 
-  const [open, setOpen] =
-    useState(false);
+  const { loading, roles, fetchRoles, fetchRole, create, update, remove } =
+    useRole();
 
-  const [
-    editUuid,
-    setEditUuid,
-  ] = useState<string | null>(
-    null,
-  );
+  const [open, setOpen] = useState(false);
 
-  const [
-    formData,
-    setFormData,
-  ] = useState<RoleFormData>(
-    createDefaultForm,
-  );
+  const [editUuid, setEditUuid] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<RoleFormData>(createDefaultForm);
 
   useEffect(() => {
     void fetchRoles();
@@ -79,9 +47,7 @@ const RolePage = () => {
   const resetForm = () => {
     setEditUuid(null);
 
-    setFormData(
-      createDefaultForm(),
-    );
+    setFormData(createDefaultForm());
   };
 
   const handleClose = () => {
@@ -97,43 +63,24 @@ const RolePage = () => {
   const handleSubmit = async () => {
     try {
       if (editUuid) {
-        const payload:
-          UpdateRoleDto = {
-          name:
-            formData.name.trim(),
+        const payload: UpdateRoleDto = {
+          name: formData.name.trim(),
 
-          code:
-            formData.code
-              .trim()
-              .toUpperCase(),
+          code: formData.code.trim().toUpperCase(),
 
-          description:
-            formData.description
-              .trim() ||
-            undefined,
+          description: formData.description.trim() || undefined,
 
-          status:
-            formData.status,
+          status: formData.status,
         };
 
-        await update(
-          editUuid,
-          payload,
-        );
+        await update(editUuid, payload);
       } else {
         await create({
-          name:
-            formData.name.trim(),
+          name: formData.name.trim(),
 
-          code:
-            formData.code
-              .trim()
-              .toUpperCase(),
+          code: formData.code.trim().toUpperCase(),
 
-          description:
-            formData.description
-              .trim() ||
-            undefined,
+          description: formData.description.trim() || undefined,
 
           isSystem: false,
         });
@@ -142,19 +89,13 @@ const RolePage = () => {
       await fetchRoles();
       handleClose();
     } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
+      console.error(error?.response?.data ?? error);
     }
   };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
+  const handleEdit = async (uuid: string) => {
     try {
-      const role =
-        await fetchRole(uuid);
+      const role = await fetchRole(uuid);
 
       if (!role) {
         return;
@@ -166,28 +107,21 @@ const RolePage = () => {
         name: role.name,
         code: role.code,
 
-        description:
-          role.description ?? "",
+        description: role.description ?? "",
 
         status: role.status,
       });
 
       setOpen(true);
     } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
+      console.error(error?.response?.data ?? error);
     }
   };
 
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this role?",
-      );
+  const handleDelete = async (uuid: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this role?",
+    );
 
     if (!confirmed) {
       return;
@@ -196,107 +130,85 @@ const RolePage = () => {
     try {
       await remove(uuid);
     } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
+      console.error(error?.response?.data ?? error);
     }
   };
 
-  const columns:
-    DataTableColumn<Role>[] = [
-      {
-        key: "name",
-        title: "Role",
-      },
-      {
-        key: "code",
-        title: "Code",
-      },
-      {
-        key: "description",
-        title: "Description",
+  const columns: DataTableColumn<Role>[] = [
+    {
+      key: "name",
+      title: "Role",
+    },
+    {
+      key: "code",
+      title: "Code",
+    },
+    {
+      key: "description",
+      title: "Description",
 
-        render: (row) =>
-          row.description ||
-          "-",
-      },
-      {
-        key: "employees",
-        title: "Employees",
-        align: "center",
+      render: (row) => row.description || "-",
+    },
+    {
+      key: "employees",
+      title: "Employees",
+      align: "center",
 
-        render: (row) =>
-          row._count?.employees ??
-          0,
-      },
-      {
-        key: "isSystem",
-        title: "Type",
-        align: "center",
+      render: (row) => row._count?.employees ?? 0,
+    },
+    {
+      key: "isSystem",
+      title: "Type",
+      align: "center",
 
-        render: (row) =>
-          row.isSystem
-            ? "System"
-            : "Custom",
-      },
-      {
-        key: "status",
-        title: "Status",
-        align: "center",
-      },
-      {
-        key: "actions",
-        title: "Actions",
-        align: "center",
+      render: (row) => (row.isSystem ? "System" : "Custom"),
+    },
+    {
+      key: "status",
+      title: "Status",
+      align: "center",
+    },
+    {
+      key: "actions",
+      title: "Actions",
+      align: "center",
 
-        render: (row) => (
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "center",
-              gap: 8,
-            }}
+      render: (row) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <Button
+            size="sm"
+            aria-label="Assign permissions"
+            onClick={() => navigate(`/settings/roles/${row.uuid}/permissions`)}
           >
-            <Button
-              size="sm"
-              aria-label="Assign permissions"
-              onClick={() =>
-                navigate(
-                  `/settings/roles/${row.uuid}/permissions`,
-                )
-              }
-            >
-              <KeyRound size={16} />
-            </Button>
+            <KeyRound size={16} />
+          </Button>
 
-            <Button
-              size="sm"
-              disabled={row.isSystem}
-              onClick={() =>
-                handleEdit(row.uuid)
-              }
-            >
-              <SquarePen size={16} />
-            </Button>
+          <Button
+            size="sm"
+            disabled={row.isSystem}
+            onClick={() => handleEdit(row.uuid)}
+          >
+            <SquarePen size={16} />
+          </Button>
 
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={row.isSystem}
-              onClick={() =>
-                handleDelete(
-                  row.uuid,
-                )
-              }
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
-        ),
-      },
-    ];
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={row.isSystem}
+            onClick={() => handleDelete(row.uuid)}
+          >
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -310,22 +222,11 @@ const RolePage = () => {
               gap: 12,
             }}
           >
-            <Button
-              variant="secondary"
-              onClick={() =>
-                navigate(-1)
-              }
-            >
+            <Button variant="secondary" onClick={() => navigate(-1)}>
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleCreateOpen
-              }
-            >
-              Add Role
-            </Button>
+            <Button onClick={handleCreateOpen}>Add Role</Button>
           </div>
         }
       />
@@ -342,14 +243,8 @@ const RolePage = () => {
       </Card>
 
       <RoleModal
-        title={
-          editUuid
-            ? "Edit Role"
-            : "Create Role"
-        }
-        isEdit={
-          Boolean(editUuid)
-        }
+        title={editUuid ? "Edit Role" : "Create Role"}
+        isEdit={Boolean(editUuid)}
         open={open}
         loading={loading}
         formData={formData}
