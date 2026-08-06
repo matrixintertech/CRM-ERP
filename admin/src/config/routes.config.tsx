@@ -23,8 +23,7 @@ import RolePermissionPage from "@/modules/role/pages/RolePermissionPage";
 import ProjectCategoryListPage from "@/modules/project-category/pages/ProjectCategoryPage";
 import ProfilePage from "@/modules/profile/pages/ProfilePage";
 import UserListPage from "@/modules/users/pages/UserListPage";
-
-
+import PlatformUserPage from "@/modules/platform-user/pages/PlatformUserPage";
 
 export interface AppRoute {
   path: string;
@@ -44,7 +43,7 @@ export const protectedRoutes: AppRoute[] = [
     element: <DashboardPage />,
   },
 
-   {
+  {
     path: "/companies",
     element: <CompanyListPage />,
   },
@@ -54,113 +53,107 @@ export const protectedRoutes: AppRoute[] = [
   },
 
   {
-  path: "/companies/:companyId/roles",
-  element: < RoleListPage/>,
-},
+    path: "/companies/:companyId/roles",
+    element: <RoleListPage />,
+  },
 
   {
     path: "/settings/organization-units",
     element: <OrganizationUnitPage />,
   },
 
+  {
+    path: "/companies/:companyId/roles/:roleId/permissions",
+    element: <RolePermissionPage />,
+  },
 
   {
-  path: "/companies/:companyId/roles/:roleId/permissions",
-  element: <RolePermissionPage />,
-},
+    path: "/subscription-plans/:subscriptionPlanId/modules",
+    element: <SubscriptionModulePage />,
+  },
 
+  {
+    path: "/modules",
+    element: <ModuleListPage />,
+  },
 
-{
-  path: "/subscription-plans/:subscriptionPlanId/modules",
-  element: <SubscriptionModulePage />,
-},
+  {
+    path: "/subscription-plans",
+    element: <SubscriptionPlanListPage />,
+  },
 
-{
-  path: "/modules",
-  element: <ModuleListPage />,
-},
+  {
+    path: "/master/states",
+    element: <StateListPage />,
+  },
 
+  {
+    path: "/master/cities",
+    element: <CityListPage />,
+  },
 
-{
-  path: "/subscription-plans",
-  element: <SubscriptionPlanListPage />,
-},
-
-{
-  path: "/master/states",
-  element: <StateListPage />,
-},
-
-{
-  path: "/master/cities",
-  element: <CityListPage />,
-},
-
- {
+  {
     path: "/clients",
     element: <ClientListPage />,
   },
 
+  {
+    path: "/projects",
+    element: <ProjectListPage />,
+  },
 
   {
-  path: "/projects",
-  element: <ProjectListPage />,
-},
+    path: "/settings/company-profile",
+    element: <CompanyProfilePage />,
+  },
 
-{
-  path: "/settings/company-profile",
-  element: <CompanyProfilePage />,
-},
+  {
+    path: "/designations",
+    element: <DesignationPage />,
+  },
 
-{
-  path: "/designations",
-  element: <DesignationPage />,
-},
+  {
+    path: "/departments",
+    element: <DepartmentPage />,
+  },
 
-{
+  {
+    path: "/employees",
+    element: <EmployeePage />,
+  },
 
-   path: "/departments",
-  element: <DepartmentPage />,
-},
+  {
+    path: "/settings/permissions",
+    element: <PermissionPage />,
+  },
 
-{
-  path: "/employees",
-  element: <EmployeePage />,
-},
+  {
+    path: "/settings/roles",
+    element: <RoleListPage />,
+  },
 
-{
-  path: "/settings/permissions",
-  element: <PermissionPage />,
-},
+  {
+    path: "/settings/roles/:uuid/permissions",
+    element: <RolePermissionPage />,
+  },
 
-{
-  path: "/settings/roles",
-  element: <RoleListPage />,
-},
+  {
+    path: "/project-categories",
+    element: <ProjectCategoryListPage />,
+  },
 
-{
-  path: "/settings/roles/:uuid/permissions",
-  element: <RolePermissionPage />,
-},
+  {
+    path: "/settings/profile",
+    element: <ProfilePage />,
+  },
 
-{
-  path: "/project-categories",
-  element: <ProjectCategoryListPage />,
-},
+  {
+    path: "/settings/users",
+    element: <UserListPage />,
+  },
 
-{
-  path: "/settings/profile",
-  element: <ProfilePage />,
-},
-
-{
-  path: "/settings/users",
-  element: <UserListPage />,
-}
-
-
-
-
-
-  
+  {
+    path: "/settings/platform-users",
+    element: <PlatformUserPage />,
+  },
 ];

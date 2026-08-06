@@ -17,6 +17,7 @@ import {
   UserCog,
   UserRound,
   Users,
+  UsersRound,
 } from "lucide-react";
 
 export interface MenuItem {
@@ -164,6 +165,14 @@ export const menu: MenuItem[] = [
     path: "#",
     icon: Settings,
     children: [
+      {
+        id: "platform-users",
+        title: "Platform Users",
+        path: "/settings/platform-users",
+        icon: UsersRound,
+
+        userTypes: ["PLATFORM_OWNER"],
+      },
       {
         id: "users",
         title: "Users",

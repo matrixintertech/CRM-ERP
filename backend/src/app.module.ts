@@ -17,7 +17,7 @@ import { CompanyModule } from './modules/company/company.module';
 //Subscription
 import { SubscriptionPlanModule } from './modules/subscription-plan/subscription-plan.module';
 
-//Company Subscription 
+//Company Subscription
 import { CompanySubscriptionModule } from './modules/company-subscription/company-subscription.module';
 
 // Onboarding
@@ -30,7 +30,7 @@ import { OrganizationUnitModule } from './modules/organization-unit/organization
 import { RoleModule } from './modules/roles/role.module';
 
 //Permission Module
-import { PermissionModule } from "./modules/permission/permission.module";
+import { PermissionModule } from './modules/permission/permission.module';
 
 //Module Option
 import { ModuleModule } from './modules/module/module.module';
@@ -39,10 +39,10 @@ import { ModuleModule } from './modules/module/module.module';
 import { SubscriptionModule } from './modules/subscriptions/subscription.module';
 
 //States
-import { StateModule } from "./modules/master/state/state.module";
+import { StateModule } from './modules/master/state/state.module';
 
 //City
-import { CityModule } from "./modules/master/city/city.module";
+import { CityModule } from './modules/master/city/city.module';
 
 //Client
 import { ClientModule } from './modules/client/client.module';
@@ -51,19 +51,19 @@ import { ClientModule } from './modules/client/client.module';
 import { ProjectModule } from './modules/project/project.module';
 
 //Designation
-import { DesignationModule } from "./modules/designation/designation.module";
+import { DesignationModule } from './modules/designation/designation.module';
 
 //Department
-import { DepartmentModule } from "./modules/department/department.module";
+import { DepartmentModule } from './modules/department/department.module';
 
 //Employee
-import { EmployeeModule } from "./modules/employee/employee.module";
+import { EmployeeModule } from './modules/employee/employee.module';
 
 //Project category
-import {
-  ProjectCategoryModule,
-} from './modules/project-category/project-category.module';
+import { ProjectCategoryModule } from './modules/project-category/project-category.module';
 
+// Platform user
+import { PlatformUserModule } from './modules/platform-user/platform-user.module';
 
 @Module({
   imports: [
@@ -93,7 +93,7 @@ import {
     DepartmentModule,
     EmployeeModule,
     ProjectCategoryModule,
-
+    PlatformUserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
