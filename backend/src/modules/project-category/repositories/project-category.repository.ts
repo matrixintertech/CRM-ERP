@@ -1,65 +1,46 @@
-import {
-  Injectable,
-} from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-import {
-  Prisma,
-  Status,
-} from "@prisma/client";
+import { Prisma, Status } from '@prisma/client';
 
-import {
-  PrismaService,
-} from "src/database/prisma.service";
-
+import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class ProjectCategoryRepository {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
-
+  constructor(private readonly prisma: PrismaService) {}
 
   private readonly include = {
     company: true,
   } satisfies Prisma.ProjectCategoryInclude;
 
-
-  async create(
-    data: Prisma.ProjectCategoryCreateInput,
-  ) {
+  async create(data: Prisma.ProjectCategoryCreateInput) {
     return this.prisma.projectCategory.create({
       data,
 
-      include:
-        this.include,
+      include: this.include,
     });
   }
 
-
-  async findAll(
-    companyId: bigint,
-  ) {
+  async findAll(companyId?: bigint) {
     return this.prisma.projectCategory.findMany({
       where: {
-        companyId,
-
         deletedAt: null,
+
+        ...(companyId !== undefined
+          ? {
+              companyId,
+            }
+          : {}),
       },
 
-      include:
-        this.include,
+      include: this.include,
 
       orderBy: {
-        sortOrder: "asc",
+        sortOrder: 'asc',
       },
     });
   }
 
-
-  async findByUuid(
-    companyId: bigint,
-    uuid: string,
-  ) {
+  async findByUuid(companyId: bigint, uuid: string) {
     return this.prisma.projectCategory.findFirst({
       where: {
         companyId,
@@ -69,16 +50,11 @@ export class ProjectCategoryRepository {
         deletedAt: null,
       },
 
-      include:
-        this.include,
+      include: this.include,
     });
   }
 
-
-  async findByCode(
-    companyId: bigint,
-    code: string,
-  ) {
+  async findByCode(companyId: bigint, code: string) {
     return this.prisma.projectCategory.findFirst({
       where: {
         companyId,
@@ -90,11 +66,7 @@ export class ProjectCategoryRepository {
     });
   }
 
-
-  async findByName(
-    companyId: bigint,
-    name: string,
-  ) {
+  async findByName(companyId: bigint, name: string) {
     return this.prisma.projectCategory.findFirst({
       where: {
         companyId,
@@ -106,11 +78,7 @@ export class ProjectCategoryRepository {
     });
   }
 
-
-  async update(
-    id: bigint,
-    data: Prisma.ProjectCategoryUpdateInput,
-  ) {
+  async update(id: bigint, data: Prisma.ProjectCategoryUpdateInput) {
     return this.prisma.projectCategory.update({
       where: {
         id,
@@ -118,38 +86,30 @@ export class ProjectCategoryRepository {
 
       data,
 
-      include:
-        this.include,
+      include: this.include,
     });
   }
 
-
-  async softDelete(
-    id: bigint,
-  ) {
+  async softDelete(id: bigint) {
     return this.prisma.projectCategory.update({
       where: {
         id,
       },
 
       data: {
-        status:
-          Status.INACTIVE,
+        status: Status.INACTIVE,
 
-        deletedAt:
-          new Date(),
+        deletedAt: new Date(),
       },
     });
   }
 
-  async countProjects(
-  categoryId: bigint,
-) {
-  return this.prisma.project.count({
-    where:{
-      categoryId,
-      deletedAt:null,
-    },
-  });
-}
+  async countProjects(categoryId: bigint) {
+    return this.prisma.project.count({
+      where: {
+        categoryId,
+        deletedAt: null,
+      },
+    });
+  }
 }
