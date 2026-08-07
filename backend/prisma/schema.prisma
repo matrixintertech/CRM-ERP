@@ -109,6 +109,20 @@ enum EmploymentType {
   FREELANCER
 }
 
+enum ProjectTaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -309,6 +323,7 @@ model Company {
   employees            Employee[]
   projectRoles         ProjectRole[]
   projectMembers       ProjectMember[]
+  projectTasks         ProjectTask[]
 
   @@index([status])
   @@map("companies")
@@ -745,6 +760,7 @@ model Project {
   deletedAt DateTime?
 
   members ProjectMember[]
+  tasks   ProjectTask[]
 
   @@unique([companyId, srn])
   @@index([companyId])
@@ -803,7 +819,7 @@ model ProjectRole {
 
   companyId BigInt
 
-  company Company @relation(fields: [companyId],references: [id],onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   name String @db.VarChar(100)
 
@@ -830,29 +846,27 @@ model ProjectRole {
   // Technician -> Service Manager
   requiredRoleId BigInt?
 
-  requiredRole ProjectRole? @relation( "ProjectRoleDependency",fields: [requiredRoleId],references: [id],onDelete: SetNull)
+  requiredRole ProjectRole? @relation("ProjectRoleDependency", fields: [requiredRoleId], references: [id], onDelete: SetNull)
 
-  dependentRoles ProjectRole[] @relation( "ProjectRoleDependency")
+  dependentRoles ProjectRole[] @relation("ProjectRoleDependency")
 
   sortOrder Int @default(0)
 
   status Status @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   projectMembers ProjectMember[]
 
   @@unique([companyId, name])
   @@unique([companyId, code])
-
   @@index([companyId])
   @@index([requiredRoleId])
   @@index([status])
   @@index([sortOrder])
   @@index([deletedAt])
-
   @@map("project_roles")
 }
 
@@ -891,6 +905,8 @@ model ProjectMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  assignedTasks ProjectTask[]
+
   @@index([companyId])
   @@index([projectId])
   @@index([employeeId])
@@ -902,6 +918,56 @@ model ProjectMember {
 }
 
 //End ProjectMember Assignment Schema
+
+//Start Project Task Schema
+
+model ProjectTask {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  projectId BigInt
+
+  assignedProjectMemberId BigInt?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  assignedProjectMember ProjectMember? @relation(fields: [assignedProjectMemberId], references: [id], onDelete: SetNull)
+
+  title String @db.VarChar(200)
+
+  description String?
+
+  priority TaskPriority @default(MEDIUM)
+
+  status ProjectTaskStatus @default(TODO)
+
+  startDate DateTime?
+  dueDate   DateTime?
+
+  completedAt DateTime?
+
+  remarks String?
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([projectId])
+  @@index([assignedProjectMemberId])
+  @@index([priority])
+  @@index([status])
+  @@index([dueDate])
+  @@index([deletedAt])
+  @@map("project_tasks")
+}
+
+// End Project Task Schema
 
 //Designation Schema Start
 
