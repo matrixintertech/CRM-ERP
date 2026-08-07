@@ -70,6 +70,11 @@ import {
   ProjectRoleModule,
 } from "./modules/project-role/project-role.module";
 
+// Project Member
+import {
+  ProjectMemberModule,
+} from "./modules/project-member/project-member.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -100,6 +105,7 @@ import {
     ProjectCategoryModule,
     PlatformUserModule,
     ProjectRoleModule,
+     ProjectMemberModule,
   ],
   controllers: [AppController],
   providers: [AppService],

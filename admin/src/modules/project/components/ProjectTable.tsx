@@ -1,5 +1,6 @@
 import Badge from "@/shared/components/Badge";
 import Button from "@/shared/components/Button";
+
 import Table, {
   type Column,
 } from "@/shared/components/Table";
@@ -15,6 +16,7 @@ interface Props {
   onView: (uuid: string) => void;
   onEdit: (uuid: string) => void;
   onDelete: (uuid: string) => void;
+  onMembers: (uuid: string) => void;
 }
 
 const formatDate = (
@@ -51,6 +53,7 @@ const ProjectTable = ({
   onView,
   onEdit,
   onDelete,
+  onMembers,
 }: Props) => {
   const columns:
     Column<Project>[] = [
@@ -67,6 +70,7 @@ const ProjectTable = ({
     {
       key: "client",
       title: "Client",
+
       render: (_, row) =>
         row.client?.name ?? "-",
     },
@@ -74,6 +78,7 @@ const ProjectTable = ({
     {
       key: "category",
       title: "Category",
+
       render: (_, row) =>
         row.category?.name ?? "-",
     },
@@ -81,6 +86,7 @@ const ProjectTable = ({
     {
       key: "organizationUnit",
       title: "Branch",
+
       render: (_, row) =>
         row.organizationUnit
           ?.name ?? "-",
@@ -89,6 +95,7 @@ const ProjectTable = ({
     {
       key: "state",
       title: "State",
+
       render: (_, row) =>
         row.state?.name ?? "-",
     },
@@ -96,6 +103,7 @@ const ProjectTable = ({
     {
       key: "city",
       title: "City",
+
       render: (_, row) =>
         row.city?.name ?? "-",
     },
@@ -103,6 +111,7 @@ const ProjectTable = ({
     {
       key: "startDate",
       title: "Start Date",
+
       render: (value) =>
         formatDate(value),
     },
@@ -110,6 +119,7 @@ const ProjectTable = ({
     {
       key: "expectedEndDate",
       title: "Expected End",
+
       render: (value) =>
         formatDate(value),
     },
@@ -117,6 +127,7 @@ const ProjectTable = ({
     {
       key: "status",
       title: "Status",
+
       render: (_, row) => (
         <Badge
           status={row.status}
@@ -127,11 +138,13 @@ const ProjectTable = ({
     {
       key: "action",
       title: "Action",
+
       render: (_, row) => (
         <div
           style={{
             display: "flex",
             gap: 8,
+            flexWrap: "wrap",
           }}
         >
           <Button
@@ -142,6 +155,18 @@ const ProjectTable = ({
             }
           >
             View
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              onMembers(
+                row.uuid,
+              )
+            }
+          >
+            Members
           </Button>
 
           <Button
@@ -157,7 +182,9 @@ const ProjectTable = ({
             size="sm"
             variant="danger"
             onClick={() =>
-              onDelete(row.uuid)
+              onDelete(
+                row.uuid,
+              )
             }
           >
             Delete

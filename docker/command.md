@@ -18,6 +18,30 @@ git pull origin main
 
 cd docker
 
+<!-- check latest migration server -->
+ls -la backend/prisma/migrations
+
+<!-- After know migration recreate backend -->
+docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  up -d --build --force-recreate backend
+
+  <!-- After check status -->
+  docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  exec backend \
+  npx prisma migrate status
+
+  <!-- after deploy -->
+  docker compose \
+  --env-file .env.production \
+  -f docker-compose.prod.yml \
+  exec backend \
+  npx prisma migrate deploy
+  
+
 docker compose \
  --env-file .env.production \
  -f docker-compose.prod.yml \
