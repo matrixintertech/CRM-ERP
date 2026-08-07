@@ -75,6 +75,11 @@ import {
   ProjectMemberModule,
 } from "./modules/project-member/project-member.module";
 
+//Project Task
+import {
+  ProjectTaskModule,
+} from "./modules/project-task/project-task.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -106,6 +111,7 @@ import {
     PlatformUserModule,
     ProjectRoleModule,
      ProjectMemberModule,
+     ProjectTaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],
