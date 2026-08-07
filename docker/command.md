@@ -64,6 +64,18 @@ docker compose -f docker/docker-compose.yml exec backend npx prisma format
 //validate
 docker compose -f docker/docker-compose.yml exec backend npx prisma format
 
+//fresh build
+docker compose -f docker/docker-compose.yml build --no-cache
+
+//Start
+docker compose -f docker/docker-compose.yml up -d
+
+//Local New Migration
+docker compose -f docker/docker-compose.yml exec backend npx prisma migrate deploy
+
+//Local Seed
+docker compose -f docker/docker-compose.yml exec backend npx prisma db seed
+
 //migration example
 docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev --name add-project-category
 

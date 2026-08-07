@@ -1,34 +1,40 @@
 .layout {
   width: 100%;
-  min-height: 100vh;
+  height: 100dvh;
 
   display: flex;
   flex-direction: column;
 
-  background: var(--color-background);
+  overflow: hidden;
+
+  background:
+    var(--color-background);
 }
 
 .body {
   flex: 1;
 
-  display: flex;
-
   min-height: 0;
+
+  display: flex;
 
   overflow: hidden;
 }
+
 
 .content {
   flex: 1;
 
   min-width: 0;
+  min-height: 0;
 
   overflow-y: auto;
   overflow-x: hidden;
 
   padding: 24px;
 
-  background: var(--color-background);
+  background:
+    var(--color-background);
 }
 
 /* Tablet */
