@@ -39,7 +39,7 @@ const ProjectRoleTable = ({
   onEdit,
   onDelete,
 }: Props) => {
-  const columns: Column[] = [
+  const columns: Column<ProjectRole>[] = [
     {
       key: "name",
       title: "Role Name",

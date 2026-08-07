@@ -20,9 +20,9 @@ import {
 } from "../hooks/useProjectRoles";
 
 import type {
-  CreateProjectRoleDto,
+  CreateProjectRoleRequest,
   ProjectRoleFormData,
-  UpdateProjectRoleDto,
+  UpdateProjectRoleRequest,
 } from "../types/project-role.types";
 
 const initialFormData: ProjectRoleFormData = {
@@ -144,7 +144,7 @@ const ProjectRoleListPage = () => {
 
         if (editId) {
           const payload:
-            UpdateProjectRoleDto = {
+            UpdateProjectRoleRequest = {
             ...basePayload,
 
             status:
@@ -157,7 +157,7 @@ const ProjectRoleListPage = () => {
           );
         } else {
           const payload:
-            CreateProjectRoleDto = {
+            CreateProjectRoleRequest = {
             ...basePayload,
           };
 
