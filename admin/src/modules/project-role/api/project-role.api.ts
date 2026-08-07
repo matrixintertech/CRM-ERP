@@ -40,12 +40,12 @@ export const getProjectRoleByUuid =
   ): Promise<ProjectRole> => {
     const { data } =
       await api.get<
-        ApiResponse<ProjectRoleData>
+        ApiResponse<ProjectRole>
       >(
         `/project-roles/${uuid}`,
       );
 
-    return data.data.projectRole;
+    return data.data;
   };
 
 export const createProjectRole =
