@@ -307,6 +307,8 @@ model Company {
   designations         Designation[]
   departments          Department[]
   employees            Employee[]
+  projectRoles         ProjectRole[]
+  projectMembers       ProjectMember[]
 
   @@index([status])
   @@map("companies")
@@ -742,6 +744,8 @@ model Project {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  members ProjectMember[]
+
   @@unique([companyId, srn])
   @@index([companyId])
   @@index([categoryId])
@@ -791,6 +795,98 @@ model ProjectCategory {
 }
 
 //Project Category End 
+
+//Project Role Master
+model ProjectRole {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(100)
+
+  code String @db.VarChar(50)
+
+  description String?
+
+  // true:
+  // Project Manager
+  // Service Manager
+  // Account Manager
+  //
+  // false:
+  // Developer
+  // Engineer
+  // Technician
+  isSingleAssignee Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  projectMembers ProjectMember[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([deletedAt])
+  @@map("project_roles")
+}
+
+//Project Role Master End
+
+//ProjectMember Assignment schema
+
+model ProjectMember {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  projectId BigInt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  employeeId BigInt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  projectRoleId BigInt
+
+  projectRole ProjectRole @relation(fields: [projectRoleId], references: [id], onDelete: Restrict)
+
+  assignedAt DateTime @default(now())
+
+  removedAt DateTime?
+
+  isActive Boolean @default(true)
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([projectId])
+  @@index([employeeId])
+  @@index([projectRoleId])
+  @@index([projectId, projectRoleId])
+  @@index([projectId, employeeId])
+  @@index([isActive])
+  @@map("project_members")
+}
+
+//End ProjectMember Assignment Schema
 
 //Designation Schema Start
 
@@ -915,6 +1011,8 @@ model Employee {
   subordinates Employee[] @relation("EmployeeManager")
 
   user User?
+
+  projectMemberships ProjectMember[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])

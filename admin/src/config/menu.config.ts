@@ -108,6 +108,13 @@ export const menu: MenuItem[] = [
         path: "/project-categories",
         icon: Boxes,
       },
+
+       {
+      id: "project-roles",
+      title: "Project Roles",
+      path: "/project-roles",
+      icon: UserCog,
+    },
     ],
   },
 

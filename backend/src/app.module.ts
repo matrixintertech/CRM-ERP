@@ -65,6 +65,11 @@ import { ProjectCategoryModule } from './modules/project-category/project-catego
 // Platform user
 import { PlatformUserModule } from './modules/platform-user/platform-user.module';
 
+//Project Role 
+import {
+  ProjectRoleModule,
+} from "./modules/project-role/project-role.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -94,6 +99,7 @@ import { PlatformUserModule } from './modules/platform-user/platform-user.module
     EmployeeModule,
     ProjectCategoryModule,
     PlatformUserModule,
+    ProjectRoleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
