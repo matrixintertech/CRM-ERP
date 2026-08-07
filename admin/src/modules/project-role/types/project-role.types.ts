@@ -2,6 +2,13 @@ export type Status =
   | "ACTIVE"
   | "INACTIVE";
 
+export interface ProjectRoleReference {
+  uuid: string;
+
+  name: string;
+  code: string;
+}
+
 export interface ProjectRole {
   uuid: string;
 
@@ -11,6 +18,8 @@ export interface ProjectRole {
   description?: string | null;
 
   isSingleAssignee: boolean;
+
+  requiredRole?: ProjectRoleReference | null;
 
   sortOrder: number;
 
@@ -28,6 +37,8 @@ export interface CreateProjectRoleRequest {
 
   isSingleAssignee?: boolean;
 
+  requiredRoleUuid?: string;
+
   sortOrder?: number;
 }
 
@@ -38,6 +49,8 @@ export interface UpdateProjectRoleRequest {
   description?: string;
 
   isSingleAssignee?: boolean;
+
+  requiredRoleUuid?: string;
 
   sortOrder?: number;
 
@@ -51,6 +64,8 @@ export interface ProjectRoleFormData {
   description: string;
 
   isSingleAssignee: boolean;
+
+  requiredRoleUuid: string;
 
   sortOrder: number;
 

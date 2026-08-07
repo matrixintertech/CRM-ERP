@@ -9,13 +9,14 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
 } from "class-validator";
 
 export class CreateProjectRoleDto {
   @ApiProperty({
-    example: "Project Manager",
+    example: "Service Manager",
   })
   @IsString()
   @IsNotEmpty()
@@ -23,7 +24,7 @@ export class CreateProjectRoleDto {
   name: string;
 
   @ApiProperty({
-    example: "PROJECT_MANAGER",
+    example: "SERVICE_MANAGER",
   })
   @IsString()
   @IsNotEmpty()
@@ -32,7 +33,7 @@ export class CreateProjectRoleDto {
 
   @ApiPropertyOptional({
     example:
-      "Responsible for overall project delivery.",
+      "Responsible for service management.",
   })
   @IsOptional()
   @IsString()
@@ -45,6 +46,17 @@ export class CreateProjectRoleDto {
   @IsOptional()
   @IsBoolean()
   isSingleAssignee?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "UUID of the project role that must be assigned before this role.",
+    example:
+      "a9f76cf3-0ef1-4fd1-be29-307893249e3e",
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  requiredRoleUuid?: string;
 
   @ApiPropertyOptional({
     example: 1,

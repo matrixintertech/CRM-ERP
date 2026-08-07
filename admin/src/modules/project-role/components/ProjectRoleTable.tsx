@@ -39,7 +39,8 @@ const ProjectRoleTable = ({
   onEdit,
   onDelete,
 }: Props) => {
-  const columns: Column<ProjectRole>[] = [
+  const columns:
+    Column<ProjectRole>[] = [
     {
       key: "name",
       title: "Role Name",
@@ -66,6 +67,15 @@ const ProjectRoleTable = ({
         row.isSingleAssignee
           ? "Single Assignee"
           : "Multiple Assignees",
+    },
+
+    {
+      key: "requiredRole",
+      title: "Required Role",
+
+      render: (_, row) =>
+        row.requiredRole
+          ?.name ?? "-",
     },
 
     {

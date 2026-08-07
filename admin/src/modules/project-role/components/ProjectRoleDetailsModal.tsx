@@ -157,14 +157,31 @@ const ProjectRoleDetailsModal = ({
               Assignment Rule
             </h3>
 
-            <DetailItem
-              label="Assignment Type"
-              value={
-                projectRole.isSingleAssignee
-                  ? "Single Assignee"
-                  : "Multiple Assignees"
-              }
-            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1fr 1fr",
+                gap: 20,
+              }}
+            >
+              <DetailItem
+                label="Assignment Type"
+                value={
+                  projectRole.isSingleAssignee
+                    ? "Single Assignee"
+                    : "Multiple Assignees"
+                }
+              />
+
+              <DetailItem
+                label="Required Role"
+                value={
+                  projectRole.requiredRole
+                    ?.name ?? "-"
+                }
+              />
+            </div>
           </section>
 
           {/* Description */}

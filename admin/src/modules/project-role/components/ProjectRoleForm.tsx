@@ -7,6 +7,7 @@ import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
 import type {
+  ProjectRole,
   ProjectRoleFormData,
   Status,
 } from "../types/project-role.types";
@@ -21,13 +22,39 @@ interface Props {
   >;
 
   isEdit?: boolean;
+
+  projectRoles: ProjectRole[];
+
+  currentRoleUuid?: string | null;
 }
 
 const ProjectRoleForm = ({
   formData,
   setFormData,
   isEdit = false,
+  projectRoles,
+  currentRoleUuid,
 }: Props) => {
+  const requiredRoleOptions = [
+    {
+      label: "No Required Role",
+      value: "",
+    },
+
+    ...projectRoles
+      .filter(
+        (role) =>
+          role.uuid !==
+            currentRoleUuid &&
+          role.status ===
+            "ACTIVE",
+      )
+      .map((role) => ({
+        label: role.name,
+        value: role.uuid,
+      })),
+  ];
+
   return (
     <div
       className={
@@ -78,6 +105,25 @@ const ProjectRoleForm = ({
             (previous) => ({
               ...previous,
               description:
+                event.target.value,
+            }),
+          )
+        }
+      />
+
+      <Select
+        label="Required Role"
+        value={
+          formData.requiredRoleUuid
+        }
+        options={
+          requiredRoleOptions
+        }
+        onChange={(event) =>
+          setFormData(
+            (previous) => ({
+              ...previous,
+              requiredRoleUuid:
                 event.target.value,
             }),
           )

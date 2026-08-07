@@ -37,8 +37,90 @@ export class ProjectRoleService {
     return companyId;
   }
 
+  private async resolveRequiredRole(
+    companyId: bigint,
+    requiredRoleUuid?: string,
+  ) {
+    if (!requiredRoleUuid) {
+      return null;
+    }
+
+    const requiredRole =
+      await this.projectRoleRepository.findRequiredRoleByUuid(
+        companyId,
+        requiredRoleUuid,
+      );
+
+    if (!requiredRole) {
+      throw new BadRequestException(
+        "Required project role not found or inactive.",
+      );
+    }
+
+    return requiredRole;
+  }
+
+  private async ensureNoCircularDependency(
+    projectRoleId: bigint,
+    requiredRoleId: bigint,
+  ) {
+    if (
+      projectRoleId ===
+      requiredRoleId
+    ) {
+      throw new BadRequestException(
+        "A project role cannot require itself.",
+      );
+    }
+
+    let currentRoleId:
+      | bigint
+      | null =
+      requiredRoleId;
+
+    const visited =
+      new Set<string>();
+
+    while (currentRoleId) {
+      if (
+        currentRoleId ===
+        projectRoleId
+      ) {
+        throw new BadRequestException(
+          "Circular project role dependency is not allowed.",
+        );
+      }
+
+      const key =
+        currentRoleId.toString();
+
+      if (visited.has(key)) {
+        throw new BadRequestException(
+          "Circular project role dependency is not allowed.",
+        );
+      }
+
+      visited.add(key);
+
+      const role =
+        await this.projectRoleRepository.findById(
+          currentRoleId,
+        );
+
+      if (!role) {
+        break;
+      }
+
+      currentRoleId =
+        role.requiredRoleId;
+    }
+  }
+
   async create(
-    companyId: bigint | null | undefined,
+    companyId:
+      | bigint
+      | null
+      | undefined,
     dto: CreateProjectRoleDto,
   ) {
     const resolvedCompanyId =
@@ -53,7 +135,10 @@ export class ProjectRoleService {
       dto.code
         .trim()
         .toUpperCase()
-        .replace(/\s+/g, "_");
+        .replace(
+          /\s+/g,
+          "_",
+        );
 
     const existingName =
       await this.projectRoleRepository.findByName(
@@ -79,13 +164,29 @@ export class ProjectRoleService {
       );
     }
 
+    const requiredRole =
+      await this.resolveRequiredRole(
+        resolvedCompanyId,
+        dto.requiredRoleUuid,
+      );
+
     const projectRole =
       await this.projectRoleRepository.create({
         company: {
           connect: {
-            id: resolvedCompanyId,
+            id:
+              resolvedCompanyId,
           },
         },
+
+        ...(requiredRole && {
+          requiredRole: {
+            connect: {
+              id:
+                requiredRole.id,
+            },
+          },
+        }),
 
         name,
         code,
@@ -114,7 +215,9 @@ export class ProjectRoleService {
   }
 
   async findAll(
-    companyId?: bigint | null,
+    companyId?:
+      | bigint
+      | null,
   ) {
     const projectRoles =
       await this.projectRoleRepository.findAll(
@@ -131,7 +234,10 @@ export class ProjectRoleService {
   }
 
   async findByUuid(
-    companyId: bigint | null | undefined,
+    companyId:
+      | bigint
+      | null
+      | undefined,
     uuid: string,
   ) {
     const projectRole =
@@ -151,7 +257,10 @@ export class ProjectRoleService {
   }
 
   async updateByUuid(
-    companyId: bigint | null | undefined,
+    companyId:
+      | bigint
+      | null
+      | undefined,
     uuid: string,
     dto: UpdateProjectRoleDto,
   ) {
@@ -176,12 +285,16 @@ export class ProjectRoleService {
         ? dto.code
             .trim()
             .toUpperCase()
-            .replace(/\s+/g, "_")
+            .replace(
+              /\s+/g,
+              "_",
+            )
         : undefined;
 
     if (
       name &&
-      name !== projectRole.name
+      name !==
+        projectRole.name
     ) {
       const duplicate =
         await this.projectRoleRepository.findByName(
@@ -202,7 +315,8 @@ export class ProjectRoleService {
 
     if (
       code &&
-      code !== projectRole.code
+      code !==
+        projectRole.code
     ) {
       const duplicate =
         await this.projectRoleRepository.findByCode(
@@ -221,15 +335,43 @@ export class ProjectRoleService {
       }
     }
 
+    let requiredRole:
+      | Awaited<
+          ReturnType<
+            typeof this.resolveRequiredRole
+          >
+        >
+      | undefined;
+
+    if (
+      dto.requiredRoleUuid !==
+      undefined
+    ) {
+      requiredRole =
+        await this.resolveRequiredRole(
+          resolvedCompanyId,
+          dto.requiredRoleUuid,
+        );
+
+      if (requiredRole) {
+        await this.ensureNoCircularDependency(
+          projectRole.id,
+          requiredRole.id,
+        );
+      }
+    }
+
     const updated =
       await this.projectRoleRepository.update(
         projectRole.id,
         {
-          ...(name !== undefined && {
+          ...(name !==
+            undefined && {
             name,
           }),
 
-          ...(code !== undefined && {
+          ...(code !==
+            undefined && {
             code,
           }),
 
@@ -257,6 +399,22 @@ export class ProjectRoleService {
             status:
               dto.status,
           }),
+
+          ...(dto.requiredRoleUuid !==
+            undefined && {
+            requiredRole:
+              requiredRole
+                ? {
+                    connect: {
+                      id:
+                        requiredRole.id,
+                    },
+                  }
+                : {
+                    disconnect:
+                      true,
+                  },
+          }),
         },
       );
 
@@ -270,7 +428,10 @@ export class ProjectRoleService {
   }
 
   async deleteByUuid(
-    companyId: bigint | null | undefined,
+    companyId:
+      | bigint
+      | null
+      | undefined,
     uuid: string,
   ) {
     const resolvedCompanyId =
@@ -292,6 +453,19 @@ export class ProjectRoleService {
     if (memberCount > 0) {
       throw new ConflictException(
         "Project role cannot be deleted because active project members are assigned.",
+      );
+    }
+
+    const dependentRoleCount =
+      await this.projectRoleRepository.countDependentRoles(
+        projectRole.id,
+      );
+
+    if (
+      dependentRoleCount > 0
+    ) {
+      throw new ConflictException(
+        "Project role cannot be deleted because other project roles depend on it.",
       );
     }
 

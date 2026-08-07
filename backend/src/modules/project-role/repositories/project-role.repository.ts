@@ -24,6 +24,10 @@ export class ProjectRoleRepository {
   ) {
     return this.prisma.projectRole.create({
       data,
+
+      include: {
+        requiredRole: true,
+      },
     });
   }
 
@@ -37,6 +41,10 @@ export class ProjectRoleRepository {
         }),
 
         deletedAt: null,
+      },
+
+      include: {
+        requiredRole: true,
       },
 
       orderBy: [
@@ -63,6 +71,10 @@ export class ProjectRoleRepository {
         }),
 
         deletedAt: null,
+      },
+
+      include: {
+        requiredRole: true,
       },
     });
   }
@@ -93,6 +105,21 @@ export class ProjectRoleRepository {
     });
   }
 
+  async findRequiredRoleByUuid(
+    companyId: bigint,
+    uuid: string,
+  ) {
+    return this.prisma.projectRole.findFirst({
+      where: {
+        companyId,
+        uuid,
+        deletedAt: null,
+        status:
+          Status.ACTIVE,
+      },
+    });
+  }
+
   async update(
     id: bigint,
     data:
@@ -104,6 +131,10 @@ export class ProjectRoleRepository {
       },
 
       data,
+
+      include: {
+        requiredRole: true,
+      },
     });
   }
 
@@ -135,4 +166,28 @@ export class ProjectRoleRepository {
       },
     });
   }
+
+  async countDependentRoles(
+    projectRoleId: bigint,
+  ) {
+    return this.prisma.projectRole.count({
+      where: {
+        requiredRoleId:
+          projectRoleId,
+
+        deletedAt: null,
+      },
+    });
+  }
+
+  async findById(
+  id: bigint,
+) {
+  return this.prisma.projectRole.findFirst({
+    where: {
+      id,
+      deletedAt: null,
+    },
+  });
+}
 }

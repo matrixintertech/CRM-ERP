@@ -30,6 +30,7 @@ const initialFormData: ProjectRoleFormData = {
   code: "",
   description: "",
   isSingleAssignee: false,
+  requiredRoleUuid: "",
   sortOrder: 0,
   status: "ACTIVE",
 };
@@ -135,6 +136,10 @@ const ProjectRoleListPage = () => {
           isSingleAssignee:
             formData.isSingleAssignee,
 
+          requiredRoleUuid:
+            formData.requiredRoleUuid ||
+            undefined,
+
           sortOrder:
             Number(
               formData.sortOrder ??
@@ -202,6 +207,10 @@ const ProjectRoleListPage = () => {
 
           isSingleAssignee:
             projectRole.isSingleAssignee,
+
+          requiredRoleUuid:
+            projectRole.requiredRole
+              ?.uuid ?? "",
 
           sortOrder:
             projectRole.sortOrder ??
@@ -294,30 +303,21 @@ const ProjectRoleListPage = () => {
       </Card>
 
       <ProjectRoleModal
-        open={openModal}
-        loading={loading}
-        title={
-          editId
-            ? "Edit Project Role"
-            : "Create Project Role"
-        }
-        isEdit={
-          Boolean(editId)
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleCloseModal
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
-
+  open={openModal}
+  loading={loading}
+  title={
+    editId
+      ? "Edit Project Role"
+      : "Create Project Role"
+  }
+  isEdit={Boolean(editId)}
+  formData={formData}
+  setFormData={setFormData}
+  projectRoles={projectRoles}
+  currentRoleUuid={editId}
+  onClose={handleCloseModal}
+  onSubmit={handleSubmit}
+/>
       <ProjectRoleDetailsModal
         open={
           openDetails

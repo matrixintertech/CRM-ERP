@@ -9,6 +9,7 @@ import Modal from "@/shared/components/Modal";
 import ProjectRoleForm from "./ProjectRoleForm";
 
 import type {
+  ProjectRole,
   ProjectRoleFormData,
 } from "../types/project-role.types";
 
@@ -27,6 +28,10 @@ interface Props {
     SetStateAction<ProjectRoleFormData>
   >;
 
+  projectRoles: ProjectRole[];
+
+  currentRoleUuid?: string | null;
+
   onClose: () => void;
 
   onSubmit: () => void;
@@ -40,6 +45,9 @@ const ProjectRoleModal = ({
 
   formData,
   setFormData,
+
+  projectRoles,
+  currentRoleUuid,
 
   onClose,
   onSubmit,
@@ -55,6 +63,10 @@ const ProjectRoleModal = ({
         formData={formData}
         setFormData={setFormData}
         isEdit={isEdit}
+        projectRoles={projectRoles}
+        currentRoleUuid={
+          currentRoleUuid
+        }
       />
 
       <div
