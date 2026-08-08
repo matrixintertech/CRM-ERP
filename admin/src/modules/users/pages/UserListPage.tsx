@@ -89,7 +89,6 @@ const UserListPage = () => {
     savePermissions,
 
     refetch,
-    savingPermissions,
   } = useUsers(
     query,
   );
