@@ -115,10 +115,9 @@ const ProjectListPage = () => {
       fetchCityDropdown,
   } = useCities();
 
-  const {
-    categories,
-    fetchCategories,
-  } = useProjectCategories();
+ const {
+  categories,
+} = useProjectCategories();
 
   const {
     organizationUnits,
@@ -188,7 +187,6 @@ const ProjectListPage = () => {
     async () => {
       await Promise.all([
         fetchStateDropdown(),
-        fetchCategories(),
         fetchOrganizationUnits(),
       ]);
     };
