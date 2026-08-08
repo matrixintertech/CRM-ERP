@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useState,
 } from "react";
 
@@ -112,9 +111,8 @@ const EmployeePage = () => {
   } = useDesignation();
 
   const {
-    roles,
-    fetchRoles,
-  } = useRole();
+  roles,
+} = useRole();
 
   const [
     open,
@@ -160,11 +158,7 @@ const EmployeePage = () => {
     Employee | null
   >(null);
 
-useEffect(() => {
-  void fetchRoles();
-}, [
-  fetchRoles,
-]);
+
 
   const resetForm =
     useCallback(() => {

@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -95,7 +94,6 @@ const UserListPage = () => {
 
   const {
     roles,
-    fetchRoles,
   } = useRole();
 
   const [
@@ -151,11 +149,7 @@ const UserListPage = () => {
     setAccountUpdating,
   ] = useState(false);
 
-  useEffect(() => {
-    void fetchRoles();
-  }, [
-    fetchRoles,
-  ]);
+
 
   const roleOptions =
     useMemo(
