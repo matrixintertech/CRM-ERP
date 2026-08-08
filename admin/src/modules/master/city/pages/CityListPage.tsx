@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -10,172 +14,332 @@ import CityDetailsModal from "../components/CityDetailsModal";
 import CityModal from "../components/CityModal";
 import CityTable from "../components/CityTable";
 
-import { useCities } from "../hooks/useCities";
+import {
+  useCities,
+} from "../hooks/useCities";
 
-import type { CityFormData } from "../types/city.types";
+import type {
+  City,
+  CityFormData,
+} from "../types/city.types";
 
-const initialFormData: CityFormData = {
+const initialFormData:
+  CityFormData = {
   stateUuid: "",
   name: "",
   status: "ACTIVE",
 };
 
 const CityListPage = () => {
-  useDocumentTitle("City List");
+  useDocumentTitle(
+    "City List",
+  );
+
   const {
     loading,
     cities,
-    selectedCity,
-    fetchCities,
+
     fetchCity,
+
     create,
     update,
     remove,
+
+    saving,
   } = useCities();
 
-  const [openModal, setOpenModal] = useState(false);
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
 
-  const [openDetails, setOpenDetails] = useState(false);
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
 
-  const [editId, setEditId] = useState<string | null>(null);
+  const [
+    selectedCity,
+    setSelectedCity,
+  ] = useState<
+    City | null
+  >(null);
 
-  const [formData, setFormData] = useState<CityFormData>(() => ({
-    ...initialFormData,
-  }));
+  const [
+    editId,
+    setEditId,
+  ] = useState<
+    string | null
+  >(null);
 
-  useEffect(() => {
-    void fetchCities();
-  }, [fetchCities]);
+  const [
+    formData,
+    setFormData,
+  ] =
+    useState<CityFormData>({
+      ...initialFormData,
+    });
 
   const resetForm = () => {
-    setEditId(null);
+    setEditId(
+      null,
+    );
 
     setFormData({
       ...initialFormData,
     });
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpenModal(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    resetForm();
-  };
+      setOpenModal(
+        true,
+      );
+    };
 
-  const handleSubmit = async () => {
-    try {
-      const payload: CityFormData = {
-        ...formData,
-        stateUuid: formData.stateUuid.trim(),
-        name: formData.name.trim(),
-      };
+  const handleCloseModal =
+    () => {
+      setOpenModal(
+        false,
+      );
 
-      if (editId) {
-        await update(editId, payload);
-      } else {
-        await create(payload);
+      resetForm();
+    };
+
+  const handleCloseDetails =
+    () => {
+      setOpenDetails(
+        false,
+      );
+
+      setSelectedCity(
+        null,
+      );
+    };
+
+  const handleSubmit =
+    async () => {
+      try {
+        const payload:
+          CityFormData = {
+          ...formData,
+
+          stateUuid:
+            formData.stateUuid.trim(),
+
+          name:
+            formData.name.trim(),
+        };
+
+        if (editId) {
+          await update(
+            editId,
+            payload,
+          );
+        } else {
+          await create(
+            payload,
+          );
+        }
+
+        handleCloseModal();
+      } catch (error) {
+        console.error(
+          "Failed to save city:",
+          error,
+        );
       }
+    };
 
-      await fetchCities();
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const city =
+          await fetchCity(
+            uuid,
+          );
 
-      handleCloseModal();
-    } catch (error) {
-      console.error("Failed to save city:", error);
-    }
-  };
+        if (!city) {
+          return;
+        }
 
-  const handleEdit = async (uuid: string) => {
-    try {
-      const city = await fetchCity(uuid);
+        setEditId(
+          uuid,
+        );
 
-      if (!city) {
+        setFormData({
+          stateUuid:
+            city.stateUuid,
+
+          name:
+            city.name,
+
+          status:
+            city.status,
+        });
+
+        setOpenModal(
+          true,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load city:",
+          error,
+        );
+      }
+    };
+
+  const handleView =
+    async (
+      uuid: string,
+    ) => {
+      setSelectedCity(
+        null,
+      );
+
+      setOpenDetails(
+        true,
+      );
+
+      try {
+        const city =
+          await fetchCity(
+            uuid,
+          );
+
+        if (!city) {
+          setOpenDetails(
+            false,
+          );
+
+          return;
+        }
+
+        setSelectedCity(
+          city,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load city details:",
+          error,
+        );
+
+        setOpenDetails(
+          false,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this city?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setEditId(uuid);
-
-      setFormData({
-        stateUuid: city.stateUuid,
-        name: city.name,
-        status: city.status,
-      });
-
-      setOpenModal(true);
-    } catch (error) {
-      console.error("Failed to load city:", error);
-    }
-  };
-
-  const handleView = async (uuid: string) => {
-    try {
-      const city = await fetchCity(uuid);
-
-      if (!city) {
-        return;
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to delete city:",
+          error,
+        );
       }
-
-      setOpenDetails(true);
-    } catch (error) {
-      console.error("Failed to load city details:", error);
-    }
-  };
-
-  const handleDelete = async (uuid: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this city?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-      await fetchCities();
-    } catch (error) {
-      console.error("Failed to delete city:", error);
-    }
-  };
+    };
 
   return (
     <>
       <PageHeader
         title="Cities"
         subtitle="Manage cities"
-        actions={<Button onClick={handleOpenCreate}>Create City</Button>}
+        actions={
+          <Button
+            onClick={
+              handleOpenCreate
+            }
+          >
+            Create City
+          </Button>
+        }
       />
 
       <Card>
         <CityTable
-          data={cities}
-          loading={loading}
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          data={
+            cities
+          }
+          loading={
+            loading
+          }
+          onView={
+            handleView
+          }
+          onEdit={
+            handleEdit
+          }
+          onDelete={
+            handleDelete
+          }
         />
       </Card>
 
       <CityModal
-        open={openModal}
-        loading={loading}
-        title={editId ? "Edit City" : "Create City"}
-        isEdit={Boolean(editId)}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
+        open={
+          openModal
+        }
+        loading={
+          saving
+        }
+        title={
+          editId
+            ? "Edit City"
+            : "Create City"
+        }
+        isEdit={
+          Boolean(
+            editId,
+          )
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleCloseModal
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
 
       <CityDetailsModal
-        open={openDetails}
-        loading={loading}
-        city={selectedCity}
-        onClose={() => {
-          setOpenDetails(false);
-        }}
+        open={
+          openDetails
+        }
+        loading={
+          openDetails &&
+          !selectedCity
+        }
+        city={
+          selectedCity
+        }
+        onClose={
+          handleCloseDetails
+        }
       />
     </>
   );
