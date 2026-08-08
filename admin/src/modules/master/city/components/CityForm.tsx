@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+
 
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
@@ -23,14 +23,11 @@ const CityForm = ({
   formData,
   setFormData,
 }: Props) => {
-  const {
-    dropdown,
-    fetchDropdown,
-  } = useStates();
 
-  useEffect(() => {
-    void fetchDropdown();
-  }, [fetchDropdown]);
+
+const {
+  dropdown: states,
+} = useStates();
 
   const handleChange = (
     field: keyof CityFormData,
