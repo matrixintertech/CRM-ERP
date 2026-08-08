@@ -1,99 +1,233 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
 import Card from "@/shared/components/Card";
-import PageHeader from "@/shared/components/PageHeader";
 
 import PermissionFooter from "../components/PermissionFooter";
 import PermissionGroup from "../components/PermissionGroup";
 import PermissionToolbar from "../components/PermissionToolbar";
 
-import { useRolePermissions } from "../hooks/useRolePermissions";
+import {
+  useRolePermissions,
+} from "../hooks/useRolePermissions";
 
 const RolePermissionPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  useDocumentTitle("Role Permissions");
+  useDocumentTitle(
+    "Role Permissions",
+  );
 
-  const { roleId } = useParams();
+  const {
+    roleId,
+  } = useParams<{
+    roleId: string;
+  }>();
 
-  const [search, setSearch] = useState("");
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   const {
     loading,
+    saving,
 
     groupedPermissions,
 
-    selectedPermissions,
-
-    fetchPermissions,
-
-    togglePermission,
+    selectedPermissions:
+      serverSelectedPermissions,
 
     savePermissions,
-  } = useRolePermissions();
+  } = useRolePermissions(
+    roleId,
+  );
+
+  const [
+    selectedPermissions,
+    setSelectedPermissions,
+  ] = useState<
+    string[]
+  >([]);
 
   useEffect(() => {
-    if (roleId) {
-      fetchPermissions(roleId);
-    }
-  }, [roleId]);
+    setSelectedPermissions(
+      serverSelectedPermissions,
+    );
+  }, [
+    serverSelectedPermissions,
+  ]);
 
-  const filteredGroups = groupedPermissions
-    .map((group) => ({
-      ...group,
-      permissions: group.permissions.filter(
-        (permission) =>
-          permission.name.toLowerCase().includes(search.toLowerCase()) ||
-          permission.code.toLowerCase().includes(search.toLowerCase()),
-      ),
-    }))
-    .filter((group) => group.permissions.length > 0);
+  const togglePermission = (
+    permissionId: string,
+  ) => {
+    setSelectedPermissions(
+      (previous) => {
+        if (
+          previous.includes(
+            permissionId,
+          )
+        ) {
+          return previous.filter(
+            (id) =>
+              id !==
+              permissionId,
+          );
+        }
+
+        return [
+          ...previous,
+          permissionId,
+        ];
+      },
+    );
+  };
+
+  const handleReset = () => {
+    setSelectedPermissions(
+      serverSelectedPermissions,
+    );
+  };
+
+  const handleSave =
+    async () => {
+      if (!roleId) {
+        return;
+      }
+
+      try {
+        await savePermissions(
+          selectedPermissions,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to save role permissions:",
+          error,
+        );
+      }
+    };
+
+  const filteredGroups =
+    useMemo(() => {
+      const normalizedSearch =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!normalizedSearch) {
+        return groupedPermissions;
+      }
+
+      return groupedPermissions
+        .map(
+          (group) => ({
+            ...group,
+
+            permissions:
+              group.permissions.filter(
+                (
+                  permission,
+                ) =>
+                  permission.name
+                    .toLowerCase()
+                    .includes(
+                      normalizedSearch,
+                    ) ||
+                  permission.code
+                    .toLowerCase()
+                    .includes(
+                      normalizedSearch,
+                    ),
+              ),
+          }),
+        )
+        .filter(
+          (group) =>
+            group.permissions
+              .length > 0,
+        );
+    }, [
+      groupedPermissions,
+      search,
+    ]);
 
   return (
     <>
-      <PageHeader
-        title="Role Permissions"
-        subtitle="Assign permissions to role"
-      />
-
       <PermissionToolbar
         roleName="Role Permissions"
-        search={search}
-        onSearchChange={setSearch}
-        onBack={() => navigate(-1)}
+        search={
+          search
+        }
+        onSearchChange={
+          setSearch
+        }
+        onBack={() =>
+          navigate(
+            -1,
+          )
+        }
       />
 
       <Card>
-        {filteredGroups.length === 0 ? (
-          <p>No permissions found.</p>
+        {loading ? (
+          <p>
+            Loading permissions...
+          </p>
+        ) : filteredGroups.length ===
+          0 ? (
+          <p>
+            No permissions found.
+          </p>
         ) : (
-          filteredGroups.map((group) => (
-            <PermissionGroup
-              key={group.module}
-              module={group.module}
-              permissions={group.permissions}
-              selectedPermissions={selectedPermissions}
-              onToggle={togglePermission}
-            />
-          ))
+          filteredGroups.map(
+            (group) => (
+              <PermissionGroup
+                key={
+                  group.module
+                }
+                module={
+                  group.module
+                }
+                permissions={
+                  group.permissions
+                }
+                selectedPermissions={
+                  selectedPermissions
+                }
+                onToggle={
+                  togglePermission
+                }
+              />
+            ),
+          )
         )}
 
         <PermissionFooter
-          loading={loading}
-          selectedCount={selectedPermissions.length}
-          onReset={() => {
-            if (roleId) {
-              fetchPermissions(roleId);
-            }
-          }}
-          onSave={() => {
-            if (roleId) {
-              savePermissions(roleId);
-            }
-          }}
+          loading={
+            saving
+          }
+          selectedCount={
+            selectedPermissions.length
+          }
+          onReset={
+            handleReset
+          }
+          onSave={
+            handleSave
+          }
         />
       </Card>
     </>

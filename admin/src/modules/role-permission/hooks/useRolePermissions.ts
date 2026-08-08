@@ -1,6 +1,12 @@
-import { useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   assignRolePermissions,
@@ -8,121 +14,116 @@ import {
   getRolePermissions,
 } from "../api/role-permission.api";
 
-import type {
-  PermissionGroup,
-} from "../types/role-permission.types";
+export const useRolePermissions = (
+  roleId?: string,
+) => {
+  const queryClient =
+    useQueryClient();
 
-export const useRolePermissions =
-  () => {
-    const [loading, setLoading] =
-      useState(false);
+  const groupedPermissionsQuery =
+    useQuery({
+      queryKey: [
+        "role-permission-groups",
+      ],
 
-    const [
-      groupedPermissions,
-      setGroupedPermissions,
-    ] = useState<
-      PermissionGroup[]
-    >([]);
+      queryFn: () =>
+        getGroupedPermissions(),
 
-    const [
-      selectedPermissions,
-      setSelectedPermissions,
-    ] = useState<string[]>([]);
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-    const fetchPermissions =
-      async (
-        roleId: string,
+  const rolePermissionsQuery =
+    useQuery({
+      queryKey: [
+        "role-permissions",
+        roleId,
+      ],
+
+      queryFn: () =>
+        getRolePermissions(
+          roleId!,
+        ),
+
+      enabled:
+        Boolean(
+          roleId,
+        ),
+    });
+
+  const saveMutation =
+    useMutation({
+      mutationFn: (
+        permissionIds:
+          string[],
       ) => {
-        setLoading(true);
-
-        try {
-          const [
-            grouped,
-            selected,
-          ] =
-            await Promise.all([
-              getGroupedPermissions(),
-              getRolePermissions(
-                roleId,
-              ),
-            ]);
-
-          setGroupedPermissions(
-            grouped,
+        if (!roleId) {
+          throw new Error(
+            "Role ID is required.",
           );
-
-          setSelectedPermissions(
-            selected,
-          );
-        } finally {
-          setLoading(false);
         }
-      };
 
-    const togglePermission = (
-      permissionId: string,
-    ) => {
-      setSelectedPermissions(
-        (prev) => {
-          if (
-            prev.includes(
-              permissionId,
-            )
-          ) {
-            return prev.filter(
-              (id) =>
-                id !==
-                permissionId,
-            );
-          }
+        return assignRolePermissions(
+          roleId,
+          permissionIds.map(
+            Number,
+          ),
+        );
+      },
 
-          return [
-            ...prev,
-            permissionId,
-          ];
-        },
-      );
-    };
+      onSuccess: async () => {
+        notify.success(
+          "Permissions updated successfully.",
+        );
 
- const savePermissions =
-  async (
-    roleId: string,
-  ) => {
-    setLoading(true);
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "role-permissions",
+            roleId,
+          ],
+        });
+      },
 
-   try {
-  await notify.promise(
-    assignRolePermissions(
-      roleId,
-      selectedPermissions.map(Number),
-    ),
-    {
-      loading:
-        "Saving permissions...",
+      onError: () => {
+        notify.error(
+          "Failed to update permissions.",
+        );
+      },
+    });
 
-      success:
-        "Permissions updated successfully.",
+  return {
+    groupedPermissions:
+      groupedPermissionsQuery.data ??
+      [],
 
-      error:
-        "Failed to update permissions.",
-    },
-  );
-} finally {
-  setLoading(false);
-}
+    selectedPermissions:
+      (
+        rolePermissionsQuery.data ??
+        []
+      ).map(
+        String,
+      ),
+
+    loading:
+      groupedPermissionsQuery.isLoading ||
+      rolePermissionsQuery.isLoading,
+
+    fetching:
+      groupedPermissionsQuery.isFetching ||
+      rolePermissionsQuery.isFetching,
+
+    saving:
+      saveMutation.isPending,
+
+    savePermissions: (
+      permissionIds:
+        string[],
+    ) =>
+      saveMutation.mutateAsync(
+        permissionIds,
+      ),
+
+    refetchPermissions:
+      rolePermissionsQuery.refetch,
   };
-
-    return {
-      loading,
-
-      groupedPermissions,
-
-      selectedPermissions,
-
-      fetchPermissions,
-
-      togglePermission,
-
-      savePermissions,
-    };
-  };
+};
