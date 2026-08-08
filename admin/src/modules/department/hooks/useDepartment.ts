@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createDepartment,
@@ -14,199 +17,262 @@ import {
 } from "../api/department.api";
 
 import type {
-  Department,
   DepartmentFormData,
   UpdateDepartmentDto,
 } from "../types/department.types";
 
-export const useDepartment = () => {
-  const [loading, setLoading] =
-    useState(false);
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  const [
-    departments,
-    setDepartments,
-  ] = useState<Department[]>([]);
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
+  );
+};
 
-  const [
-    selectedDepartment,
-    setSelectedDepartment,
-  ] =
-    useState<Department | null>(null);
+export const useDepartment =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-  const fetchDepartments =
-    useCallback(async () => {
-      setLoading(true);
+    /*
+     * Department list
+     */
+    const departmentsQuery =
+      useQuery({
+        queryKey: [
+          "departments",
+        ],
 
-      try {
-        const data =
-          await getDepartments();
+        queryFn:
+          getDepartments,
 
-        setDepartments(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        return data;
-      } catch (error: any) {
-        notify.error(
-          error?.response?.data
-            ?.message ??
-            "Failed to load departments.",
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const fetchDepartment =
-    useCallback(
+    /*
+     * Single department
+     */
+    const fetchDepartment =
       async (
         uuid: string,
       ) => {
-        setLoading(true);
-
         try {
-          const data =
-            await getDepartment(
+          return await queryClient.fetchQuery({
+            queryKey: [
+              "department",
               uuid,
-            );
+            ],
 
-          setSelectedDepartment(
-            data,
-          );
-
-          return data;
-        } catch (error: any) {
+            queryFn: () =>
+              getDepartment(
+                uuid,
+              ),
+          });
+        } catch (error) {
           notify.error(
-            error?.response?.data
-              ?.message ??
+            getErrorMessage(
+              error,
               "Failed to load department.",
+            ),
           );
 
           throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
+      };
 
-  const create = async (
-    payload: DepartmentFormData,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await createDepartment(
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Department created successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to create department.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const update = async (
-    uuid: string,
-    payload: UpdateDepartmentDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await updateDepartment(
-          uuid,
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Department updated successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to update department.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async (
-    uuid: string,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await deleteDepartment(
-          uuid,
-        );
-
-      setDepartments(
-        (previous) =>
-          previous.filter(
-            (department) =>
-              department.uuid !==
-              uuid,
+    /*
+     * Create
+     */
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            DepartmentFormData,
+        ) =>
+          createDepartment(
+            payload,
           ),
-      );
 
-      notify.success(
-        data?.message ??
-          "Department deleted successfully.",
-      );
+        onSuccess: async (
+          data,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Department created successfully.",
+          );
 
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to delete department.",
-      );
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "departments",
+            ],
+          });
+        },
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to create department.",
+            ),
+          );
+        },
+      });
+
+    /*
+     * Update
+     */
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          uuid,
+          payload,
+        }: {
+          uuid: string;
+
+          payload:
+            UpdateDepartmentDto;
+        }) =>
+          updateDepartment(
+            uuid,
+            payload,
+          ),
+
+        onSuccess: async (
+          data,
+          variables,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Department updated successfully.",
+          );
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "departments",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "department",
+                variables.uuid,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to update department.",
+            ),
+          );
+        },
+      });
+
+    /*
+     * Delete
+     */
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          uuid: string,
+        ) =>
+          deleteDepartment(
+            uuid,
+          ),
+
+        onSuccess: async (
+          data,
+          uuid,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Department deleted successfully.",
+          );
+
+          queryClient.removeQueries({
+            queryKey: [
+              "department",
+              uuid,
+            ],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "departments",
+            ],
+          });
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to delete department.",
+            ),
+          );
+        },
+      });
+
+    return {
+      departments:
+        Array.isArray(
+          departmentsQuery.data,
+        )
+          ? departmentsQuery.data
+          : [],
+
+      loading:
+        departmentsQuery.isLoading,
+
+      fetching:
+        departmentsQuery.isFetching,
+
+      error:
+        departmentsQuery.error,
+
+      refetch:
+        departmentsQuery.refetch,
+
+      fetchDepartment,
+
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        uuid: string,
+        payload:
+          UpdateDepartmentDto,
+      ) =>
+        updateMutation.mutateAsync({
+          uuid,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-
-  return {
-    loading,
-
-    departments,
-    selectedDepartment,
-
-    fetchDepartments,
-    fetchDepartment,
-
-    create,
-    update,
-    remove,
-  };
-};

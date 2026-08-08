@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createDesignation,
@@ -14,200 +17,247 @@ import {
 } from "../api/designation.api";
 
 import type {
-  Designation,
   DesignationFormData,
   UpdateDesignationDto,
 } from "../types/designation.types";
 
-export const useDesignation = () => {
-  const [loading, setLoading] =
-    useState(false);
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  const [
-    designations,
-    setDesignations,
-  ] = useState<Designation[]>([]);
-
-  const [
-    selectedDesignation,
-    setSelectedDesignation,
-  ] = useState<Designation | null>(
-    null,
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
   );
+};
 
-  const fetchDesignations =
-    useCallback(async () => {
-      setLoading(true);
+export const useDesignation =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-      try {
-        const data =
-          await getDesignations();
+    const designationsQuery =
+      useQuery({
+        queryKey: [
+          "designations",
+        ],
 
-        setDesignations(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
+        queryFn:
+          getDesignations,
 
-        return data;
-      } catch (error: any) {
-        notify.error(
-          error?.response?.data
-            ?.message ??
-            "Failed to load designations.",
-        );
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const fetchDesignation =
-    useCallback(
+    const fetchDesignation =
       async (
         uuid: string,
       ) => {
-        setLoading(true);
-
         try {
-          const data =
-            await getDesignation(
+          return await queryClient.fetchQuery({
+            queryKey: [
+              "designation",
               uuid,
-            );
+            ],
 
-          setSelectedDesignation(
-            data,
-          );
-
-          return data;
-        } catch (error: any) {
+            queryFn: () =>
+              getDesignation(
+                uuid,
+              ),
+          });
+        } catch (error) {
           notify.error(
-            error?.response?.data
-              ?.message ??
+            getErrorMessage(
+              error,
               "Failed to load designation.",
+            ),
           );
 
           throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
+      };
 
-  const create = async (
-    payload: DesignationFormData,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await createDesignation(
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Designation created successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to create designation.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const update = async (
-    uuid: string,
-    payload: UpdateDesignationDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await updateDesignation(
-          uuid,
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Designation updated successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to update designation.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async (
-    uuid: string,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await deleteDesignation(
-          uuid,
-        );
-
-      setDesignations(
-        (previous) =>
-          previous.filter(
-            (designation) =>
-              designation.uuid !==
-              uuid,
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            DesignationFormData,
+        ) =>
+          createDesignation(
+            payload,
           ),
-      );
 
-      notify.success(
-        data?.message ??
-          "Designation deleted successfully.",
-      );
+        onSuccess: async (
+          data,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Designation created successfully.",
+          );
 
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to delete designation.",
-      );
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "designations",
+            ],
+          });
+        },
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to create designation.",
+            ),
+          );
+        },
+      });
+
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          uuid,
+          payload,
+        }: {
+          uuid: string;
+
+          payload:
+            UpdateDesignationDto;
+        }) =>
+          updateDesignation(
+            uuid,
+            payload,
+          ),
+
+        onSuccess: async (
+          data,
+          variables,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Designation updated successfully.",
+          );
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "designations",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "designation",
+                variables.uuid,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to update designation.",
+            ),
+          );
+        },
+      });
+
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          uuid: string,
+        ) =>
+          deleteDesignation(
+            uuid,
+          ),
+
+        onSuccess: async (
+          data,
+          uuid,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Designation deleted successfully.",
+          );
+
+          queryClient.removeQueries({
+            queryKey: [
+              "designation",
+              uuid,
+            ],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "designations",
+            ],
+          });
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to delete designation.",
+            ),
+          );
+        },
+      });
+
+    return {
+      designations:
+        Array.isArray(
+          designationsQuery.data,
+        )
+          ? designationsQuery.data
+          : [],
+
+      loading:
+        designationsQuery.isLoading,
+
+      fetching:
+        designationsQuery.isFetching,
+
+      error:
+        designationsQuery.error,
+
+      refetch:
+        designationsQuery.refetch,
+
+      fetchDesignation,
+
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        uuid: string,
+        payload:
+          UpdateDesignationDto,
+      ) =>
+        updateMutation.mutateAsync({
+          uuid,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-
-  return {
-    loading,
-
-    designations,
-    selectedDesignation,
-
-    fetchDesignations,
-    fetchDesignation,
-
-    create,
-    update,
-    remove,
-  };
-};

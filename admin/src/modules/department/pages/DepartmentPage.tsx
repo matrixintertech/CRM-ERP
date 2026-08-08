@@ -3,7 +3,15 @@ import {
   useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  Eye,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
@@ -14,41 +22,50 @@ import type {
   DataTableColumn,
 } from "@/shared/components/DataTable/types";
 
-import {
-  Eye,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
-
 import DepartmentModal from "../components/DepartmentModal";
 
-import { useDepartment } from "../hooks/useDepartment";
-import { useOrganizationUnits } from "../../organization-unit/hooks/useOrganizationUnits";
+import {
+  useDepartment,
+} from "../hooks/useDepartment";
+
+import {
+  useOrganizationUnits,
+} from "../../organization-unit/hooks/useOrganizationUnits";
 
 import type {
-  Department,
   DepartmentFormData,
 } from "../types/department.types";
 
 const createDefaultForm =
   (): DepartmentFormData => ({
-    organizationUnitUuid: "",
-    name: "",
-    code: "",
-    description: "",
+    organizationUnitUuid:
+      "",
+
+    name:
+      "",
+
+    code:
+      "",
+
+    description:
+      "",
   });
 
 const DepartmentPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const {
     loading,
     departments,
-    fetchDepartments,
+
     fetchDepartment,
+
     create,
     update,
     remove,
+
+    saving,
   } = useDepartment();
 
   const {
@@ -56,225 +73,288 @@ const DepartmentPage = () => {
     fetchOrganizationUnits,
   } = useOrganizationUnits();
 
-  const [open, setOpen] =
-    useState(false);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
 
-  const [editUuid, setEditUuid] =
-    useState<string | null>(null);
+  const [
+    editUuid,
+    setEditUuid,
+  ] = useState<
+    string | null
+  >(null);
 
-  const [formData, setFormData] =
+  const [
+    formData,
+    setFormData,
+  ] =
     useState<DepartmentFormData>(
       createDefaultForm,
     );
 
   useEffect(() => {
-    void fetchDepartments();
     void fetchOrganizationUnits();
   }, [
-    fetchDepartments,
     fetchOrganizationUnits,
   ]);
 
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
+
     setFormData(
       createDefaultForm(),
     );
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleClose = () => {
-    setOpen(false);
-    resetForm();
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const payload: DepartmentFormData = {
-        organizationUnitUuid:
-          formData.organizationUnitUuid,
-
-        name:
-          formData.name.trim(),
-
-        code:
-          formData.code
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, ""),
-
-        description:
-          formData.description?.trim() ||
-          undefined,
-      };
-
-      if (editUuid) {
-        await update(
-          editUuid,
-          payload,
-        );
-      } else {
-        await create(payload);
-      }
-
-      await fetchDepartments();
-
-      handleClose();
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
+      setOpen(
+        true,
       );
-    }
-  };
+    };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
-    try {
-      const department =
-        await fetchDepartment(
+  const handleClose =
+    () => {
+      setOpen(
+        false,
+      );
+
+      resetForm();
+    };
+
+  const handleSubmit =
+    async () => {
+      try {
+        const payload:
+          DepartmentFormData = {
+          organizationUnitUuid:
+            formData.organizationUnitUuid,
+
+          name:
+            formData.name.trim(),
+
+          code:
+            formData.code
+              .trim()
+              .toUpperCase()
+              .replace(
+                /\s+/g,
+                "",
+              ),
+
+          description:
+            formData.description
+              ?.trim() ||
+            undefined,
+        };
+
+        if (editUuid) {
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          await create(
+            payload,
+          );
+        }
+
+        handleClose();
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const department =
+          await fetchDepartment(
+            uuid,
+          );
+
+        if (!department) {
+          return;
+        }
+
+        setEditUuid(
           uuid,
         );
 
-      if (!department) {
+        setFormData({
+          organizationUnitUuid:
+            department.organizationUnit
+              ?.uuid ?? "",
+
+          name:
+            department.name,
+
+          code:
+            department.code,
+
+          description:
+            department.description ??
+            "",
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this department?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setEditUuid(uuid);
-
-      setFormData({
-        organizationUnitUuid:
-          department.organizationUnit
-            ?.uuid ?? "",
-
-        name:
-          department.name,
-
-        code:
-          department.code,
-
-        description:
-          department.description ?? "",
-      });
-
-      setOpen(true);
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
-
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this department?",
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
 
   const columns:
-    DataTableColumn<Department>[] = [
-      {
-        key: "organizationUnit",
-        title: "Branch / Office",
-        render: (row) =>
-          row.organizationUnit
-            ?.name ?? "-",
-      },
-      {
-        key: "name",
-        title: "Department",
-      },
-      {
-        key: "code",
-        title: "Code",
-      },
-      {
-        key: "description",
-        title: "Description",
-        render: (row) =>
-          row.description || "-",
-      },
-      {
-        key: "status",
-        title: "Status",
-        align: "center",
-      },
-      {
-        key: "actions",
-        title: "Actions",
-        align: "center",
-        render: (row) => (
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "center",
-              gap: 8,
-            }}
+    DataTableColumn[] = [
+    {
+      key:
+        "organizationUnit",
+
+      title:
+        "Branch / Office",
+
+      render: (
+        row,
+      ) =>
+        row.organizationUnit
+          ?.name ?? "-",
+    },
+
+    {
+      key: "name",
+      title:
+        "Department",
+    },
+
+    {
+      key: "code",
+      title: "Code",
+    },
+
+    {
+      key:
+        "description",
+
+      title:
+        "Description",
+
+      render: (
+        row,
+      ) =>
+        row.description ||
+        "-",
+    },
+
+    {
+      key: "status",
+      title: "Status",
+      align:
+        "center",
+    },
+
+    {
+      key: "actions",
+      title: "Actions",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => (
+        <div
+          style={{
+            display:
+              "flex",
+
+            justifyContent:
+              "center",
+
+            gap: 8,
+          }}
+        >
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              navigate(
+                `/departments/${row.uuid}`,
+              )
+            }
           >
-            <Button
-              size="sm"
-              onClick={() =>
-                navigate(
-                  `/departments/${row.uuid}`,
-                )
-              }
-            >
-              <Eye size={16} />
-            </Button>
+            <Eye
+              size={16}
+            />
+          </Button>
 
-            <Button
-              size="sm"
-              onClick={() =>
-                handleEdit(
-                  row.uuid,
-                )
-              }
-            >
-              <SquarePen
-                size={16}
-              />
-            </Button>
+          <Button
+            size="sm"
+            onClick={() =>
+              handleEdit(
+                row.uuid,
+              )
+            }
+          >
+            <SquarePen
+              size={16}
+            />
+          </Button>
 
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() =>
-                handleDelete(
-                  row.uuid,
-                )
-              }
-            >
-              <Trash2
-                size={16}
-              />
-            </Button>
-          </div>
-        ),
-      },
-    ];
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() =>
+              handleDelete(
+                row.uuid,
+              )
+            }
+          >
+            <Trash2
+              size={16}
+            />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -284,14 +364,17 @@ const DepartmentPage = () => {
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               gap: 12,
             }}
           >
             <Button
               variant="secondary"
               onClick={() =>
-                navigate(-1)
+                navigate(
+                  -1,
+                )
               }
             >
               Back
@@ -310,11 +393,15 @@ const DepartmentPage = () => {
 
       <Card>
         <DataTable
-          loading={loading}
-          data={
-            departments ?? []
+          loading={
+            loading
           }
-          columns={columns}
+          data={
+            departments
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           emptyMessage="No Departments Found."
@@ -328,11 +415,19 @@ const DepartmentPage = () => {
             : "Create Department"
         }
         isEdit={
-          Boolean(editUuid)
+          Boolean(
+            editUuid,
+          )
         }
-        open={open}
-        loading={loading}
-        formData={formData}
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        formData={
+          formData
+        }
         setFormData={
           setFormData
         }

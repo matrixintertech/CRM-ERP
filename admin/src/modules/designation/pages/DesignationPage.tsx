@@ -1,9 +1,16 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  Eye,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
@@ -14,19 +21,17 @@ import type {
   DataTableColumn,
 } from "@/shared/components/DataTable/types";
 
-import {
-  Eye,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
-
 import DesignationModal from "../components/DesignationModal";
 
-import { useDesignation } from "../hooks/useDesignation";
-import { useDepartment } from "../../department/hooks/useDepartment";
+import {
+  useDesignation,
+} from "../hooks/useDesignation";
+
+import {
+  useDepartment,
+} from "../../department/hooks/useDepartment";
 
 import type {
-  Designation,
   DesignationFormData,
 } from "../types/designation.types";
 
@@ -39,32 +44,39 @@ const createDefaultForm =
   });
 
 const DesignationPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const {
     loading,
     designations,
-    fetchDesignations,
+
     fetchDesignation,
+
     create,
     update,
     remove,
+
+    saving,
   } = useDesignation();
 
   const {
     departments,
-    fetchDepartments,
+    loading:
+      loadingDepartments,
   } = useDepartment();
 
-  const [open, setOpen] =
-    useState(false);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
 
   const [
     editUuid,
     setEditUuid,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     formData,
@@ -74,212 +86,270 @@ const DesignationPage = () => {
       createDefaultForm,
     );
 
-  useEffect(() => {
-    void fetchDesignations();
-    void fetchDepartments();
-  }, [
-    fetchDesignations,
-    fetchDepartments,
-  ]);
-
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
 
     setFormData(
       createDefaultForm(),
     );
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleClose = () => {
-    setOpen(false);
-    resetForm();
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const payload:
-        DesignationFormData = {
-        departmentUuid:
-          formData.departmentUuid,
-
-        name:
-          formData.name.trim(),
-
-        code:
-          formData.code
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, ""),
-
-        description:
-          formData.description
-            ?.trim() || undefined,
-      };
-
-      if (editUuid) {
-        await update(
-          editUuid,
-          payload,
-        );
-      } else {
-        await create(payload);
-      }
-
-      await fetchDesignations();
-
-      handleClose();
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
+      setOpen(
+        true,
       );
-    }
-  };
+    };
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
-    try {
-      const designation =
-        await fetchDesignation(
+  const handleClose =
+    () => {
+      setOpen(
+        false,
+      );
+
+      resetForm();
+    };
+
+  const handleSubmit =
+    async () => {
+      try {
+        const payload:
+          DesignationFormData = {
+          departmentUuid:
+            formData.departmentUuid,
+
+          name:
+            formData.name.trim(),
+
+          code:
+            formData.code
+              .trim()
+              .toUpperCase()
+              .replace(
+                /\s+/g,
+                "",
+              ),
+
+          description:
+            formData.description
+              ?.trim() ||
+            undefined,
+        };
+
+        if (editUuid) {
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          await create(
+            payload,
+          );
+        }
+
+        handleClose();
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const designation =
+          await fetchDesignation(
+            uuid,
+          );
+
+        if (!designation) {
+          return;
+        }
+
+        setEditUuid(
           uuid,
         );
 
-      if (!designation) {
+        setFormData({
+          departmentUuid:
+            designation.department
+              ?.uuid ?? "",
+
+          name:
+            designation.name,
+
+          code:
+            designation.code,
+
+          description:
+            designation.description ??
+            "",
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this designation?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setEditUuid(uuid);
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
 
-      setFormData({
-        departmentUuid:
-          designation.department
-            ?.uuid ?? "",
-
-        name:
-          designation.name,
-
-        code:
-          designation.code,
-
-        description:
-          designation.description ??
-          "",
-      });
-
-      setOpen(true);
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
-
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this designation?",
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-
-      await fetchDesignations();
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
-
-const columns:
-  DataTableColumn<Designation>[] = [
+  const columns:
+    DataTableColumn[] = [
     {
-      key: "location",
-      title: "Location",
-      render: (row) =>
+      key:
+        "location",
+
+      title:
+        "Location",
+
+      render: (
+        row,
+      ) =>
         row.department
           ?.organizationUnit
           ?.name ?? "-",
     },
+
     {
-      key: "department",
-      title: "Department",
-      render: (row) =>
-        row.department?.name ?? "-",
+      key:
+        "department",
+
+      title:
+        "Department",
+
+      render: (
+        row,
+      ) =>
+        row.department
+          ?.name ?? "-",
     },
+
     {
       key: "name",
-      title: "Designation",
+      title:
+        "Designation",
     },
+
     {
       key: "code",
       title: "Code",
     },
+
     {
-      key: "description",
-      title: "Description",
-      render: (row) =>
-        row.description || "-",
+      key:
+        "description",
+
+      title:
+        "Description",
+
+      render: (
+        row,
+      ) =>
+        row.description ||
+        "-",
     },
+
     {
       key: "status",
       title: "Status",
-      align: "center",
+      align:
+        "center",
     },
+
     {
       key: "actions",
       title: "Actions",
-      align: "center",
-      render: (row) => (
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => (
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
+            display:
+              "flex",
+            justifyContent:
+              "center",
             gap: 8,
           }}
         >
           <Button
             size="sm"
+            variant="secondary"
             onClick={() =>
               navigate(
                 `/designations/${row.uuid}`,
               )
             }
           >
-            <Eye size={16} />
+            <Eye
+              size={16}
+            />
           </Button>
 
           <Button
             size="sm"
             onClick={() =>
-              handleEdit(row.uuid)
+              handleEdit(
+                row.uuid,
+              )
             }
           >
-            <SquarePen size={16} />
+            <SquarePen
+              size={16}
+            />
           </Button>
 
           <Button
             size="sm"
             variant="danger"
             onClick={() =>
-              handleDelete(row.uuid)
+              handleDelete(
+                row.uuid,
+              )
             }
           >
-            <Trash2 size={16} />
+            <Trash2
+              size={16}
+            />
           </Button>
         </div>
       ),
@@ -294,14 +364,17 @@ const columns:
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               gap: 12,
             }}
           >
             <Button
               variant="secondary"
               onClick={() =>
-                navigate(-1)
+                navigate(
+                  -1,
+                )
               }
             >
               Back
@@ -320,11 +393,15 @@ const columns:
 
       <Card>
         <DataTable
-          loading={loading}
-          data={
-            designations ?? []
+          loading={
+            loading
           }
-          columns={columns}
+          data={
+            designations
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           emptyMessage="No Designations Found."
@@ -338,15 +415,31 @@ const columns:
             : "Create Designation"
         }
         isEdit={
-          Boolean(editUuid)
+          Boolean(
+            editUuid,
+          )
         }
-        open={open}
-        loading={loading}
-        departments={departments}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleClose}
-        onSubmit={handleSubmit}
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        departments={
+          departments
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleClose
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );
