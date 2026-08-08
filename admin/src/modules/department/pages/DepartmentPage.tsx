@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -64,7 +63,6 @@ const DepartmentPage = () => {
 
   const {
     organizationUnits,
-    fetchOrganizationUnits,
   } = useOrganizationUnits();
 
   const [
@@ -87,11 +85,7 @@ const DepartmentPage = () => {
       createDefaultForm,
     );
 
-  useEffect(() => {
-    void fetchOrganizationUnits();
-  }, [
-    fetchOrganizationUnits,
-  ]);
+
 
   const resetForm = () => {
     setEditUuid(

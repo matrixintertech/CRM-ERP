@@ -1,21 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
-import { Eye, Plus, SquarePen, Trash2 } from "lucide-react";
+import {
+  Eye,
+  Plus,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import DataTable from "@/shared/components/DataTable/DataTable";
 import PageHeader from "@/shared/components/PageHeader";
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import OrganizationUnitModal from "../components/OrganizationUnitModal";
 
-import { useOrganizationUnits } from "../hooks/useOrganizationUnits";
+import {
+  useOrganizationUnits,
+} from "../hooks/useOrganizationUnits";
 
 import type {
   OrganizationUnit,
@@ -23,308 +39,574 @@ import type {
   UpdateOrganizationUnitDto,
 } from "../types/organization-unit.types";
 
-const createDefaultForm = (companyUuid?: string): OrganizationUnitFormData => ({
+const createDefaultForm = (
+  companyUuid?: string,
+): OrganizationUnitFormData => ({
   companyUuid,
 
-  parentUuid: undefined,
+  parentUuid:
+    undefined,
 
-  type: "HEAD_OFFICE",
+  type:
+    "HEAD_OFFICE",
 
-  name: "",
-  code: "",
+  name:
+    "",
 
-  email: "",
-  mobile: "",
+  code:
+    "",
 
-  addressLine1: "",
-  addressLine2: "",
+  email:
+    "",
 
-  stateUuid: "",
-  cityUuid: "",
+  mobile:
+    "",
 
-  country: "",
+  addressLine1:
+    "",
 
-  pincode: "",
+  addressLine2:
+    "",
 
-  status: "ACTIVE",
+  stateUuid:
+    "",
+
+  cityUuid:
+    "",
+
+  country:
+    "",
+
+  pincode:
+    "",
+
+  status:
+    "ACTIVE",
 });
 
 const OrganizationUnitPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  useDocumentTitle("Organization Units");
+  useDocumentTitle(
+    "Organization Units",
+  );
 
-  const { companyId: companyUuid } = useParams<{
+  const {
+    companyId:
+      companyUuid,
+  } = useParams<{
     companyId: string;
   }>();
 
   const {
     loading,
+
     organizationUnits,
-    fetchOrganizationUnits,
+
     fetchOrganizationUnit,
+
     create,
     update,
     remove,
-  } = useOrganizationUnits();
 
-  const [open, setOpen] = useState(false);
+    saving,
+  } = useOrganizationUnits({
+    companyUuid,
+  });
 
-  const [editUuid, setEditUuid] = useState<string | null>(null);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
 
-  const [formData, setFormData] = useState<OrganizationUnitFormData>(() =>
-    createDefaultForm(companyUuid),
-  );
+  const [
+    editUuid,
+    setEditUuid,
+  ] = useState<
+    string | null
+  >(null);
 
-  useEffect(() => {
-    void fetchOrganizationUnits({
-      companyUuid,
-    });
-  }, [companyUuid, fetchOrganizationUnits]);
+  const [
+    formData,
+    setFormData,
+  ] =
+    useState<OrganizationUnitFormData>(
+      () =>
+        createDefaultForm(
+          companyUuid,
+        ),
+    );
 
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
 
-    setFormData(createDefaultForm(companyUuid));
+    setFormData(
+      createDefaultForm(
+        companyUuid,
+      ),
+    );
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleCloseModal = () => {
-    setOpen(false);
-    resetForm();
-  };
+      setOpen(
+        true,
+      );
+    };
 
-  const handleSubmit = async () => {
-    try {
-      if (editUuid) {
-        const payload: UpdateOrganizationUnitDto = {
-          parentUuid: formData.parentUuid,
+  const handleCloseModal =
+    () => {
+      setOpen(
+        false,
+      );
 
-          type: formData.type,
+      resetForm();
+    };
 
-          name: formData.name?.trim() ?? "",
+  const handleSubmit =
+    async () => {
+      try {
+        if (editUuid) {
+          const payload:
+            UpdateOrganizationUnitDto = {
+            parentUuid:
+              formData.parentUuid,
 
-          code: formData.code?.trim().toUpperCase().replace(/\s+/g, "") ?? "",
+            type:
+              formData.type,
 
-          email: formData.email?.trim() ?? "",
+            name:
+              formData.name
+                ?.trim() ??
+              "",
 
-          mobile: formData.mobile?.trim() ?? "",
+            code:
+              formData.code
+                ?.trim()
+                .toUpperCase()
+                .replace(
+                  /\s+/g,
+                  "",
+                ) ??
+              "",
 
-          addressLine1: formData.addressLine1?.trim() ?? "",
+            email:
+              formData.email
+                ?.trim() ??
+              "",
 
-          addressLine2: formData.addressLine2?.trim() ?? "",
+            mobile:
+              formData.mobile
+                ?.trim() ??
+              "",
 
-          stateUuid: formData.stateUuid || undefined,
+            addressLine1:
+              formData.addressLine1
+                ?.trim() ??
+              "",
 
-          cityUuid: formData.cityUuid || undefined,
+            addressLine2:
+              formData.addressLine2
+                ?.trim() ??
+              "",
 
-          country: formData.country?.trim() ?? "",
+            stateUuid:
+              formData.stateUuid ||
+              undefined,
 
-          pincode: formData.pincode?.trim() ?? "",
+            cityUuid:
+              formData.cityUuid ||
+              undefined,
 
-          status: formData.status ?? "ACTIVE",
-        };
+            country:
+              formData.country
+                ?.trim() ??
+              "",
 
-        await update(editUuid, payload);
-      } else {
-        const payload: OrganizationUnitFormData = {
-          ...formData,
+            pincode:
+              formData.pincode
+                ?.trim() ??
+              "",
 
+            status:
+              formData.status ??
+              "ACTIVE",
+          };
+
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          const payload:
+            OrganizationUnitFormData = {
+            ...formData,
+
+            companyUuid,
+
+            name:
+              formData.name
+                ?.trim() ??
+              "",
+
+            code:
+              formData.code
+                ?.trim()
+                .toUpperCase()
+                .replace(
+                  /\s+/g,
+                  "",
+                ) ??
+              "",
+
+            email:
+              formData.email
+                ?.trim() ??
+              "",
+
+            mobile:
+              formData.mobile
+                ?.trim() ??
+              "",
+
+            addressLine1:
+              formData.addressLine1
+                ?.trim() ??
+              "",
+
+            addressLine2:
+              formData.addressLine2
+                ?.trim() ??
+              "",
+
+            stateUuid:
+              formData.stateUuid ||
+              "",
+
+            cityUuid:
+              formData.cityUuid ||
+              "",
+
+            country:
+              formData.country
+                ?.trim() ??
+              "",
+
+            pincode:
+              formData.pincode
+                ?.trim() ??
+              "",
+
+            status:
+              formData.status ??
+              "ACTIVE",
+          };
+
+          await create(
+            payload,
+          );
+        }
+
+        handleCloseModal();
+      } catch (error) {
+        console.error(
+          "Failed to save organization unit:",
+          error,
+        );
+      }
+    };
+
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const unit =
+          await fetchOrganizationUnit(
+            uuid,
+          );
+
+        if (!unit) {
+          return;
+        }
+
+        setEditUuid(
+          uuid,
+        );
+
+        setFormData({
           companyUuid,
 
-          name: formData.name?.trim() ?? "",
+          parentUuid:
+            unit.parent?.uuid,
 
-          code: formData.code?.trim().toUpperCase().replace(/\s+/g, "") ?? "",
+          type:
+            unit.type,
 
-          email: formData.email?.trim() ?? "",
+          name:
+            unit.name,
 
-          mobile: formData.mobile?.trim() ?? "",
+          code:
+            unit.code,
 
-          addressLine1: formData.addressLine1?.trim() ?? "",
+          email:
+            unit.email ??
+            "",
 
-          addressLine2: formData.addressLine2?.trim() ?? "",
+          mobile:
+            unit.mobile ??
+            "",
 
-          stateUuid: formData.stateUuid || "",
+          addressLine1:
+            unit.addressLine1 ??
+            "",
 
-          cityUuid: formData.cityUuid || "",
+          addressLine2:
+            unit.addressLine2 ??
+            "",
 
-          country: formData.country?.trim() ?? "",
+          stateUuid:
+            unit.state?.uuid ??
+            "",
 
-          pincode: formData.pincode?.trim() ?? "",
+          cityUuid:
+            unit.city?.uuid ??
+            "",
 
-          status: formData.status ?? "ACTIVE",
-        };
+          country:
+            unit.country ??
+            "",
 
-        await create(payload);
+          pincode:
+            unit.pincode ??
+            "",
+
+          status:
+            unit.status,
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load organization unit:",
+          error,
+        );
       }
+    };
 
-      await fetchOrganizationUnits({
-        companyUuid,
-      });
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this organization unit?",
+        );
 
-      handleCloseModal();
-    } catch (error) {
-      console.error("Failed to save organization unit:", error);
-    }
-  };
-
-  const handleEdit = async (uuid: string) => {
-    try {
-      const unit = await fetchOrganizationUnit(uuid);
-
-      if (!unit) {
+      if (!confirmed) {
         return;
       }
 
-      setEditUuid(uuid);
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to delete organization unit:",
+          error,
+        );
+      }
+    };
 
-      setFormData({
-        companyUuid,
+  const columns:
+    DataTableColumn<OrganizationUnit>[] = [
+    {
+      key:
+        "name",
 
-        parentUuid: unit.parent?.uuid,
+      title:
+        "Organization Unit",
+    },
 
-        type: unit.type,
+    {
+      key:
+        "code",
 
-        name: unit.name,
+      title:
+        "Code",
+    },
 
-        code: unit.code,
+    {
+      key:
+        "type",
 
-        email: unit.email ?? "",
+      title:
+        "Type",
 
-        mobile: unit.mobile ?? "",
+      render: (
+        row,
+      ) =>
+        row.type
+          .replaceAll(
+            "_",
+            " ",
+          )
+          .toLowerCase()
+          .replace(
+            /\b\w/g,
+            (
+              character,
+            ) =>
+              character.toUpperCase(),
+          ),
+    },
 
-        addressLine1: unit.addressLine1 ?? "",
+    {
+      key:
+        "parent",
 
-        addressLine2: unit.addressLine2 ?? "",
+      title:
+        "Parent",
 
-        stateUuid: unit.state?.uuid ?? "",
+      render: (
+        row,
+      ) =>
+        row.parent
+          ?.name ?? "-",
+    },
 
-        cityUuid: unit.city?.uuid ?? "",
+    {
+      key:
+        "city",
 
-        country: unit.country ?? "",
+      title:
+        "City",
 
-        pincode: unit.pincode ?? "",
+      render: (
+        row,
+      ) =>
+        row.city
+          ?.name ?? "-",
+    },
 
-        status: unit.status,
-      });
-      setOpen(true);
-    } catch (error) {
-      console.error("Failed to load organization unit:", error);
-    }
-  };
+    {
+      key:
+        "state",
 
-  const handleDelete = async (uuid: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this organization unit?",
-    );
+      title:
+        "State",
 
-    if (!confirmed) {
-      return;
-    }
+      render: (
+        row,
+      ) =>
+        row.state
+          ?.name ?? "-",
+    },
 
-    try {
-      await remove(uuid);
+    {
+      key:
+        "mobile",
 
-      await fetchOrganizationUnits({
-        companyUuid,
-      });
-    } catch (error) {
-      console.error("Failed to delete organization unit:", error);
-    }
-  };
+      title:
+        "Mobile",
 
-  const columns = useMemo<DataTableColumn<OrganizationUnit>[]>(
-    () => [
-      {
-        key: "name",
-        title: "Organization Unit",
-      },
-      {
-        key: "code",
-        title: "Code",
-      },
-      {
-        key: "type",
-        title: "Type",
-        render: (row) =>
-          row.type
-            .replaceAll("_", " ")
-            .toLowerCase()
-            .replace(/\b\w/g, (character) => character.toUpperCase()),
-      },
-      {
-        key: "parent",
-        title: "Parent",
-        render: (row) => row.parent?.name ?? "-",
-      },
-      {
-        key: "city" as keyof OrganizationUnit,
-        title: "City",
-        render: (row) => row.city?.name ?? "-",
-      },
-      {
-        key: "state" as keyof OrganizationUnit,
-        title: "State",
-        render: (row) => row.state?.name ?? "-",
-      },
-      {
-        key: "mobile",
-        title: "Mobile",
-        render: (row) => row.mobile || "-",
-      },
-      {
-        key: "status",
-        title: "Status",
-        align: "center",
-      },
-      {
-        key: "actions",
-        title: "Actions",
-        align: "center",
-        render: (row) => (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 8,
-            }}
+      render: (
+        row,
+      ) =>
+        row.mobile ||
+        "-",
+    },
+
+    {
+      key:
+        "status",
+
+      title:
+        "Status",
+
+      align:
+        "center",
+    },
+
+    {
+      key:
+        "actions",
+
+      title:
+        "Actions",
+
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => (
+        <div
+          style={{
+            display:
+              "flex",
+
+            justifyContent:
+              "center",
+
+            gap: 8,
+          }}
+        >
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label={`View ${row.name}`}
+            onClick={() =>
+              navigate(
+                `/companies/${companyUuid}/organization/${row.uuid}`,
+              )
+            }
           >
-            <Button
-              size="sm"
-              aria-label={`View ${row.name}`}
-              onClick={() =>
-                navigate(`/companies/${companyUuid}/organization/${row.uuid}`)
-              }
-            >
-              <Eye size={16} />
-            </Button>
+            <Eye
+              size={16}
+            />
+          </Button>
 
-            <Button
-              size="sm"
-              aria-label={`Edit ${row.name}`}
-              onClick={() => handleEdit(row.uuid)}
-            >
-              <SquarePen size={16} />
-            </Button>
+          <Button
+            size="sm"
+            aria-label={`Edit ${row.name}`}
+            onClick={() =>
+              handleEdit(
+                row.uuid,
+              )
+            }
+          >
+            <SquarePen
+              size={16}
+            />
+          </Button>
 
-            <Button
-              size="sm"
-              variant="danger"
-              aria-label={`Delete ${row.name}`}
-              onClick={() => handleDelete(row.uuid)}
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [companyUuid, navigate],
-  );
+          <Button
+            size="sm"
+            variant="danger"
+            aria-label={`Delete ${row.name}`}
+            onClick={() =>
+              handleDelete(
+                row.uuid,
+              )
+            }
+          >
+            <Trash2
+              size={16}
+            />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -334,16 +616,33 @@ const OrganizationUnitPage = () => {
         actions={
           <div
             style={{
-              display: "flex",
-              gap: 12,
+              display:
+                "flex",
+
+              gap:
+                12,
             }}
           >
-            <Button variant="secondary" onClick={() => navigate("/companies")}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  "/companies",
+                )
+              }
+            >
               Back
             </Button>
 
-            <Button onClick={handleOpenCreate}>
-              <Plus size={18} />
+            <Button
+              onClick={
+                handleOpenCreate
+              }
+            >
+              <Plus
+                size={18}
+              />
+
               Add Unit
             </Button>
           </div>
@@ -352,9 +651,15 @@ const OrganizationUnitPage = () => {
 
       <Card>
         <DataTable
-          loading={loading}
-          data={organizationUnits ?? []}
-          columns={columns}
+          loading={
+            loading
+          }
+          data={
+            organizationUnits
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           emptyMessage="No organization units found."
@@ -362,15 +667,37 @@ const OrganizationUnitPage = () => {
       </Card>
 
       <OrganizationUnitModal
-        title={editUuid ? "Edit Organization Unit" : "Create Organization Unit"}
-        isEdit={Boolean(editUuid)}
-        open={open}
-        loading={loading}
-        organizationUnits={organizationUnits}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
+        title={
+          editUuid
+            ? "Edit Organization Unit"
+            : "Create Organization Unit"
+        }
+        isEdit={
+          Boolean(
+            editUuid,
+          )
+        }
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        organizationUnits={
+          organizationUnits
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleCloseModal
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );
