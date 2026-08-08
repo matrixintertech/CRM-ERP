@@ -5,7 +5,7 @@ export interface Permission {
   module: string;
 }
 
-export interface PermissionGroup {
+export interface PermissionGroupData {
   module: string;
   permissions: Permission[];
 }

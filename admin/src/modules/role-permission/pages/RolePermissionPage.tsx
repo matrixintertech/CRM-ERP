@@ -19,6 +19,10 @@ import PermissionFooter from "../components/PermissionFooter";
 import PermissionGroup from "../components/PermissionGroup";
 import PermissionToolbar from "../components/PermissionToolbar";
 
+import type {
+  PermissionGroupData,
+} from "../types/role-permission.types";
+
 import {
   useRolePermissions,
 } from "../hooks/useRolePermissions";
@@ -120,49 +124,56 @@ const RolePermissionPage = () => {
       }
     };
 
-  const filteredGroups =
-    useMemo(() => {
-      const normalizedSearch =
-        search
-          .trim()
-          .toLowerCase();
+const filteredGroups:
+  PermissionGroupData[] =
+  useMemo(() => {
+    const normalizedSearch =
+      search
+        .trim()
+        .toLowerCase();
 
-      if (!normalizedSearch) {
-        return groupedPermissions;
-      }
+    if (!normalizedSearch) {
+      return groupedPermissions;
+    }
 
-      return groupedPermissions
-        .map(
-          (group) => ({
-            ...group,
+    return groupedPermissions
+      .map(
+        (
+          group:
+            PermissionGroupData,
+        ) => ({
+          ...group,
 
-            permissions:
-              group.permissions.filter(
-                (
-                  permission,
-                ) =>
-                  permission.name
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ) ||
-                  permission.code
-                    .toLowerCase()
-                    .includes(
-                      normalizedSearch,
-                    ),
-              ),
-          }),
-        )
-        .filter(
-          (group) =>
-            group.permissions
-              .length > 0,
-        );
-    }, [
-      groupedPermissions,
-      search,
-    ]);
+          permissions:
+            group.permissions.filter(
+              (
+                permission,
+              ) =>
+                permission.name
+                  .toLowerCase()
+                  .includes(
+                    normalizedSearch,
+                  ) ||
+                permission.code
+                  .toLowerCase()
+                  .includes(
+                    normalizedSearch,
+                  ),
+            ),
+        }),
+      )
+      .filter(
+        (
+          group:
+            PermissionGroupData,
+        ) =>
+          group.permissions
+            .length > 0,
+      );
+  }, [
+    groupedPermissions,
+    search,
+  ]);
 
   return (
     <>
