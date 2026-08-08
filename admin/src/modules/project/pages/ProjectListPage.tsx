@@ -125,13 +125,11 @@ const ProjectListPage = () => {
   } =
     useOrganizationUnits();
 
-  const {
-    employees,
-    fetchEmployees,
-
-    loading:
-      loadingEmployees,
-  } = useEmployee();
+const {
+  employees,
+  loading:
+    loadingEmployees,
+} = useEmployee();
 
 const {
   projectRoles,
@@ -425,19 +423,10 @@ const handleManage =
         null,
       );
 
-      const [
-        project,
-      ] =
-        await Promise.all([
-          fetchProject(
-            uuid,
-          ),
-
-          employees.length ===
-          0
-            ? fetchEmployees()
-            : Promise.resolve(),
-        ]);
+      const project =
+        await fetchProject(
+          uuid,
+        );
 
       setSelectedProject(
         project,
