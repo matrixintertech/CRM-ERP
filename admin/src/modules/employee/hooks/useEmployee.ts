@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createEmployee,
@@ -14,208 +17,247 @@ import {
 } from "../api/employee.api";
 
 import type {
-  Employee,
   CreateEmployeeDto,
   UpdateEmployeeDto,
 } from "../types/employee.types";
 
-export const useEmployee = () => {
-  const [loading, setLoading] =
-    useState(false);
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  const [
-    employees,
-    setEmployees,
-  ] = useState<Employee[]>([]);
-
-  const [
-    selectedEmployee,
-    setSelectedEmployee,
-  ] = useState<Employee | null>(
-    null,
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
   );
+};
 
-  const fetchEmployees =
-    useCallback(async () => {
-      setLoading(true);
+export const useEmployee =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-      try {
-        const data =
-          await getEmployees();
+    const employeesQuery =
+      useQuery({
+        queryKey: [
+          "employees",
+        ],
 
-        setEmployees(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
+        queryFn: () =>
+          getEmployees(),
 
-        return data;
-      } catch (error: any) {
-        notify.error(
-          error?.response?.data
-            ?.message ??
-            "Failed to load employees.",
-        );
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const fetchEmployee =
-    useCallback(
+    const fetchEmployee =
       async (
         uuid: string,
       ) => {
-        setLoading(true);
-
         try {
-          const data =
-            await getEmployee(
+          return await queryClient.fetchQuery({
+            queryKey: [
+              "employee",
               uuid,
-            );
+            ],
 
-          setSelectedEmployee(
-            data,
-          );
-
-          return data;
-        } catch (error: any) {
+            queryFn: () =>
+              getEmployee(
+                uuid,
+              ),
+          });
+        } catch (error) {
           notify.error(
-            error?.response?.data
-              ?.message ??
+            getErrorMessage(
+              error,
               "Failed to load employee.",
+            ),
           );
 
           throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
+      };
 
-  const create = async (
-    payload: CreateEmployeeDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await createEmployee(
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Employee created successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to create employee.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const update = async (
-    uuid: string,
-    payload: UpdateEmployeeDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await updateEmployee(
-          uuid,
-          payload,
-        );
-
-      notify.success(
-        data?.message ??
-          "Employee updated successfully.",
-      );
-
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to update employee.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async (
-    uuid: string,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await deleteEmployee(
-          uuid,
-        );
-
-      setEmployees(
-        (previous) =>
-          previous.filter(
-            (employee) =>
-              employee.uuid !== uuid,
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            CreateEmployeeDto,
+        ) =>
+          createEmployee(
+            payload,
           ),
-      );
 
-      if (
-        selectedEmployee?.uuid ===
-        uuid
-      ) {
-        setSelectedEmployee(
-          null,
-        );
-      }
+        onSuccess: async (
+          data,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Employee created successfully.",
+          );
 
-      notify.success(
-        data?.message ??
-          "Employee deleted successfully.",
-      );
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "employees",
+            ],
+          });
+        },
 
-      return data;
-    } catch (error: any) {
-      notify.error(
-        error?.response?.data
-          ?.message ??
-          "Failed to delete employee.",
-      );
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to create employee.",
+            ),
+          );
+        },
+      });
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          uuid,
+          payload,
+        }: {
+          uuid: string;
+
+          payload:
+            UpdateEmployeeDto;
+        }) =>
+          updateEmployee(
+            uuid,
+            payload,
+          ),
+
+        onSuccess: async (
+          data,
+          variables,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Employee updated successfully.",
+          );
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "employees",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "employee",
+                variables.uuid,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to update employee.",
+            ),
+          );
+        },
+      });
+
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          uuid: string,
+        ) =>
+          deleteEmployee(
+            uuid,
+          ),
+
+        onSuccess: async (
+          data,
+          uuid,
+        ) => {
+          notify.success(
+            data?.message ??
+              "Employee deleted successfully.",
+          );
+
+          queryClient.removeQueries({
+            queryKey: [
+              "employee",
+              uuid,
+            ],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "employees",
+            ],
+          });
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to delete employee.",
+            ),
+          );
+        },
+      });
+
+    return {
+      employees:
+        Array.isArray(
+          employeesQuery.data,
+        )
+          ? employeesQuery.data
+          : [],
+
+      loading:
+        employeesQuery.isLoading,
+
+      fetching:
+        employeesQuery.isFetching,
+
+      error:
+        employeesQuery.error,
+
+      refetch:
+        employeesQuery.refetch,
+
+      fetchEmployee,
+
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        uuid: string,
+        payload:
+          UpdateEmployeeDto,
+      ) =>
+        updateMutation.mutateAsync({
+          uuid,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-
-  return {
-    loading,
-
-    employees,
-    selectedEmployee,
-
-    fetchEmployees,
-    fetchEmployee,
-
-    create,
-    update,
-    remove,
-  };
-};

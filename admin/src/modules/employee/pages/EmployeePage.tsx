@@ -80,16 +80,23 @@ const createDefaultForm =
   });
 
 const EmployeePage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const {
     loading,
     employees,
-    fetchEmployees,
+
     fetchEmployee,
+
     create,
     update,
     remove,
+
+    saving,
+
+    refetch:
+      refetchEmployees,
   } = useEmployee();
 
   const {
@@ -99,12 +106,10 @@ const EmployeePage = () => {
 
   const {
     departments,
-    fetchDepartments,
   } = useDepartment();
 
   const {
     designations,
-    fetchDesignations,
   } = useDesignation();
 
   const {
@@ -120,16 +125,17 @@ const EmployeePage = () => {
   const [
     editUuid,
     setEditUuid,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     formData,
     setFormData,
-  ] = useState<CreateEmployeeDto>(
-    createDefaultForm,
-  );
+  ] =
+    useState<CreateEmployeeDto>(
+      createDefaultForm,
+    );
 
   const [
     viewOpen,
@@ -139,9 +145,9 @@ const EmployeePage = () => {
   const [
     selectedEmployee,
     setSelectedEmployee,
-  ] = useState<Employee | null>(
-    null,
-  );
+  ] = useState<
+    Employee | null
+  >(null);
 
   const [
     accountModalOpen,
@@ -151,44 +157,48 @@ const EmployeePage = () => {
   const [
     accountEmployee,
     setAccountEmployee,
-  ] = useState<Employee | null>(
-    null,
-  );
+  ] = useState<
+    Employee | null
+  >(null);
 
   useEffect(() => {
     void Promise.all([
-      fetchEmployees(),
       fetchOrganizationUnits(),
-      fetchDepartments(),
-      fetchDesignations(),
       fetchRoles(),
     ]);
   }, [
-    fetchEmployees,
     fetchOrganizationUnits,
-    fetchDepartments,
-    fetchDesignations,
     fetchRoles,
   ]);
 
   const resetForm =
     useCallback(() => {
-      setEditUuid(null);
+      setEditUuid(
+        null,
+      );
 
       setFormData(
         createDefaultForm(),
       );
     }, []);
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleClose = () => {
-    setOpen(false);
-    resetForm();
-  };
+      setOpen(
+        true,
+      );
+    };
+
+  const handleClose =
+    () => {
+      setOpen(
+        false,
+      );
+
+      resetForm();
+    };
 
   const handleOpenAccount = (
     employee: Employee,
@@ -202,462 +212,537 @@ const EmployeePage = () => {
     );
   };
 
-  const handleCloseAccount = () => {
-    setAccountModalOpen(
-      false,
-    );
+  const handleCloseAccount =
+    () => {
+      setAccountModalOpen(
+        false,
+      );
 
-    setAccountEmployee(
-      null,
-    );
-  };
+      setAccountEmployee(
+        null,
+      );
+    };
 
   const handleAccountSuccess =
     async () => {
-      await fetchEmployees();
-    };
+      await refetchEmployees();
+  };
 
-  const handleSubmit = async () => {
-    try {
-      const commonPayload = {
-        firstName:
-          formData.firstName.trim(),
-
-        lastName:
-          formData.lastName?.trim() ||
-          undefined,
-
-        displayName:
-          formData.displayName?.trim() ||
-          undefined,
-
-        email:
-          formData.email
-            .trim()
-            .toLowerCase(),
-
-        mobile:
-          formData.mobile?.trim() ||
-          undefined,
-
-        gender:
-          formData.gender,
-
-        organizationUnitUuid:
-          formData.organizationUnitUuid ||
-          undefined,
-
-        departmentUuid:
-          formData.departmentUuid ||
-          undefined,
-
-        designationUuid:
-          formData.designationUuid ||
-          undefined,
-
-        managerUuid:
-          formData.managerUuid ||
-          undefined,
-
-        joiningDate:
-          formData.joiningDate ||
-          undefined,
-
-        employmentType:
-          formData.employmentType,
-
-        avatarUrl:
-          formData.avatarUrl?.trim() ||
-          undefined,
-
-        status:
-          formData.status ??
-          "ACTIVE",
-      };
-
-      if (editUuid) {
-        const payload:
-          UpdateEmployeeDto = {
-          ...commonPayload,
-        };
-
-        await update(
-          editUuid,
-          payload,
-        );
-      } else {
-        const payload:
-          CreateEmployeeDto = {
-          ...commonPayload,
-
+  const handleSubmit =
+    async () => {
+      try {
+        const commonPayload = {
           firstName:
-            commonPayload.firstName,
+            formData.firstName.trim(),
+
+          lastName:
+            formData.lastName
+              ?.trim() ||
+            undefined,
+
+          displayName:
+            formData.displayName
+              ?.trim() ||
+            undefined,
 
           email:
-            commonPayload.email,
+            formData.email
+              .trim()
+              .toLowerCase(),
+
+          mobile:
+            formData.mobile
+              ?.trim() ||
+            undefined,
+
+          gender:
+            formData.gender,
+
+          organizationUnitUuid:
+            formData.organizationUnitUuid ||
+            undefined,
+
+          departmentUuid:
+            formData.departmentUuid ||
+            undefined,
+
+          designationUuid:
+            formData.designationUuid ||
+            undefined,
+
+          managerUuid:
+            formData.managerUuid ||
+            undefined,
+
+          joiningDate:
+            formData.joiningDate ||
+            undefined,
+
+          employmentType:
+            formData.employmentType,
+
+          avatarUrl:
+            formData.avatarUrl
+              ?.trim() ||
+            undefined,
+
+          status:
+            formData.status ??
+            "ACTIVE",
         };
 
-        await create(payload);
+        if (editUuid) {
+          const payload:
+            UpdateEmployeeDto = {
+            ...commonPayload,
+          };
+
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          const payload:
+            CreateEmployeeDto = {
+            ...commonPayload,
+
+            firstName:
+              commonPayload.firstName,
+
+            email:
+              commonPayload.email,
+          };
+
+          await create(
+            payload,
+          );
+        }
+
+        handleClose();
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
       }
+    };
 
-      await fetchEmployees();
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const employee =
+          await fetchEmployee(
+            uuid,
+          );
 
-      handleClose();
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
+        if (!employee) {
+          return;
+        }
 
-  const handleEdit = async (
-    uuid: string,
-  ) => {
-    try {
-      const employee =
-        await fetchEmployee(
+        setEditUuid(
           uuid,
         );
 
-      if (!employee) {
-        return;
+        setFormData({
+          firstName:
+            employee.firstName,
+
+          lastName:
+            employee.lastName ??
+            "",
+
+          displayName:
+            employee.displayName ??
+            "",
+
+          email:
+            employee.email,
+
+          mobile:
+            employee.mobile ??
+            "",
+
+          gender:
+            employee.gender ??
+            undefined,
+
+          organizationUnitUuid:
+            employee.organizationUnit
+              ?.uuid ?? "",
+
+          departmentUuid:
+            employee.department
+              ?.uuid ?? "",
+
+          designationUuid:
+            employee.designation
+              ?.uuid ?? "",
+
+          managerUuid:
+            employee.manager
+              ?.uuid ?? "",
+
+          joiningDate:
+            employee.joiningDate
+              ?.slice(
+                0,
+                10,
+              ) ?? "",
+
+          employmentType:
+            employee.employmentType ??
+            undefined,
+
+          avatarUrl:
+            employee.avatarUrl ??
+            "",
+
+          status:
+            employee.status,
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
       }
+    };
 
-      setEditUuid(uuid);
+  const handleView =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const employee =
+          await fetchEmployee(
+            uuid,
+          );
 
-      setFormData({
-        firstName:
-          employee.firstName,
+        if (!employee) {
+          return;
+        }
 
-        lastName:
-          employee.lastName ?? "",
-
-        displayName:
-          employee.displayName ?? "",
-
-        email:
-          employee.email,
-
-        mobile:
-          employee.mobile ?? "",
-
-        gender:
-          employee.gender ??
-          undefined,
-
-        organizationUnitUuid:
-          employee.organizationUnit
-            ?.uuid ?? "",
-
-        departmentUuid:
-          employee.department
-            ?.uuid ?? "",
-
-        designationUuid:
-          employee.designation
-            ?.uuid ?? "",
-
-        managerUuid:
-          employee.manager
-            ?.uuid ?? "",
-
-        joiningDate:
-          employee.joiningDate
-            ?.slice(0, 10) ?? "",
-
-        employmentType:
-          employee.employmentType ??
-          undefined,
-
-        avatarUrl:
-          employee.avatarUrl ?? "",
-
-        status:
-          employee.status,
-      });
-
-      setOpen(true);
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
-
-  const handleView = async (
-    uuid: string,
-  ) => {
-    try {
-      const employee =
-        await fetchEmployee(
-          uuid,
+        setSelectedEmployee(
+          employee,
         );
 
-      if (!employee) {
+        setViewOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this employee?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setSelectedEmployee(
-        employee,
-      );
-
-      setViewOpen(true);
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
-
-  const handleDelete = async (
-    uuid: string,
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this employee?",
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-
-      await fetchEmployees();
-    } catch (error: any) {
-      console.error(
-        error?.response?.data ??
-          error,
-      );
-    }
-  };
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
 
   const columns:
     DataTableColumn<Employee>[] = [
-      {
-        key: "employeeCode",
-        title: "Code",
-      },
-      {
-        key: "displayName",
-        title: "Employee",
+    {
+      key: "employeeCode",
+      title: "Code",
+    },
 
-        render: (row) =>
-          row.displayName ||
-          `${row.firstName} ${
-            row.lastName ?? ""
-          }`.trim(),
-      },
-      {
-        key: "organizationUnit",
-        title: "Location",
+    {
+      key: "displayName",
+      title: "Employee",
 
-        render: (row) =>
-          row.organizationUnit
-            ?.name ?? "-",
-      },
-      {
-        key: "department",
-        title: "Department",
+      render: (
+        row,
+      ) =>
+        row.displayName ||
+        `${row.firstName} ${
+          row.lastName ?? ""
+        }`.trim(),
+    },
 
-        render: (row) =>
-          row.department?.name ??
-          "-",
-      },
-      {
-        key: "designation",
-        title: "Designation",
+    {
+      key:
+        "organizationUnit",
+      title:
+        "Location",
 
-        render: (row) =>
-          row.designation?.name ??
-          "-",
-      },
-      {
-        key: "userAccount",
-        title: "Login Account",
-        align: "center",
+      render: (
+        row,
+      ) =>
+        row.organizationUnit
+          ?.name ?? "-",
+    },
 
-        render: (row) => {
-          if (!row.user) {
-            return (
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
-                >
-                  Not Created
-                </div>
+    {
+      key: "department",
+      title:
+        "Department",
 
-                <div
-                  style={{
-                    marginTop: 3,
-                    fontSize: 11,
-                    opacity: 0.65,
-                  }}
-                >
-                  No login access
-                </div>
-              </div>
-            );
-          }
+      render: (
+        row,
+      ) =>
+        row.department
+          ?.name ?? "-",
+    },
 
+    {
+      key: "designation",
+      title:
+        "Designation",
+
+      render: (
+        row,
+      ) =>
+        row.designation
+          ?.name ?? "-",
+    },
+
+    {
+      key:
+        "userAccount",
+      title:
+        "Login Account",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => {
+        if (!row.user) {
           return (
             <div>
               <div
                 style={{
-                  fontWeight: 500,
+                  fontSize:
+                    12,
+                  fontWeight:
+                    500,
                 }}
               >
-                {row.user.role?.name ??
-                  "No Role"}
+                Not Created
               </div>
 
               <div
                 style={{
-                  marginTop: 3,
-                  fontSize: 12,
-                  opacity: 0.7,
+                  marginTop:
+                    3,
+                  fontSize:
+                    11,
+                  opacity:
+                    0.65,
                 }}
               >
-                {row.user.status}
+                No login access
               </div>
             </div>
           );
-        },
-      },
-      {
-        key: "email",
-        title: "Email",
+        }
 
-        render: (row) =>
-          row.email || "-",
-      },
-      {
-        key: "mobile",
-        title: "Mobile",
+        return (
+          <div>
+            <div
+              style={{
+                fontWeight:
+                  500,
+              }}
+            >
+              {row.user.role
+                ?.name ??
+                "No Role"}
+            </div>
 
-        render: (row) =>
-          row.mobile || "-",
+            <div
+              style={{
+                marginTop:
+                  3,
+                fontSize:
+                  12,
+                opacity:
+                  0.7,
+              }}
+            >
+              {
+                row.user.status
+              }
+            </div>
+          </div>
+        );
       },
-      {
-        key: "status",
-        title: "Status",
-        align: "center",
-      },
-      {
-        key: "actions",
-        title: "Actions",
-        align: "center",
+    },
 
-        render: (row) => (
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "center",
-              gap: 8,
-            }}
+    {
+      key: "email",
+      title: "Email",
+
+      render: (
+        row,
+      ) =>
+        row.email ||
+        "-",
+    },
+
+    {
+      key: "mobile",
+      title: "Mobile",
+
+      render: (
+        row,
+      ) =>
+        row.mobile ||
+        "-",
+    },
+
+    {
+      key: "status",
+      title: "Status",
+      align:
+        "center",
+    },
+
+    {
+      key: "actions",
+      title: "Actions",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => (
+        <div
+          style={{
+            display:
+              "flex",
+            justifyContent:
+              "center",
+            gap: 8,
+          }}
+        >
+          <Button
+            size="sm"
+            aria-label={`View ${
+              row.displayName ||
+              row.firstName
+            }`}
+            title="View Employee"
+            onClick={() =>
+              handleView(
+                row.uuid,
+              )
+            }
           >
-            <Button
-              size="sm"
-              aria-label={`View ${
-                row.displayName ||
-                row.firstName
-              }`}
-              title="View Employee"
-              onClick={() =>
-                handleView(
-                  row.uuid,
-                )
-              }
-            >
-              <Eye size={16} />
-            </Button>
+            <Eye
+              size={16}
+            />
+          </Button>
 
-            <Button
-              size="sm"
-              variant={
-                row.user
-                  ? "secondary"
-                  : undefined
-              }
-              aria-label={
-                row.user
-                  ? `Manage access for ${
-                      row.displayName ||
-                      row.firstName
-                    }`
-                  : `Create login for ${
-                      row.displayName ||
-                      row.firstName
-                    }`
-              }
-              title={
-                row.user
-                  ? "Manage Access"
-                  : "Create Login"
-              }
-              onClick={() =>
-                handleOpenAccount(
-                  row,
-                )
-              }
-            >
-              {row.user ? (
-                <ShieldCheck
-                  size={16}
-                />
-              ) : (
-                <UserPlus
-                  size={16}
-                />
-              )}
-            </Button>
-
-            <Button
-              size="sm"
-              aria-label={`Edit ${
-                row.displayName ||
-                row.firstName
-              }`}
-              title="Edit Employee"
-              onClick={() =>
-                handleEdit(
-                  row.uuid,
-                )
-              }
-            >
-              <SquarePen
+          <Button
+            size="sm"
+            variant={
+              row.user
+                ? "secondary"
+                : undefined
+            }
+            aria-label={
+              row.user
+                ? `Manage access for ${
+                    row.displayName ||
+                    row.firstName
+                  }`
+                : `Create login for ${
+                    row.displayName ||
+                    row.firstName
+                  }`
+            }
+            title={
+              row.user
+                ? "Manage Access"
+                : "Create Login"
+            }
+            onClick={() =>
+              handleOpenAccount(
+                row,
+              )
+            }
+          >
+            {row.user ? (
+              <ShieldCheck
                 size={16}
               />
-            </Button>
+            ) : (
+              <UserPlus
+                size={16}
+              />
+            )}
+          </Button>
 
-            <Button
-              size="sm"
-              variant="danger"
-              aria-label={`Delete ${
-                row.displayName ||
-                row.firstName
-              }`}
-              title="Delete Employee"
-              onClick={() =>
-                handleDelete(
-                  row.uuid,
-                )
-              }
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
-        ),
-      },
-    ];
+          <Button
+            size="sm"
+            aria-label={`Edit ${
+              row.displayName ||
+              row.firstName
+            }`}
+            title="Edit Employee"
+            onClick={() =>
+              handleEdit(
+                row.uuid,
+              )
+            }
+          >
+            <SquarePen
+              size={16}
+            />
+          </Button>
+
+          <Button
+            size="sm"
+            variant="danger"
+            aria-label={`Delete ${
+              row.displayName ||
+              row.firstName
+            }`}
+            title="Delete Employee"
+            onClick={() =>
+              handleDelete(
+                row.uuid,
+              )
+            }
+          >
+            <Trash2
+              size={16}
+            />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -667,14 +752,17 @@ const EmployeePage = () => {
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               gap: 12,
             }}
           >
             <Button
               variant="secondary"
               onClick={() =>
-                navigate(-1)
+                navigate(
+                  -1,
+                )
               }
             >
               Back
@@ -693,9 +781,15 @@ const EmployeePage = () => {
 
       <Card>
         <DataTable
-          loading={loading}
-          data={employees ?? []}
-          columns={columns}
+          loading={
+            loading
+          }
+          data={
+            employees
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           emptyMessage="No Employees Found."
@@ -709,14 +803,22 @@ const EmployeePage = () => {
             : "Create Employee"
         }
         isEdit={
-          Boolean(editUuid)
+          Boolean(
+            editUuid,
+          )
         }
         editingUuid={
           editUuid
         }
-        open={open}
-        loading={loading}
-        employees={employees}
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        employees={
+          employees
+        }
         organizationUnits={
           organizationUnits
         }
@@ -726,19 +828,31 @@ const EmployeePage = () => {
         designations={
           designations
         }
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleClose}
-        onSubmit={handleSubmit}
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleClose
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
 
       <EmployeeDetailsModal
-        open={viewOpen}
+        open={
+          viewOpen
+        }
         employee={
           selectedEmployee
         }
         onClose={() => {
-          setViewOpen(false);
+          setViewOpen(
+            false,
+          );
 
           setSelectedEmployee(
             null,
@@ -753,7 +867,9 @@ const EmployeePage = () => {
         employee={
           accountEmployee
         }
-        roles={roles ?? []}
+        roles={
+          roles ?? []
+        }
         onClose={
           handleCloseAccount
         }
