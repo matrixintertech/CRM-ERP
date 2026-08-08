@@ -66,13 +66,10 @@ const {
     stateOptions,
 } = useStates();
 
-  const {
-    dropdownCities:
-      cityOptions,
-
-    fetchDropdownCities:
-      fetchCityDropdown,
-  } = useCities();
+const {
+  dropdownCities:
+    cityOptions,
+} = useCities();
 
   const [
     openModal,
@@ -125,7 +122,7 @@ const {
     );
   };
 
-  
+
   const handleCloseModal =
     () => {
       setOpenModal(
@@ -146,36 +143,19 @@ const {
       );
     };
 
-  const handleStateChange =
-    async (
-      stateUuid: string,
-    ) => {
-      setFormData(
-        (previous) => ({
-          ...previous,
+const handleStateChange = (
+  stateUuid: string,
+) => {
+  setFormData(
+    (previous) => ({
+      ...previous,
 
-          stateUuid,
+      stateUuid,
 
-          cityUuid:
-            "",
-        }),
-      );
-
-      if (!stateUuid) {
-        return;
-      }
-
-      try {
-        await fetchCityDropdown(
-          stateUuid,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load cities:",
-          error,
-        );
-      }
-    };
+      cityUuid: "",
+    }),
+  );
+};
 
   const getBasePayload =
     (): CreateClientDto => ({
