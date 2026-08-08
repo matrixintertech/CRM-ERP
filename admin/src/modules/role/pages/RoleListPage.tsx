@@ -1,209 +1,379 @@
-import { useEffect, useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
-import { KeyRound, SquarePen, Trash2 } from "lucide-react";
+import {
+  KeyRound,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import DataTable from "@/shared/components/DataTable/DataTable";
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import RoleModal from "../components/RoleModal";
 
-import { useRole } from "../hooks/useRoles";
+import {
+  useRole,
+} from "../hooks/useRoles";
 
-import type { Role, RoleFormData, UpdateRoleDto } from "../types/role.types";
+import type {
+  Role,
+  RoleFormData,
+  UpdateRoleDto,
+} from "../types/role.types";
 
-const createDefaultForm = (): RoleFormData => ({
-  name: "",
-  code: "",
-  description: "",
-  status: "ACTIVE",
-});
+const createDefaultForm =
+  (): RoleFormData => ({
+    name: "",
+    code: "",
+    description: "",
+    status: "ACTIVE",
+  });
 
 const RolePage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  useDocumentTitle("User Roles");
+  useDocumentTitle(
+    "User Roles",
+  );
 
-  const { loading, roles, fetchRoles, fetchRole, create, update, remove } =
-    useRole();
+  const {
+    loading,
+    roles,
 
-  const [open, setOpen] = useState(false);
+    fetchRole,
 
-  const [editUuid, setEditUuid] = useState<string | null>(null);
+    create,
+    update,
+    remove,
 
-  const [formData, setFormData] = useState<RoleFormData>(createDefaultForm);
+    saving,
+  } = useRole();
 
-  useEffect(() => {
-    void fetchRoles();
-  }, [fetchRoles]);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
+
+  const [
+    editUuid,
+    setEditUuid,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    formData,
+    setFormData,
+  ] =
+    useState<RoleFormData>(
+      createDefaultForm,
+    );
 
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
 
-    setFormData(createDefaultForm());
+    setFormData(
+      createDefaultForm(),
+    );
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    resetForm();
-  };
+  const handleClose =
+    () => {
+      setOpen(
+        false,
+      );
 
-  const handleCreateOpen = () => {
-    resetForm();
-    setOpen(true);
-  };
+      resetForm();
+    };
 
-  const handleSubmit = async () => {
-    try {
-      if (editUuid) {
-        const payload: UpdateRoleDto = {
-          name: formData.name.trim(),
+  const handleCreateOpen =
+    () => {
+      resetForm();
 
-          code: formData.code.trim().toUpperCase(),
+      setOpen(
+        true,
+      );
+    };
 
-          description: formData.description.trim() || undefined,
+  const handleSubmit =
+    async () => {
+      try {
+        if (editUuid) {
+          const payload:
+            UpdateRoleDto = {
+            name:
+              formData.name.trim(),
 
-          status: formData.status,
-        };
+            code:
+              formData.code
+                .trim()
+                .toUpperCase(),
 
-        await update(editUuid, payload);
-      } else {
-        await create({
-          name: formData.name.trim(),
+            description:
+              formData.description
+                .trim() ||
+              undefined,
 
-          code: formData.code.trim().toUpperCase(),
+            status:
+              formData.status,
+          };
 
-          description: formData.description.trim() || undefined,
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          await create({
+            name:
+              formData.name.trim(),
 
-          isSystem: false,
-        });
+            code:
+              formData.code
+                .trim()
+                .toUpperCase(),
+
+            description:
+              formData.description
+                .trim() ||
+              undefined,
+
+            isSystem:
+              false,
+          });
+        }
+
+        handleClose();
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
       }
+    };
 
-      await fetchRoles();
-      handleClose();
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      try {
+        const role =
+          await fetchRole(
+            uuid,
+          );
 
-  const handleEdit = async (uuid: string) => {
-    try {
-      const role = await fetchRole(uuid);
+        if (!role) {
+          return;
+        }
 
-      if (!role) {
+        setEditUuid(
+          uuid,
+        );
+
+        setFormData({
+          name:
+            role.name,
+
+          code:
+            role.code,
+
+          description:
+            role.description ??
+            "",
+
+          status:
+            role.status,
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this role?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setEditUuid(uuid);
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
 
-      setFormData({
-        name: role.name,
-        code: role.code,
-
-        description: role.description ?? "",
-
-        status: role.status,
-      });
-
-      setOpen(true);
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
-
-  const handleDelete = async (uuid: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this role?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
-
-  const columns: DataTableColumn<Role>[] = [
+  const columns:
+    DataTableColumn<Role>[] = [
     {
-      key: "name",
-      title: "Role",
+      key:
+        "name",
+      title:
+        "Role",
     },
-    {
-      key: "code",
-      title: "Code",
-    },
-    {
-      key: "description",
-      title: "Description",
 
-      render: (row) => row.description || "-",
-    },
     {
-      key: "employees",
-      title: "Employees",
-      align: "center",
+      key:
+        "code",
+      title:
+        "Code",
+    },
 
-      render: (row) => row._count?.employees ?? 0,
-    },
     {
-      key: "isSystem",
-      title: "Type",
-      align: "center",
+      key:
+        "description",
+      title:
+        "Description",
 
-      render: (row) => (row.isSystem ? "System" : "Custom"),
+      render: (
+        row,
+      ) =>
+        row.description ||
+        "-",
     },
-    {
-      key: "status",
-      title: "Status",
-      align: "center",
-    },
-    {
-      key: "actions",
-      title: "Actions",
-      align: "center",
 
-      render: (row) => (
+    {
+      key:
+        "employees",
+      title:
+        "Employees",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) =>
+        row._count
+          ?.employees ??
+        0,
+    },
+
+    {
+      key:
+        "isSystem",
+      title:
+        "Type",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) =>
+        row.isSystem
+          ? "System"
+          : "Custom",
+    },
+
+    {
+      key:
+        "status",
+      title:
+        "Status",
+      align:
+        "center",
+    },
+
+    {
+      key:
+        "actions",
+      title:
+        "Actions",
+      align:
+        "center",
+
+      render: (
+        row,
+      ) => (
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
+            display:
+              "flex",
+            justifyContent:
+              "center",
             gap: 8,
           }}
         >
           <Button
             size="sm"
             aria-label="Assign permissions"
-            onClick={() => navigate(`/settings/roles/${row.uuid}/permissions`)}
+            onClick={() =>
+              navigate(
+                `/settings/roles/${row.uuid}/permissions`,
+              )
+            }
           >
-            <KeyRound size={16} />
+            <KeyRound
+              size={16}
+            />
           </Button>
 
           <Button
             size="sm"
-            disabled={row.isSystem}
-            onClick={() => handleEdit(row.uuid)}
+            disabled={
+              row.isSystem
+            }
+            onClick={() =>
+              handleEdit(
+                row.uuid,
+              )
+            }
           >
-            <SquarePen size={16} />
+            <SquarePen
+              size={16}
+            />
           </Button>
 
           <Button
             size="sm"
             variant="danger"
-            disabled={row.isSystem}
-            onClick={() => handleDelete(row.uuid)}
+            disabled={
+              row.isSystem
+            }
+            onClick={() =>
+              handleDelete(
+                row.uuid,
+              )
+            }
           >
-            <Trash2 size={16} />
+            <Trash2
+              size={16}
+            />
           </Button>
         </div>
       ),
@@ -218,24 +388,44 @@ const RolePage = () => {
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               gap: 12,
             }}
           >
-            <Button variant="secondary" onClick={() => navigate(-1)}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  -1,
+                )
+              }
+            >
               Back
             </Button>
 
-            <Button onClick={handleCreateOpen}>Add Role</Button>
+            <Button
+              onClick={
+                handleCreateOpen
+              }
+            >
+              Add Role
+            </Button>
           </div>
         }
       />
 
       <Card>
         <DataTable
-          loading={loading}
-          data={roles ?? []}
-          columns={columns}
+          loading={
+            loading
+          }
+          data={
+            roles
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           emptyMessage="No Roles Found."
@@ -243,14 +433,34 @@ const RolePage = () => {
       </Card>
 
       <RoleModal
-        title={editUuid ? "Edit Role" : "Create Role"}
-        isEdit={Boolean(editUuid)}
-        open={open}
-        loading={loading}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleClose}
-        onSubmit={handleSubmit}
+        title={
+          editUuid
+            ? "Edit Role"
+            : "Create Role"
+        }
+        isEdit={
+          Boolean(
+            editUuid,
+          )
+        }
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleClose
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );

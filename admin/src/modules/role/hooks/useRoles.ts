@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   assignRolePermissions,
@@ -18,248 +21,341 @@ import {
 import type {
   AssignRolePermissionsDto,
   CreateRoleDto,
-  Role,
-  RolePermissionResponse,
   UpdateRoleDto,
 } from "../types/role.types";
 
-export const useRole = () => {
-  const [loading, setLoading] =
-    useState(false);
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  const [
-    roles,
-    setRoles,
-  ] = useState<Role[]>([]);
-
-  const [
-    selectedRole,
-    setSelectedRole,
-  ] = useState<Role | null>(
-    null,
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
   );
+};
 
-  const [
-    selectedRolePermissions,
-    setSelectedRolePermissions,
-  ] =
-    useState<RolePermissionResponse | null>(
-      null,
-    );
+export const useRole = () => {
+  const queryClient =
+    useQueryClient();
 
-  const fetchRoles =
-    useCallback(async () => {
-      setLoading(true);
+  const rolesQuery =
+    useQuery({
+      queryKey: [
+        "roles",
+      ],
 
+      queryFn: () =>
+        getRoles(),
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
+  const fetchRole =
+    async (
+      uuid: string,
+    ) => {
       try {
-        const data =
-          await getRoles();
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "role",
+            uuid,
+          ],
 
-        setRoles(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
-
-        return data;
+          queryFn: () =>
+            getRole(
+              uuid,
+            ),
+        });
       } catch (error) {
         notify.error(
-          "Failed to load roles.",
+          getErrorMessage(
+            error,
+            "Failed to load role.",
+          ),
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    }, []);
-
-  const fetchRole =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        setLoading(true);
-
-        try {
-          const data =
-            await getRole(uuid);
-
-          setSelectedRole(data);
-
-          return data;
-        } catch (error) {
-          notify.error(
-            "Failed to load role.",
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+    };
 
   const fetchRolePermissions =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        setLoading(true);
+    async (
+      uuid: string,
+    ) => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "role-permissions-detail",
+            uuid,
+          ],
 
-        try {
-          const data =
-            await getRolePermissions(
+          queryFn: () =>
+            getRolePermissions(
               uuid,
-            );
-
-          setSelectedRolePermissions(
-            data,
-          );
-
-          return data;
-        } catch (error) {
-          notify.error(
+            ),
+        });
+      } catch (error) {
+        notify.error(
+          getErrorMessage(
+            error,
             "Failed to load role permissions.",
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
-
-  const create = async (
-    payload: CreateRoleDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await createRole(payload);
-
-      notify.success(
-        "Role created successfully.",
-      );
-
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to create role.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const update = async (
-    uuid: string,
-    payload: UpdateRoleDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await updateRole(
-          uuid,
-          payload,
+          ),
         );
 
-      notify.success(
-        "Role updated successfully.",
-      );
+        throw error;
+      }
+    };
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update role.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async (
-    uuid: string,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await deleteRole(uuid);
-
-      setRoles((previous) =>
-        previous.filter(
-          (role) =>
-            role.uuid !== uuid,
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload:
+          CreateRoleDto,
+      ) =>
+        createRole(
+          payload,
         ),
-      );
 
-      notify.success(
-        "Role deleted successfully.",
-      );
-
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to delete role.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const assignPermissions = async (
-    uuid: string,
-    payload: AssignRolePermissionsDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await assignRolePermissions(
-          uuid,
-          payload,
+      onSuccess: async () => {
+        notify.success(
+          "Role created successfully.",
         );
 
-      notify.success(
-        "Role permissions updated successfully.",
-      );
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "roles",
+          ],
+        });
+      },
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update role permissions.",
-      );
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create role.",
+          ),
+        );
+      },
+    });
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
+
+        payload:
+          UpdateRoleDto;
+      }) =>
+        updateRole(
+          uuid,
+          payload,
+        ),
+
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
+        notify.success(
+          "Role updated successfully.",
+        );
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "roles",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "role",
+              variables.uuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update role.",
+          ),
+        );
+      },
+    });
+
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        uuid: string,
+      ) =>
+        deleteRole(
+          uuid,
+        ),
+
+      onSuccess: async (
+        _data,
+        uuid,
+      ) => {
+        notify.success(
+          "Role deleted successfully.",
+        );
+
+        queryClient.removeQueries({
+          queryKey: [
+            "role",
+            uuid,
+          ],
+        });
+
+        queryClient.removeQueries({
+          queryKey: [
+            "role-permissions-detail",
+            uuid,
+          ],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "roles",
+          ],
+        });
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete role.",
+          ),
+        );
+      },
+    });
+
+  const assignPermissionsMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
+
+        payload:
+          AssignRolePermissionsDto;
+      }) =>
+        assignRolePermissions(
+          uuid,
+          payload,
+        ),
+
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
+        notify.success(
+          "Role permissions updated successfully.",
+        );
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "role-permissions-detail",
+              variables.uuid,
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "role-permissions",
+              variables.uuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update role permissions.",
+          ),
+        );
+      },
+    });
 
   return {
-    loading,
+    roles:
+      Array.isArray(
+        rolesQuery.data,
+      )
+        ? rolesQuery.data
+        : [],
 
-    roles,
-    selectedRole,
-    selectedRolePermissions,
+    loading:
+      rolesQuery.isLoading,
 
-    fetchRoles,
+    fetching:
+      rolesQuery.isFetching,
+
+    error:
+      rolesQuery.error,
+
+    refetch:
+      rolesQuery.refetch,
+
     fetchRole,
+
     fetchRolePermissions,
 
-    create,
-    update,
-    remove,
-    assignPermissions,
+    create:
+      createMutation.mutateAsync,
+
+    update: (
+      uuid: string,
+      payload:
+        UpdateRoleDto,
+    ) =>
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    assignPermissions: (
+      uuid: string,
+      payload:
+        AssignRolePermissionsDto,
+    ) =>
+      assignPermissionsMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
+
+    savingPermissions:
+      assignPermissionsMutation.isPending,
   };
 };
