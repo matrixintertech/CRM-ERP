@@ -61,13 +61,10 @@ const ClientListPage = () => {
     saving,
   } = useClients();
 
-  const {
-    dropdown:
-      stateOptions,
-
-    fetchDropdown:
-      fetchStateDropdown,
-  } = useStates();
+const {
+  dropdown:
+    stateOptions,
+} = useStates();
 
   const {
     dropdownCities:
@@ -119,24 +116,16 @@ const ClientListPage = () => {
     });
   };
 
-  const handleOpenCreateModal =
-    async () => {
-      try {
-        await fetchStateDropdown();
+ const handleOpenCreateModal =
+  () => {
+    resetForm();
 
-        resetForm();
+    setOpenModal(
+      true,
+    );
+  };
 
-        setOpenModal(
-          true,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to prepare client form:",
-          error,
-        );
-      }
-    };
-
+  
   const handleCloseModal =
     () => {
       setOpenModal(
