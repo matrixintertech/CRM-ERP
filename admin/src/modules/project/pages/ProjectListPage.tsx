@@ -133,13 +133,11 @@ const ProjectListPage = () => {
       loadingEmployees,
   } = useEmployee();
 
-  const {
-    projectRoles,
-    fetchProjectRoles,
-
-    loading:
-      loadingRoles,
-  } = useProjectRoles();
+const {
+  projectRoles,
+  loading:
+    loadingRoles,
+} = useProjectRoles();
 
   const [
     openModal,
@@ -418,48 +416,43 @@ const ProjectListPage = () => {
       }
     };
 
-  const handleManage =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        setSelectedProject(
-          null,
-        );
+const handleManage =
+  async (
+    uuid: string,
+  ) => {
+    try {
+      setSelectedProject(
+        null,
+      );
 
-        const [
-          project,
-        ] =
-          await Promise.all([
-            fetchProject(
-              uuid,
-            ),
+      const [
+        project,
+      ] =
+        await Promise.all([
+          fetchProject(
+            uuid,
+          ),
 
-            employees.length ===
-            0
-              ? fetchEmployees()
-              : Promise.resolve(),
+          employees.length ===
+          0
+            ? fetchEmployees()
+            : Promise.resolve(),
+        ]);
 
-            projectRoles.length ===
-            0
-              ? fetchProjectRoles()
-              : Promise.resolve(),
-          ]);
+      setSelectedProject(
+        project,
+      );
 
-        setSelectedProject(
-          project,
-        );
-
-        setOpenWorkspace(
-          true,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to open project workspace:",
-          error,
-        );
-      }
-    };
+      setOpenWorkspace(
+        true,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to open project workspace:",
+        error,
+      );
+    }
+  };
 
   const handleCloseWorkspace =
     () => {
