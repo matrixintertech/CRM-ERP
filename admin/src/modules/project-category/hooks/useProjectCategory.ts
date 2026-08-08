@@ -1,7 +1,8 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   notify,
@@ -17,239 +18,241 @@ import {
 
 import type {
   CreateProjectCategoryDto,
-  ProjectCategory,
-  ProjectCategoryFormData,
   UpdateProjectCategoryDto,
 } from "../types/project-category.types";
 
-const initialFormData:
-  ProjectCategoryFormData = {
-    name: "",
-    code: "",
-    description: "",
-    color: "#3B82F6",
-    sortOrder: 0,
-    status: "ACTIVE",
-  };
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-export const useProjectCategories = () => {
-  const [
-    categories,
-    setCategories,
-  ] =
-    useState<ProjectCategory[]>([]);
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
+  );
+};
 
-  const [
-    selectedCategory,
-    setSelectedCategory,
-  ] =
-    useState<ProjectCategory | null>(
-      null,
-    );
+export const useProjectCategories =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(false);
+    const categoriesQuery =
+      useQuery({
+        queryKey: [
+          "project-categories",
+        ],
 
-  const [
-    formData,
-    setFormData,
-  ] =
-    useState<ProjectCategoryFormData>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+        queryFn:
+          getProjectCategories,
 
-  const fetchCategories =
-    useCallback(async () => {
-      try {
-        setLoading(true);
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        const data =
-          await getProjectCategories();
-
-        setCategories(
-          data.categories ?? [],
-        );
-
-        return data;
-      } catch (error) {
-        notify.error(
-          "Failed to load project categories.",
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const fetchCategory =
-    useCallback(
+    const fetchCategory =
       async (
         uuid: string,
       ) => {
         try {
-          setLoading(true);
-
           const data =
-            await getProjectCategoryByUuid(
-              uuid,
-            );
+            await queryClient.fetchQuery({
+              queryKey: [
+                "project-category",
+                uuid,
+              ],
 
-          setSelectedCategory(
-            data.category,
-          );
+              queryFn: () =>
+                getProjectCategoryByUuid(
+                  uuid,
+                ),
+            });
 
           return data.category;
         } catch (error) {
           notify.error(
-            "Failed to load project category.",
+            getErrorMessage(
+              error,
+              "Failed to load project category.",
+            ),
           );
 
           throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
+      };
 
-  const create =
-    useCallback(
-      async (
-        payload:
-          CreateProjectCategoryDto,
-      ) => {
-        try {
-          setLoading(true);
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            CreateProjectCategoryDto,
+        ) =>
+          createProjectCategory(
+            payload,
+          ),
 
-          const data =
-            await createProjectCategory(
-              payload,
-            );
-
+        onSuccess: async () => {
           notify.success(
             "Project category created successfully.",
           );
 
-          return data.category;
-        } catch (error) {
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "project-categories",
+            ],
+          });
+        },
+
+        onError: (error) => {
           notify.error(
-            "Failed to create project category.",
+            getErrorMessage(
+              error,
+              "Failed to create project category.",
+            ),
           );
+        },
+      });
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          uuid,
+          payload,
+        }: {
+          uuid: string;
 
-  const update =
-    useCallback(
-      async (
-        uuid: string,
-        payload:
-          UpdateProjectCategoryDto,
-      ) => {
-        try {
-          setLoading(true);
+          payload:
+            UpdateProjectCategoryDto;
+        }) =>
+          updateProjectCategory(
+            uuid,
+            payload,
+          ),
 
-          const data =
-            await updateProjectCategory(
-              uuid,
-              payload,
-            );
-
+        onSuccess: async (
+          _data,
+          variables,
+        ) => {
           notify.success(
             "Project category updated successfully.",
           );
 
-          return data.category;
-        } catch (error) {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "project-categories",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "project-category",
+                variables.uuid,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
           notify.error(
-            "Failed to update project category.",
+            getErrorMessage(
+              error,
+              "Failed to update project category.",
+            ),
           );
+        },
+      });
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
-
-  const remove =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        try {
-          setLoading(true);
-
-          await deleteProjectCategory(
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          uuid: string,
+        ) =>
+          deleteProjectCategory(
             uuid,
-          );
+          ),
 
-          setCategories(
-            (previous) =>
-              previous.filter(
-                (category) =>
-                  category.uuid !==
-                  uuid,
-              ),
-          );
-
+        onSuccess: async (
+          _data,
+          uuid,
+        ) => {
           notify.success(
             "Project category deleted successfully.",
           );
-        } catch (error) {
+
+          queryClient.removeQueries({
+            queryKey: [
+              "project-category",
+              uuid,
+            ],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "project-categories",
+            ],
+          });
+        },
+
+        onError: (error) => {
           notify.error(
-            "Failed to delete project category.",
+            getErrorMessage(
+              error,
+              "Failed to delete project category.",
+            ),
           );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
-
-  const resetForm =
-    useCallback(() => {
-      setFormData({
-        ...initialFormData,
+        },
       });
-    }, []);
 
-  const clearSelectedCategory =
-    useCallback(() => {
-      setSelectedCategory(null);
-    }, []);
+    return {
+      categories:
+        categoriesQuery.data
+          ?.categories ?? [],
 
-  return {
-    loading,
+      loading:
+        categoriesQuery.isLoading,
 
-    categories,
-    selectedCategory,
+      fetching:
+        categoriesQuery.isFetching,
 
-    formData,
-    setFormData,
+      error:
+        categoriesQuery.error,
 
-    fetchCategories,
-    fetchCategory,
+      refetch:
+        categoriesQuery.refetch,
 
-    create,
-    update,
-    remove,
+      fetchCategory,
 
-    resetForm,
-    clearSelectedCategory,
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        uuid: string,
+        payload:
+          UpdateProjectCategoryDto,
+      ) =>
+        updateMutation.mutateAsync({
+          uuid,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-};
