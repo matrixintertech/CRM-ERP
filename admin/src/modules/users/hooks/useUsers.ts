@@ -1,7 +1,8 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   notify,
@@ -16,33 +17,34 @@ import {
 
 import type {
   UpdateUserPermissionsDto,
-  User,
-  UserPermissions,
   UserQueryParams,
-  UsersResponse,
 } from "../types/user.types";
 
 const getErrorMessage = (
   error: unknown,
   fallbackMessage: string,
 ) => {
-  const apiError = error as {
-    response?: {
-      data?: {
-        message?: string;
-        errors?: string[];
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: string[];
+        };
       };
     };
-  };
 
   const errors =
-    apiError.response?.data?.errors;
+    apiError.response?.data
+      ?.errors;
 
   if (
     Array.isArray(errors) &&
     errors.length > 0
   ) {
-    return errors.join(", ");
+    return errors.join(
+      ", ",
+    );
   }
 
   return (
@@ -52,273 +54,184 @@ const getErrorMessage = (
   );
 };
 
-export const useUsers = () => {
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+export const useUsers = (
+  params: UserQueryParams = {},
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [
-    users,
-    setUsers,
-  ] = useState<User[]>([]);
+  const usersQuery =
+    useQuery({
+      queryKey: [
+        "users",
+        params,
+      ],
 
-  const [
-    total,
-    setTotal,
-  ] = useState(0);
-
-  const [
-    page,
-    setPage,
-  ] = useState(1);
-
-  const [
-    limit,
-    setLimit,
-  ] = useState(10);
-
-  const [
-    totalPages,
-    setTotalPages,
-  ] = useState(0);
-
-  const [
-    selectedUser,
-    setSelectedUser,
-  ] =
-    useState<User | null>(
-      null,
-    );
-
-  const [
-    permissions,
-    setPermissions,
-  ] =
-    useState<UserPermissions | null>(
-      null,
-    );
-
-  const fetchUsers =
-    useCallback(
-      async (
-        params: UserQueryParams = {},
-      ) => {
-        try {
-          setLoading(true);
-
-          const response:
-            UsersResponse =
-            await getUsers(
-              params,
-            );
-
-          setUsers(
-            response.users,
-          );
-
-          setTotal(
-            response.total,
-          );
-
-          setPage(
-            response.page,
-          );
-
-          setLimit(
-            response.limit,
-          );
-
-          setTotalPages(
-            response.totalPages,
-          );
-
-          return response;
-        } catch (
-          error: unknown
-        ) {
-          console.error(
-            "Failed to load users:",
-            error,
-          );
-
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load users.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+      queryFn: () =>
+        getUsers(
+          params,
+        ),
+    });
 
   const fetchUser =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        try {
-          setLoading(true);
+    async (
+      uuid: string,
+    ) => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "user",
+            uuid,
+          ],
 
-          const user =
-            await getUserByUuid(
+          queryFn: () =>
+            getUserByUuid(
               uuid,
-            );
-
-          setSelectedUser(
-            user,
-          );
-
-          return user;
-        } catch (
-          error: unknown
-        ) {
-          console.error(
-            "Failed to load user:",
-            error,
-          );
-
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load user.",
             ),
-          );
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load user:",
+          error,
+        );
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load user.",
+          ),
+        );
+
+        throw error;
+      }
+    };
 
   const fetchPermissions =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        try {
-          setLoading(true);
+    async (
+      uuid: string,
+    ) => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "user-permissions",
+            uuid,
+          ],
 
-          const response =
-            await getUserPermissions(
+          queryFn: () =>
+            getUserPermissions(
               uuid,
-            );
-
-          setPermissions(
-            response,
-          );
-
-          return response;
-        } catch (
-          error: unknown
-        ) {
-          console.error(
-            "Failed to load user permissions:",
-            error,
-          );
-
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load user permissions.",
             ),
-          );
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load user permissions:",
+          error,
+        );
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load user permissions.",
+          ),
+        );
 
-  const savePermissions =
-    useCallback(
-      async (
-        uuid: string,
+        throw error;
+      }
+    };
+
+  const permissionsMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
+
         payload:
-          UpdateUserPermissionsDto,
+          UpdateUserPermissionsDto;
+      }) =>
+        updateUserPermissions(
+          uuid,
+          payload,
+        ),
+
+      onSuccess: async (
+        _response,
+        variables,
       ) => {
-        try {
-          setLoading(true);
+        notify.success(
+          "User permissions updated successfully.",
+        );
 
-          const response =
-            await updateUserPermissions(
-              uuid,
-              payload,
-            );
-
-          setPermissions(
-            response,
-          );
-
-          notify.success(
-            "User permissions updated successfully.",
-          );
-
-          return response;
-        } catch (
-          error: unknown
-        ) {
-          console.error(
-            "Failed to update user permissions:",
-            error,
-          );
-
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to update user permissions.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "user-permissions",
+            variables.uuid,
+          ],
+        });
       },
-      [],
-    );
 
-  const clearSelectedUser =
-    useCallback(() => {
-      setSelectedUser(
-        null,
-      );
-    }, []);
+      onError: (error) => {
+        console.error(
+          "Failed to update user permissions:",
+          error,
+        );
 
-  const clearPermissions =
-    useCallback(() => {
-      setPermissions(
-        null,
-      );
-    }, []);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update user permissions.",
+          ),
+        );
+      },
+    });
+
+  const response =
+    usersQuery.data;
 
   return {
-    loading,
+    users:
+      response?.users ?? [],
 
-    users,
-    total,
-    page,
-    limit,
-    totalPages,
+    total:
+      response?.total ?? 0,
 
-    selectedUser,
-    permissions,
+    page:
+      response?.page ?? 1,
 
-    fetchUsers,
+    limit:
+      response?.limit ?? 10,
+
+    totalPages:
+      response?.totalPages ?? 0,
+
+    loading:
+      usersQuery.isLoading,
+
+    fetching:
+      usersQuery.isFetching,
+
+    error:
+      usersQuery.error,
+
+    refetch:
+      usersQuery.refetch,
+
     fetchUser,
-    fetchPermissions,
-    savePermissions,
 
-    clearSelectedUser,
-    clearPermissions,
+    fetchPermissions,
+
+    savePermissions: (
+      uuid: string,
+      payload:
+        UpdateUserPermissionsDto,
+    ) =>
+      permissionsMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    savingPermissions:
+      permissionsMutation.isPending,
   };
 };

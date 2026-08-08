@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
@@ -8,31 +14,46 @@ import Button from "@/shared/components/Button";
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
-import { useUsers } from "../hooks/useUsers";
+import {
+  useUsers,
+} from "../hooks/useUsers";
 
-import { useRole } from "../../role/hooks/useRoles";
+import {
+  useRole,
+} from "../../role/hooks/useRoles";
 
-import { updateEmployeeUserAccount } from "../api/employee-user-account.api";
+import {
+  updateEmployeeUserAccount,
+} from "../api/employee-user-account.api";
+
+import {
+  getPermissions,
+} from "../../permission/api/permission.api";
 
 import UserTable from "../components/UserTable";
 import UserDetailsModal from "../components/UserDetailsModal";
 
-import UserModal, { type UserFormData } from "../components/UserModal";
+import UserModal, {
+  type UserFormData,
+} from "../components/UserModal";
 
 import UserPermissionsModal from "../components/UserPermissionsModal";
 
 import type {
   Permission,
+  User,
+  UserPermissions,
   UserQueryParams,
   UserStatus,
   UserType,
 } from "../types/user.types";
 
-import { getPermissions } from "../../permission/api/permission.api";
-
-const initialQuery: UserQueryParams = {
+const initialQuery:
+  UserQueryParams = {
   page: 1,
   limit: 10,
   search: "",
@@ -42,228 +63,434 @@ const initialQuery: UserQueryParams = {
 };
 
 const UserListPage = () => {
-  useDocumentTitle("All Users");
+  useDocumentTitle(
+    "All Users",
+  );
+
+  const [
+    query,
+    setQuery,
+  ] =
+    useState<UserQueryParams>(
+      initialQuery,
+    );
+
   const {
     loading,
+    fetching,
 
     users,
     total,
     page,
     totalPages,
 
-    selectedUser,
-    permissions,
-
-    fetchUsers,
     fetchUser,
     fetchPermissions,
     savePermissions,
 
-    clearSelectedUser,
-    clearPermissions,
-  } = useUsers();
-
-  const { roles, fetchRoles } = useRole();
-
-  const [query, setQuery] = useState<UserQueryParams>(initialQuery);
-
-  const [searchValue, setSearchValue] = useState("");
-
-  const [openDetails, setOpenDetails] = useState(false);
-
-  const [openEdit, setOpenEdit] = useState(false);
-
-  const [openPermissions, setOpenPermissions] = useState(false);
-
-  const [permissionUserUuid, setPermissionUserUuid] = useState<string | null>(
-    null,
+    refetch,
+    savingPermissions,
+  } = useUsers(
+    query,
   );
 
-  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
+  const {
+    roles,
+    fetchRoles,
+  } = useRole();
 
-  const [accountUpdating, setAccountUpdating] = useState(false);
+  const [
+    searchValue,
+    setSearchValue,
+  ] = useState("");
+
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
+
+  const [
+    openEdit,
+    setOpenEdit,
+  ] = useState(false);
+
+  const [
+    openPermissions,
+    setOpenPermissions,
+  ] = useState(false);
+
+  const [
+    selectedUser,
+    setSelectedUser,
+  ] = useState<
+    User | null
+  >(null);
+
+  const [
+    permissions,
+    setPermissions,
+  ] = useState<
+    UserPermissions | null
+  >(null);
+
+  const [
+    permissionUserUuid,
+    setPermissionUserUuid,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    allPermissions,
+    setAllPermissions,
+  ] = useState<
+    Permission[]
+  >([]);
+
+  const [
+    accountUpdating,
+    setAccountUpdating,
+  ] = useState(false);
 
   useEffect(() => {
-    void Promise.all([fetchUsers(initialQuery), fetchRoles()]);
-  }, [fetchUsers, fetchRoles]);
+    void fetchRoles();
+  }, [
+    fetchRoles,
+  ]);
 
-  const roleOptions = useMemo(
-    () =>
-      roles
-        .filter((role) => role.status === "ACTIVE")
-        .map((role) => ({
-          label: role.name,
+  const roleOptions =
+    useMemo(
+      () =>
+        roles
+          .filter(
+            (role) =>
+              role.status ===
+              "ACTIVE",
+          )
+          .map(
+            (role) => ({
+              label:
+                role.name,
 
-          value: role.uuid,
-        })),
-    [roles],
-  );
+              value:
+                role.uuid,
+            }),
+          ),
+      [
+        roles,
+      ],
+    );
 
-  const handleSearch = async () => {
-    const nextQuery: UserQueryParams = {
-      ...query,
+  const handleSearch =
+    () => {
+      setQuery(
+        (previous) => ({
+          ...previous,
 
-      page: 1,
+          page: 1,
 
-      search: searchValue.trim() || undefined,
-    };
-
-    setQuery(nextQuery);
-
-    await fetchUsers(nextQuery);
-  };
-
-  const handleResetFilters = async () => {
-    setSearchValue("");
-
-    setQuery(initialQuery);
-
-    await fetchUsers(initialQuery);
-  };
-
-  const handleFilterChange = async (
-    field: "status" | "userType" | "roleUuid",
-
-    value: string,
-  ) => {
-    const nextQuery: UserQueryParams = {
-      ...query,
-
-      page: 1,
-
-      [field]: value || undefined,
-    };
-
-    setQuery(nextQuery);
-
-    await fetchUsers(nextQuery);
-  };
-
-  const handlePageChange = async (nextPage: number) => {
-    if (nextPage < 1 || nextPage > totalPages) {
-      return;
-    }
-
-    const nextQuery: UserQueryParams = {
-      ...query,
-
-      page: nextPage,
-    };
-
-    setQuery(nextQuery);
-
-    await fetchUsers(nextQuery);
-  };
-
-  const handleView = async (uuid: string) => {
-    clearSelectedUser();
-
-    setOpenDetails(true);
-
-    try {
-      await fetchUser(uuid);
-    } catch {
-      setOpenDetails(false);
-    }
-  };
-
-  const handleEdit = async (uuid: string) => {
-    clearSelectedUser();
-
-    try {
-      await Promise.all([fetchUser(uuid), fetchRoles()]);
-
-      setOpenEdit(true);
-    } catch {
-      setOpenEdit(false);
-    }
-  };
-
-  const handlePermissions = async (uuid: string) => {
-    clearPermissions();
-
-    setPermissionUserUuid(uuid);
-
-    setOpenPermissions(true);
-
-    try {
-      const [, globalPermissions] = await Promise.all([
-        fetchPermissions(uuid),
-
-        getPermissions(),
-      ]);
-
-      setAllPermissions(globalPermissions);
-    } catch {
-      setOpenPermissions(false);
-
-      setPermissionUserUuid(null);
-
-      setAllPermissions([]);
-    }
-  };
-
-  const handleUpdateAccount = async (formData: UserFormData) => {
-    const employeeUuid = selectedUser?.employee?.uuid;
-
-    if (!employeeUuid) {
-      notify.error("Employee is not linked with this user account.");
-
-      return;
-    }
-
-    try {
-      setAccountUpdating(true);
-
-      await updateEmployeeUserAccount(employeeUuid, {
-        roleUuid: formData.roleUuid,
-
-        status: formData.status,
-      });
-
-      notify.success("User account updated successfully.");
-
-      await fetchUsers(query);
-
-      setOpenEdit(false);
-
-      clearSelectedUser();
-    } catch (error: unknown) {
-      const apiError = error as {
-        response?: {
-          data?: {
-            message?: string;
-          };
-        };
-      };
-
-      notify.error(
-        apiError.response?.data?.message ?? "Failed to update user account.",
+          search:
+            searchValue.trim() ||
+            undefined,
+        }),
       );
-    } finally {
-      setAccountUpdating(false);
-    }
-  };
+    };
 
-  const handleSavePermissions = async (permissionUuids: string[]) => {
-    if (!permissionUserUuid) {
-      notify.error("User is not selected.");
+  const handleResetFilters =
+    () => {
+      setSearchValue(
+        "",
+      );
 
-      return;
-    }
+      setQuery({
+        ...initialQuery,
+      });
+    };
 
-    await savePermissions(permissionUserUuid, {
-      permissionUuids,
-    });
+  const handleFilterChange =
+    (
+      field:
+        | "status"
+        | "userType"
+        | "roleUuid",
 
-    setOpenPermissions(false);
+      value:
+        string,
+    ) => {
+      setQuery(
+        (previous) => ({
+          ...previous,
 
-    setPermissionUserUuid(null);
+          page: 1,
 
-    setAllPermissions([]);
+          [field]:
+            value ||
+            undefined,
+        }),
+      );
+    };
 
-    clearPermissions();
-  };
+  const handlePageChange =
+    (
+      nextPage: number,
+    ) => {
+      if (
+        nextPage < 1 ||
+        nextPage >
+          totalPages
+      ) {
+        return;
+      }
+
+      setQuery(
+        (previous) => ({
+          ...previous,
+
+          page:
+            nextPage,
+        }),
+      );
+    };
+
+  const handleView =
+    async (
+      uuid: string,
+    ) => {
+      setSelectedUser(
+        null,
+      );
+
+      setOpenDetails(
+        true,
+      );
+
+      try {
+        const user =
+          await fetchUser(
+            uuid,
+          );
+
+        setSelectedUser(
+          user,
+        );
+      } catch {
+        setOpenDetails(
+          false,
+        );
+      }
+    };
+
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      setSelectedUser(
+        null,
+      );
+
+      try {
+        const user =
+          await fetchUser(
+            uuid,
+          );
+
+        setSelectedUser(
+          user,
+        );
+
+        setOpenEdit(
+          true,
+        );
+      } catch {
+        setOpenEdit(
+          false,
+        );
+      }
+    };
+
+  const handlePermissions =
+    async (
+      uuid: string,
+    ) => {
+      setPermissions(
+        null,
+      );
+
+      setPermissionUserUuid(
+        uuid,
+      );
+
+      setOpenPermissions(
+        true,
+      );
+
+      try {
+        const [
+          userPermissions,
+          globalPermissions,
+        ] =
+          await Promise.all([
+            fetchPermissions(
+              uuid,
+            ),
+
+            getPermissions(),
+          ]);
+
+        setPermissions(
+          userPermissions,
+        );
+
+        setAllPermissions(
+          globalPermissions,
+        );
+      } catch {
+        setOpenPermissions(
+          false,
+        );
+
+        setPermissionUserUuid(
+          null,
+        );
+
+        setPermissions(
+          null,
+        );
+
+        setAllPermissions(
+          [],
+        );
+      }
+    };
+
+  const handleUpdateAccount =
+    async (
+      formData:
+        UserFormData,
+    ) => {
+      const employeeUuid =
+        selectedUser
+          ?.employee
+          ?.uuid;
+
+      if (!employeeUuid) {
+        notify.error(
+          "Employee is not linked with this user account.",
+        );
+
+        return;
+      }
+
+      try {
+        setAccountUpdating(
+          true,
+        );
+
+        await updateEmployeeUserAccount(
+          employeeUuid,
+          {
+            roleUuid:
+              formData.roleUuid,
+
+            status:
+              formData.status,
+          },
+        );
+
+        notify.success(
+          "User account updated successfully.",
+        );
+
+        await refetch();
+
+        setOpenEdit(
+          false,
+        );
+
+        setSelectedUser(
+          null,
+        );
+      } catch (
+        error: unknown
+      ) {
+        const apiError =
+          error as {
+            response?: {
+              data?: {
+                message?: string;
+              };
+            };
+          };
+
+        notify.error(
+          apiError.response
+            ?.data?.message ??
+            "Failed to update user account.",
+        );
+      } finally {
+        setAccountUpdating(
+          false,
+        );
+      }
+    };
+
+  const handleSavePermissions =
+    async (
+      permissionUuids:
+        string[],
+    ) => {
+      if (
+        !permissionUserUuid
+      ) {
+        notify.error(
+          "User is not selected.",
+        );
+
+        return;
+      }
+
+      try {
+        const updatedPermissions =
+          await savePermissions(
+            permissionUserUuid,
+            {
+              permissionUuids,
+            },
+          );
+
+        setPermissions(
+          updatedPermissions,
+        );
+
+        setOpenPermissions(
+          false,
+        );
+
+        setPermissionUserUuid(
+          null,
+        );
+
+        setPermissions(
+          null,
+        );
+
+        setAllPermissions(
+          [],
+        );
+      } catch (error) {
+        console.error(
+          "Failed to save user permissions:",
+          error,
+        );
+      }
+    };
+
+  const pageLoading =
+    loading;
+
+  const backgroundFetching =
+    fetching &&
+    !loading;
 
   return (
     <>
@@ -275,202 +502,342 @@ const UserListPage = () => {
       <Card>
         <div
           style={{
-            display: "grid",
+            display:
+              "grid",
 
             gridTemplateColumns:
               "minmax(220px, 1fr) repeat(3, minmax(160px, 220px)) auto auto",
 
-            alignItems: "end",
+            alignItems:
+              "end",
 
-            gap: 12,
+            gap:
+              12,
 
-            marginBottom: 24,
+            marginBottom:
+              24,
           }}
         >
           <Input
             label="Search"
             placeholder="Name, email, mobile or employee code"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                void handleSearch();
+            value={
+              searchValue
+            }
+            onChange={(
+              event,
+            ) =>
+              setSearchValue(
+                event.target
+                  .value,
+              )
+            }
+            onKeyDown={(
+              event,
+            ) => {
+              if (
+                event.key ===
+                "Enter"
+              ) {
+                handleSearch();
               }
             }}
           />
 
           <Select
             label="Status"
-            value={query.status ?? ""}
+            value={
+              query.status ??
+              ""
+            }
             options={[
               {
-                label: "All Statuses",
+                label:
+                  "All Statuses",
                 value: "",
               },
+
               {
-                label: "Active",
-                value: "ACTIVE",
+                label:
+                  "Active",
+                value:
+                  "ACTIVE",
               },
+
               {
-                label: "Inactive",
-                value: "INACTIVE",
+                label:
+                  "Inactive",
+                value:
+                  "INACTIVE",
               },
+
               {
-                label: "Pending",
-                value: "PENDING",
+                label:
+                  "Pending",
+                value:
+                  "PENDING",
               },
+
               {
-                label: "Suspended",
-                value: "SUSPENDED",
+                label:
+                  "Suspended",
+                value:
+                  "SUSPENDED",
               },
             ]}
-            onChange={(event) =>
-              void handleFilterChange(
+            onChange={(
+              event,
+            ) =>
+              handleFilterChange(
                 "status",
 
-                event.target.value as UserStatus | "",
+                event.target
+                  .value as
+                  | UserStatus
+                  | "",
               )
             }
           />
 
           <Select
             label="User Type"
-            value={query.userType ?? ""}
+            value={
+              query.userType ??
+              ""
+            }
             options={[
               {
-                label: "All User Types",
+                label:
+                  "All User Types",
                 value: "",
               },
+
               {
-                label: "Platform Owner",
-                value: "PLATFORM_OWNER",
+                label:
+                  "Platform Owner",
+                value:
+                  "PLATFORM_OWNER",
               },
+
               {
-                label: "Company Admin",
-                value: "COMPANY_ADMIN",
+                label:
+                  "Company Admin",
+                value:
+                  "COMPANY_ADMIN",
               },
+
               {
-                label: "Employee",
-                value: "EMPLOYEE",
+                label:
+                  "Employee",
+                value:
+                  "EMPLOYEE",
               },
+
               {
-                label: "Client",
-                value: "CLIENT",
+                label:
+                  "Client",
+                value:
+                  "CLIENT",
               },
+
               {
-                label: "Vendor",
-                value: "VENDOR",
+                label:
+                  "Vendor",
+                value:
+                  "VENDOR",
               },
             ]}
-            onChange={(event) =>
-              void handleFilterChange(
+            onChange={(
+              event,
+            ) =>
+              handleFilterChange(
                 "userType",
 
-                event.target.value as UserType | "",
+                event.target
+                  .value as
+                  | UserType
+                  | "",
               )
             }
           />
 
           <Select
             label="Role"
-            value={query.roleUuid ?? ""}
+            value={
+              query.roleUuid ??
+              ""
+            }
             options={[
               {
-                label: "All Roles",
+                label:
+                  "All Roles",
                 value: "",
               },
 
               ...roleOptions,
             ]}
-            onChange={(event) =>
-              void handleFilterChange(
+            onChange={(
+              event,
+            ) =>
+              handleFilterChange(
                 "roleUuid",
 
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
 
-          <Button type="button" loading={loading} onClick={handleSearch}>
+          <Button
+            type="button"
+            loading={
+              pageLoading
+            }
+            onClick={
+              handleSearch
+            }
+          >
             Search
           </Button>
 
           <Button
             type="button"
             variant="secondary"
-            disabled={loading}
-            onClick={handleResetFilters}
+            disabled={
+              pageLoading
+            }
+            onClick={
+              handleResetFilters
+            }
           >
             Reset
           </Button>
         </div>
 
+        {backgroundFetching && (
+          <div
+            style={{
+              marginBottom:
+                10,
+
+              fontSize:
+                12,
+
+              color:
+                "#6b7280",
+            }}
+          >
+            Updating users...
+          </div>
+        )}
+
         <UserTable
-          data={users}
-          loading={loading}
-          onView={handleView}
-          onEdit={handleEdit}
-          onPermissions={handlePermissions}
+          data={
+            users
+          }
+          loading={
+            pageLoading
+          }
+          onView={
+            handleView
+          }
+          onEdit={
+            handleEdit
+          }
+          onPermissions={
+            handlePermissions
+          }
         />
 
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
 
-            alignItems: "center",
+            alignItems:
+              "center",
 
-            justifyContent: "space-between",
+            justifyContent:
+              "space-between",
 
-            gap: 16,
+            gap:
+              16,
 
-            marginTop: 20,
+            marginTop:
+              20,
           }}
         >
           <div
             style={{
-              color: "#6b7280",
+              color:
+                "#6b7280",
 
-              fontSize: 14,
+              fontSize:
+                14,
             }}
           >
-            Showing {users.length} of {total} users
+            Showing{" "}
+            {users.length}{" "}
+            of {total} users
           </div>
 
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
 
-              alignItems: "center",
+              alignItems:
+                "center",
 
-              gap: 10,
+              gap:
+                10,
             }}
           >
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={loading || page <= 1}
-              onClick={() => void handlePageChange(page - 1)}
+              disabled={
+                pageLoading ||
+                page <= 1
+              }
+              onClick={() =>
+                handlePageChange(
+                  page - 1,
+                )
+              }
             >
               Previous
             </Button>
 
             <span
               style={{
-                fontSize: 14,
+                fontSize:
+                  14,
 
-                color: "#374151",
+                color:
+                  "#374151",
               }}
             >
-              Page {page} of {totalPages || 1}
+              Page {page} of{" "}
+              {totalPages ||
+                1}
             </span>
 
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={loading || page >= totalPages}
-              onClick={() => void handlePageChange(page + 1)}
+              disabled={
+                pageLoading ||
+                page >=
+                  totalPages
+              }
+              onClick={() =>
+                handlePageChange(
+                  page + 1,
+                )
+              }
             >
               Next
             </Button>
@@ -479,44 +846,88 @@ const UserListPage = () => {
       </Card>
 
       <UserDetailsModal
-        open={openDetails}
-        loading={loading}
-        user={selectedUser}
+        open={
+          openDetails
+        }
+        loading={
+          openDetails &&
+          !selectedUser
+        }
+        user={
+          selectedUser
+        }
         onClose={() => {
-          setOpenDetails(false);
+          setOpenDetails(
+            false,
+          );
 
-          clearSelectedUser();
+          setSelectedUser(
+            null,
+          );
         }}
       />
 
       <UserModal
-        open={openEdit}
-        loading={accountUpdating}
-        user={selectedUser}
-        roleOptions={roleOptions}
+        open={
+          openEdit
+        }
+        loading={
+          accountUpdating
+        }
+        user={
+          selectedUser
+        }
+        roleOptions={
+          roleOptions
+        }
         onClose={() => {
-          setOpenEdit(false);
+          setOpenEdit(
+            false,
+          );
 
-          clearSelectedUser();
+          setSelectedUser(
+            null,
+          );
         }}
-        onSubmit={handleUpdateAccount}
+        onSubmit={
+          handleUpdateAccount
+        }
       />
 
       <UserPermissionsModal
-        open={openPermissions}
-        loading={loading}
-        permissions={permissions}
-        allPermissions={allPermissions}
+        open={
+          openPermissions
+        }
+        loading={
+          openPermissions &&
+          !permissions
+        }
+        permissions={
+          permissions
+        }
+        allPermissions={
+          allPermissions
+        }
         onClose={() => {
-          setOpenPermissions(false);
+          setOpenPermissions(
+            false,
+          );
 
-          setPermissionUserUuid(null);
+          setPermissionUserUuid(
+            null,
+          );
 
-          setAllPermissions([]);
+          setPermissions(
+            null,
+          );
 
-          clearPermissions();
+          setAllPermissions(
+            [],
+          );
         }}
-        onSubmit={handleSavePermissions}
+        onSubmit={
+          handleSavePermissions
+        }
       />
     </>
   );
