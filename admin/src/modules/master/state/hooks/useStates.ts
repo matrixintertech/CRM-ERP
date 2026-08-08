@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createState,
@@ -15,144 +18,96 @@ import {
 } from "../api/state.api";
 
 import type {
-  State,
-  StateDropdown,
   StateFormData,
   StateQueryParams,
 } from "../types/state.types";
-
-const initialFormData: StateFormData = {
-  name: "",
-  code: "",
-  gstCode: "",
-  status: "ACTIVE",
-};
 
 const getErrorMessage = (
   error: unknown,
   fallbackMessage: string,
 ) => {
-  const apiError = error as {
-    response?: {
-      data?: {
-        message?: string;
-        errors?: string[];
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: string[];
+        };
       };
     };
-  };
 
   const errors =
-    apiError.response?.data?.errors;
+    apiError.response?.data
+      ?.errors;
 
   if (
     Array.isArray(errors) &&
     errors.length > 0
   ) {
-    return errors.join(", ");
+    return errors.join(
+      ", ",
+    );
   }
 
   return (
-    apiError.response?.data?.message ??
+    apiError.response?.data
+      ?.message ??
     fallbackMessage
   );
 };
 
-export const useStates = () => {
-  const [states, setStates] =
-    useState<State[]>([]);
+export const useStates = (
+  params: StateQueryParams = {},
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [dropdown, setDropdown] =
-    useState<StateDropdown[]>([]);
+  const statesQuery =
+    useQuery({
+      queryKey: [
+        "states",
+        params,
+      ],
 
-  const [
-    selectedState,
-    setSelectedState,
-  ] = useState<State | null>(null);
+      queryFn: () =>
+        getStates(
+          params,
+        ),
 
-  const [loading, setLoading] =
-    useState(false);
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-  const [formData, setFormData] =
-    useState<StateFormData>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+  const dropdownQuery =
+    useQuery({
+      queryKey: [
+        "state-dropdown",
+      ],
 
-  const fetchStates = useCallback(
+      queryFn: () =>
+        getStateDropdown(),
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
+  const fetchState =
     async (
-      params?: StateQueryParams,
+      uuid: string,
     ) => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "state",
+            uuid,
+          ],
 
-        const data =
-          await getStates(params);
-
-        setStates(data);
-
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to fetch states:",
-          error,
-        );
-
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load states.",
-          ),
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const fetchDropdown = useCallback(
-    async () => {
-      try {
-        const data =
-          await getStateDropdown();
-
-        setDropdown(data);
-
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to fetch state dropdown:",
-          error,
-        );
-
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load state dropdown.",
-          ),
-        );
-
-        throw error;
-      }
-    },
-    [],
-  );
-
-  const fetchState = useCallback(
-    async (uuid: string) => {
-      try {
-        setLoading(true);
-
-        const data =
-          await getState(uuid);
-
-        setSelectedState(data);
-
-        return data;
-      } catch (error: unknown) {
+          queryFn: () =>
+            getState(
+              uuid,
+            ),
+        });
+      } catch (error) {
         console.error(
           "Failed to fetch state:",
           error,
@@ -166,30 +121,43 @@ export const useStates = () => {
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const create = useCallback(
-    async (
-      payload: StateFormData,
-    ) => {
-      try {
-        setLoading(true);
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload:
+          StateFormData,
+      ) =>
+        createState(
+          payload,
+        ),
 
-        const data =
-          await createState(payload);
-
+      onSuccess: async (
+        data,
+      ) => {
         notify.success(
           data?.message ??
             "State created successfully.",
         );
 
-        return data;
-      } catch (error: unknown) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "states",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "state-dropdown",
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         console.error(
           "Failed to create state:",
           error,
@@ -201,36 +169,56 @@ export const useStates = () => {
             "Failed to create state.",
           ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
+        payload:
+          Partial<StateFormData>;
+      }) =>
+        updateState(
+          uuid,
+          payload,
+        ),
 
-  const update = useCallback(
-    async (
-      uuid: string,
-      payload: Partial<StateFormData>,
-    ) => {
-      try {
-        setLoading(true);
-
-        const data =
-          await updateState(
-            uuid,
-            payload,
-          );
-
+      onSuccess: async (
+        data,
+        variables,
+      ) => {
         notify.success(
           data?.message ??
             "State updated successfully.",
         );
 
-        return data;
-      } catch (error: unknown) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "states",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "state-dropdown",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "state",
+              variables.uuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         console.error(
           "Failed to update state:",
           error,
@@ -242,30 +230,50 @@ export const useStates = () => {
             "Failed to update state.",
           ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        uuid: string,
+      ) =>
+        deleteState(
+          uuid,
+        ),
 
-  const remove = useCallback(
-    async (uuid: string) => {
-      try {
-        setLoading(true);
-
-        const data =
-          await deleteState(uuid);
-
+      onSuccess: async (
+        data,
+        uuid,
+      ) => {
         notify.success(
           data?.message ??
             "State deleted successfully.",
         );
 
-        return data;
-      } catch (error: unknown) {
+        queryClient.removeQueries({
+          queryKey: [
+            "state",
+            uuid,
+          ],
+        });
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "states",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "state-dropdown",
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         console.error(
           "Failed to delete state:",
           error,
@@ -277,45 +285,69 @@ export const useStates = () => {
             "Failed to delete state.",
           ),
         );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const resetForm = useCallback(() => {
-    setFormData({
-      ...initialFormData,
+      },
     });
-  }, []);
-
-  const clearSelectedState =
-    useCallback(() => {
-      setSelectedState(null);
-    }, []);
 
   return {
-    loading,
+    states:
+      Array.isArray(
+        statesQuery.data,
+      )
+        ? statesQuery.data
+        : [],
 
-    states,
-    dropdown,
-    selectedState,
+    dropdown:
+      Array.isArray(
+        dropdownQuery.data,
+      )
+        ? dropdownQuery.data
+        : [],
 
-    formData,
-    setFormData,
+    loading:
+      statesQuery.isLoading,
 
-    fetchStates,
-    fetchDropdown,
+    fetching:
+      statesQuery.isFetching,
+
+    dropdownLoading:
+      dropdownQuery.isLoading,
+
+    dropdownFetching:
+      dropdownQuery.isFetching,
+
+    error:
+      statesQuery.error ??
+      dropdownQuery.error,
+
+    refetch:
+      statesQuery.refetch,
+
+    refetchDropdown:
+      dropdownQuery.refetch,
+
     fetchState,
 
-    create,
-    update,
-    remove,
+    create:
+      createMutation.mutateAsync,
 
-    resetForm,
-    clearSelectedState,
+    update: (
+      uuid: string,
+      payload:
+        Partial<StateFormData>,
+    ) =>
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };
