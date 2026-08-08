@@ -1,7 +1,8 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   notify,
@@ -17,7 +18,6 @@ import {
 
 import type {
   CreateProjectTaskRequest,
-  ProjectTask,
   UpdateProjectTaskRequest,
 } from "../types/project-task.types";
 
@@ -41,249 +41,258 @@ const getErrorMessage = (
   );
 };
 
-export const useProjectTasks = () => {
-  const [
-    projectTasks,
-    setProjectTasks,
-  ] = useState<ProjectTask[]>([]);
+export const useProjectTasks = (
+  projectUuid?: string,
+  enabled = true,
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [
-    selectedProjectTask,
-    setSelectedProjectTask,
-  ] =
-    useState<ProjectTask | null>(
-      null,
-    );
+  const tasksQuery =
+    useQuery({
+      queryKey: [
+        "project-tasks",
+        projectUuid,
+      ],
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+      queryFn: () =>
+        getProjectTasks(
+          projectUuid!,
+        ),
 
-  const fetchProjectTasks =
-    useCallback(
-      async (
-        projectUuid: string,
-      ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await getProjectTasks(
-              projectUuid,
-            );
-
-          setProjectTasks(
-            data,
-          );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load project tasks.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+      enabled:
+        Boolean(
+          projectUuid,
+        ) &&
+        enabled,
+    });
 
   const fetchProjectTask =
-    useCallback(
-      async (
-        projectUuid: string,
-        taskUuid: string,
-      ) => {
-        try {
-          setLoading(true);
+    async (
+      taskUuid: string,
+    ) => {
+      if (!projectUuid) {
+        throw new Error(
+          "Project UUID is required.",
+        );
+      }
 
-          const data =
-            await getProjectTaskByUuid(
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "project-task",
+            projectUuid,
+            taskUuid,
+          ],
+
+          queryFn: () =>
+            getProjectTaskByUuid(
               projectUuid,
               taskUuid,
-            );
-
-          setSelectedProjectTask(
-            data,
-          );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load project task.",
             ),
-          );
+        });
+      } catch (error) {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load project task.",
+          ),
+        );
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+        throw error;
+      }
+    };
 
-  const create =
-    useCallback(
-      async (
-        projectUuid: string,
+  const createMutation =
+    useMutation({
+      mutationFn: (
         payload:
           CreateProjectTaskRequest,
       ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await createProjectTask(
-              projectUuid,
-              payload,
-            );
-
-          notify.success(
-            "Project task created successfully.",
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
           );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to create project task.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
 
-  const update =
-    useCallback(
-      async (
-        projectUuid: string,
-        taskUuid: string,
+        return createProjectTask(
+          projectUuid,
+          payload,
+        );
+      },
+
+      onSuccess: async () => {
+        notify.success(
+          "Project task created successfully.",
+        );
+
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "project-tasks",
+            projectUuid,
+          ],
+        });
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create project task.",
+          ),
+        );
+      },
+    });
+
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        taskUuid,
+        payload,
+      }: {
+        taskUuid: string;
         payload:
-          UpdateProjectTaskRequest,
-      ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await updateProjectTask(
-              projectUuid,
-              taskUuid,
-              payload,
-            );
-
-          notify.success(
-            "Project task updated successfully.",
+          UpdateProjectTaskRequest;
+      }) => {
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
           );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to update project task.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
 
-  const remove =
-    useCallback(
-      async (
-        projectUuid: string,
+        return updateProjectTask(
+          projectUuid,
+          taskUuid,
+          payload,
+        );
+      },
+
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
+        notify.success(
+          "Project task updated successfully.",
+        );
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-tasks",
+              projectUuid,
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-task",
+              projectUuid,
+              variables.taskUuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update project task.",
+          ),
+        );
+      },
+    });
+
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
         taskUuid: string,
       ) => {
-        try {
-          setLoading(true);
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
+          );
+        }
 
-          await deleteProjectTask(
+        return deleteProjectTask(
+          projectUuid,
+          taskUuid,
+        );
+      },
+
+      onSuccess: async (
+        _data,
+        taskUuid,
+      ) => {
+        notify.success(
+          "Project task deleted successfully.",
+        );
+
+        queryClient.removeQueries({
+          queryKey: [
+            "project-task",
             projectUuid,
             taskUuid,
-          );
+          ],
+        });
 
-          setProjectTasks(
-            (previous) =>
-              previous.filter(
-                (task) =>
-                  task.uuid !==
-                  taskUuid,
-              ),
-          );
-
-          if (
-            selectedProjectTask
-              ?.uuid === taskUuid
-          ) {
-            setSelectedProjectTask(
-              null,
-            );
-          }
-
-          notify.success(
-            "Project task deleted successfully.",
-          );
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to delete project task.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "project-tasks",
+            projectUuid,
+          ],
+        });
       },
-      [
-        selectedProjectTask,
-      ],
-    );
 
-  const clearSelectedProjectTask =
-    useCallback(() => {
-      setSelectedProjectTask(
-        null,
-      );
-    }, []);
-
-  const clearProjectTasks =
-    useCallback(() => {
-      setProjectTasks([]);
-    }, []);
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete project task.",
+          ),
+        );
+      },
+    });
 
   return {
-    projectTasks,
-    selectedProjectTask,
-    loading,
+    projectTasks:
+      tasksQuery.data ?? [],
 
-    fetchProjectTasks,
+    loading:
+      tasksQuery.isLoading,
+
+    fetching:
+      tasksQuery.isFetching,
+
+    error:
+      tasksQuery.error,
+
+    refetch:
+      tasksQuery.refetch,
+
     fetchProjectTask,
 
-    create,
-    update,
-    remove,
+    create:
+      createMutation.mutateAsync,
 
-    clearSelectedProjectTask,
-    clearProjectTasks,
+    update: (
+      taskUuid: string,
+      payload:
+        UpdateProjectTaskRequest,
+    ) =>
+      updateMutation.mutateAsync({
+        taskUuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };

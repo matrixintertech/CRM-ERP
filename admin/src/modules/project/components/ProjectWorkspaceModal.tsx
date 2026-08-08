@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -70,38 +69,28 @@ const ProjectWorkspaceModal = ({
   const [
     activeTab,
     setActiveTab,
-  ] =
-    useState<WorkspaceTab>(
-      "overview",
-    );
+  ] = useState<WorkspaceTab>(
+    "overview",
+  );
+
+  const shouldLoadMembers =
+    activeTab === "members" ||
+    activeTab === "tasks";
 
   const {
     projectMembers,
-    fetchProjectMembers,
+
     loading:
       loadingMembers,
-  } = useProjectMembers();
 
-  useEffect(() => {
-    if (
-      !open ||
-      !project
-    ) {
-      return;
-    }
-
-    setActiveTab(
-      "overview",
-    );
-
-    void fetchProjectMembers(
-      project.uuid,
-    );
-  }, [
-    open,
+    fetching:
+      fetchingMembers,
+  } = useProjectMembers(
     project?.uuid,
-    fetchProjectMembers,
-  ]);
+
+    Boolean(project) &&
+      shouldLoadMembers,
+  );
 
   const taskMemberOptions =
     projectMembers
@@ -134,6 +123,12 @@ const ProjectWorkspaceModal = ({
             `${employeeName} - ${member.projectRole.name}`,
         };
       });
+
+  const activeMembersCount =
+    projectMembers.filter(
+      (member) =>
+        member.isActive,
+    ).length;
 
   const handleClose = () => {
     setActiveTab(
@@ -184,18 +179,14 @@ const ProjectWorkspaceModal = ({
               {project.srn}
             </span>
 
-            <span>
-              •
-            </span>
+            <span>•</span>
 
             <span>
               {project.client
                 ?.name ?? "-"}
             </span>
 
-            <span>
-              •
-            </span>
+            <span>•</span>
 
             <span>
               {project.status}
@@ -219,13 +210,14 @@ const ProjectWorkspaceModal = ({
                   "overview",
                   "Overview",
                 ],
+
                 [
                   "members",
-                  `Members (${projectMembers.filter(
-                    (member) =>
-                      member.isActive,
-                  ).length})`,
+                  shouldLoadMembers
+                    ? `Members (${activeMembersCount})`
+                    : "Members",
                 ],
+
                 [
                   "tasks",
                   "Tasks",
@@ -304,308 +296,366 @@ const ProjectWorkspaceModal = ({
           >
             {/* Overview */}
 
-          {activeTab ===
-  "overview" && (
-  <div
-    style={{
-      display: "grid",
-      gap: 24,
-    }}
-  >
-    {/* Key Information */}
-
-    <section>
-      <div
-        style={{
-          marginBottom: 12,
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#6b7280",
-          textTransform:
-            "uppercase",
-          letterSpacing:
-            "0.06em",
-        }}
-      >
-        Project Information
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(2, minmax(0, 1fr))",
-          gap: 12,
-        }}
-      >
-        {[
-          {
-            label: "Client",
-            value:
-              project.client
-                ?.name ?? "-",
-          },
-
-          {
-            label: "Category",
-            value:
-              project.category
-                ?.name ?? "-",
-          },
-
-          {
-            label: "Branch",
-            value:
-              project
-                .organizationUnit
-                ?.name ?? "-",
-          },
-
-          {
-            label: "Location",
-            value:
-              [
-                project.city
-                  ?.name,
-                project.state
-                  ?.name,
-              ]
-                .filter(Boolean)
-                .join(", ") ||
-              "-",
-          },
-        ].map(
-          (item) => (
-            <div
-              key={
-                item.label
-              }
-              style={{
-                padding:
-                  "16px 18px",
-
-                border:
-                  "1px solid #e5e7eb",
-
-                borderRadius:
-                  10,
-
-                background:
-                  "#f9fafb",
-              }}
-            >
+            {activeTab ===
+              "overview" && (
               <div
                 style={{
-                  marginBottom:
-                    6,
-
-                  fontSize: 12,
-
-                  color:
-                    "#6b7280",
-
-                  fontWeight:
-                    500,
+                  display:
+                    "grid",
+                  gap: 24,
                 }}
               >
-                {
-                  item.label
-                }
+                {/* Project Information */}
+
+                <section>
+                  <div
+                    style={{
+                      marginBottom:
+                        12,
+                      fontSize: 12,
+                      fontWeight:
+                        700,
+                      color:
+                        "#6b7280",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.06em",
+                    }}
+                  >
+                    Project Information
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+
+                      gridTemplateColumns:
+                        "repeat(2, minmax(0, 1fr))",
+
+                      gap: 12,
+                    }}
+                  >
+                    {[
+                      {
+                        label:
+                          "Client",
+
+                        value:
+                          project.client
+                            ?.name ??
+                          "-",
+                      },
+
+                      {
+                        label:
+                          "Category",
+
+                        value:
+                          project.category
+                            ?.name ??
+                          "-",
+                      },
+
+                      {
+                        label:
+                          "Branch",
+
+                        value:
+                          project
+                            .organizationUnit
+                            ?.name ??
+                          "-",
+                      },
+
+                      {
+                        label:
+                          "Location",
+
+                        value:
+                          [
+                            project.city
+                              ?.name,
+
+                            project.state
+                              ?.name,
+                          ]
+                            .filter(
+                              Boolean,
+                            )
+                            .join(
+                              ", ",
+                            ) ||
+                          "-",
+                      },
+                    ].map(
+                      (item) => (
+                        <div
+                          key={
+                            item.label
+                          }
+                          style={{
+                            padding:
+                              "16px 18px",
+
+                            border:
+                              "1px solid #e5e7eb",
+
+                            borderRadius:
+                              10,
+
+                            background:
+                              "#f9fafb",
+                          }}
+                        >
+                          <div
+                            style={{
+                              marginBottom:
+                                6,
+
+                              fontSize:
+                                12,
+
+                              color:
+                                "#6b7280",
+
+                              fontWeight:
+                                500,
+                            }}
+                          >
+                            {
+                              item.label
+                            }
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize:
+                                14,
+
+                              fontWeight:
+                                700,
+
+                              color:
+                                "#111827",
+
+                              lineHeight:
+                                1.4,
+                            }}
+                          >
+                            {
+                              item.value
+                            }
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </section>
+
+                {/* Timeline */}
+
+                <section>
+                  <div
+                    style={{
+                      marginBottom:
+                        12,
+                      fontSize: 12,
+                      fontWeight:
+                        700,
+                      color:
+                        "#6b7280",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.06em",
+                    }}
+                  >
+                    Timeline
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+
+                      gridTemplateColumns:
+                        "repeat(2, minmax(0, 1fr))",
+
+                      gap: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding:
+                          "16px 18px",
+
+                        border:
+                          "1px solid #e5e7eb",
+
+                        borderRadius:
+                          10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          marginBottom:
+                            6,
+
+                          fontSize:
+                            12,
+
+                          color:
+                            "#6b7280",
+                        }}
+                      >
+                        Start Date
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize:
+                            14,
+
+                          fontWeight:
+                            700,
+
+                          color:
+                            "#111827",
+                        }}
+                      >
+                        {project.startDate
+                          ? new Date(
+                              project.startDate,
+                            ).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day:
+                                  "2-digit",
+
+                                month:
+                                  "short",
+
+                                year:
+                                  "numeric",
+                              },
+                            )
+                          : "-"}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding:
+                          "16px 18px",
+
+                        border:
+                          "1px solid #e5e7eb",
+
+                        borderRadius:
+                          10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          marginBottom:
+                            6,
+
+                          fontSize:
+                            12,
+
+                          color:
+                            "#6b7280",
+                        }}
+                      >
+                        Expected End
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize:
+                            14,
+
+                          fontWeight:
+                            700,
+
+                          color:
+                            "#111827",
+                        }}
+                      >
+                        {project.expectedEndDate
+                          ? new Date(
+                              project.expectedEndDate,
+                            ).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day:
+                                  "2-digit",
+
+                                month:
+                                  "short",
+
+                                year:
+                                  "numeric",
+                              },
+                            )
+                          : "-"}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Remarks */}
+
+                <section>
+                  <div
+                    style={{
+                      marginBottom:
+                        12,
+                      fontSize: 12,
+                      fontWeight:
+                        700,
+                      color:
+                        "#6b7280",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.06em",
+                    }}
+                  >
+                    Remarks
+                  </div>
+
+                  <div
+                    style={{
+                      padding:
+                        "16px 18px",
+
+                      border:
+                        "1px solid #e5e7eb",
+
+                      borderRadius:
+                        10,
+
+                      background:
+                        "#fff",
+
+                      fontSize: 14,
+
+                      lineHeight:
+                        1.6,
+
+                      color:
+                        "#374151",
+                    }}
+                  >
+                    {project.remarks ||
+                      "No remarks added for this project."}
+                  </div>
+                </section>
               </div>
-
-              <div
-                style={{
-                  fontSize: 14,
-
-                  fontWeight:
-                    700,
-
-                  color:
-                    "#111827",
-
-                  lineHeight:
-                    1.4,
-                }}
-              >
-                {
-                  item.value
-                }
-              </div>
-            </div>
-          ),
-        )}
-      </div>
-    </section>
-
-    {/* Timeline */}
-
-    <section>
-      <div
-        style={{
-          marginBottom: 12,
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#6b7280",
-          textTransform:
-            "uppercase",
-          letterSpacing:
-            "0.06em",
-        }}
-      >
-        Timeline
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(2, minmax(0, 1fr))",
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            padding:
-              "16px 18px",
-
-            border:
-              "1px solid #e5e7eb",
-
-            borderRadius: 10,
-          }}
-        >
-          <div
-            style={{
-              marginBottom: 6,
-              fontSize: 12,
-              color:
-                "#6b7280",
-            }}
-          >
-            Start Date
-          </div>
-
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color:
-                "#111827",
-            }}
-          >
-            {project.startDate
-              ? new Date(
-                  project.startDate,
-                ).toLocaleDateString(
-                  "en-IN",
-                  {
-                    day:
-                      "2-digit",
-                    month:
-                      "short",
-                    year:
-                      "numeric",
-                  },
-                )
-              : "-"}
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding:
-              "16px 18px",
-
-            border:
-              "1px solid #e5e7eb",
-
-            borderRadius: 10,
-          }}
-        >
-          <div
-            style={{
-              marginBottom: 6,
-              fontSize: 12,
-              color:
-                "#6b7280",
-            }}
-          >
-            Expected End
-          </div>
-
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color:
-                "#111827",
-            }}
-          >
-            {project.expectedEndDate
-              ? new Date(
-                  project.expectedEndDate,
-                ).toLocaleDateString(
-                  "en-IN",
-                  {
-                    day:
-                      "2-digit",
-                    month:
-                      "short",
-                    year:
-                      "numeric",
-                  },
-                )
-              : "-"}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    {/* Remarks */}
-
-    <section>
-      <div
-        style={{
-          marginBottom: 12,
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#6b7280",
-          textTransform:
-            "uppercase",
-          letterSpacing:
-            "0.06em",
-        }}
-      >
-        Remarks
-      </div>
-
-      <div
-        style={{
-          padding:
-            "16px 18px",
-
-          border:
-            "1px solid #e5e7eb",
-
-          borderRadius: 10,
-
-          background:
-            "#fff",
-
-          fontSize: 14,
-
-          lineHeight: 1.6,
-
-          color:
-            "#374151",
-        }}
-      >
-        {project.remarks ||
-          "No remarks added for this project."}
-      </div>
-    </section>
-  </div>
-)}
+            )}
 
             {/* Members */}
 
@@ -627,11 +677,6 @@ const ProjectWorkspaceModal = ({
                 loadingRoles={
                   loadingRoles
                 }
-                onMembersChange={() => {
-                  void fetchProjectMembers(
-                    project.uuid,
-                  );
-                }}
               />
             )}
 
@@ -647,7 +692,8 @@ const ProjectWorkspaceModal = ({
                   taskMemberOptions
                 }
                 loadingMembers={
-                  loadingMembers
+                  loadingMembers ||
+                  fetchingMembers
                 }
               />
             )}

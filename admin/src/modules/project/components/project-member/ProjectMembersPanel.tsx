@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -24,6 +23,7 @@ interface EmployeeOption {
 interface ProjectRoleOption {
   uuid: string;
   name: string;
+
   status:
     | "ACTIVE"
     | "INACTIVE";
@@ -32,7 +32,8 @@ interface ProjectRoleOption {
 interface Props {
   projectUuid: string;
 
-  employees: EmployeeOption[];
+  employees:
+    EmployeeOption[];
 
   projectRoles:
     ProjectRoleOption[];
@@ -40,10 +41,6 @@ interface Props {
   loadingEmployees?: boolean;
 
   loadingRoles?: boolean;
-
-  onMembersChange?: (
-    count: number,
-  ) => void;
 }
 
 const initialFormData:
@@ -61,23 +58,24 @@ const ProjectMembersPanel = ({
 
   loadingEmployees = false,
   loadingRoles = false,
-
-  onMembersChange,
 }: Props) => {
   const {
     projectMembers,
 
     loading,
+    fetching,
 
-    fetchProjectMembers,
     fetchProjectMember,
 
     assign,
     update,
     remove,
 
-    clearSelectedProjectMember,
-  } = useProjectMembers();
+    saving,
+    deleting,
+  } = useProjectMembers(
+    projectUuid,
+  );
 
   const [
     showForm,
@@ -99,32 +97,6 @@ const ProjectMembersPanel = ({
       ...initialFormData,
     });
 
-  const loadMembers =
-    async () => {
-      const members =
-        await fetchProjectMembers(
-          projectUuid,
-        );
-
-      const activeCount =
-        members.filter(
-          (member) =>
-            member.isActive,
-        ).length;
-
-      onMembersChange?.(
-        activeCount,
-      );
-
-      return members;
-    };
-
-  useEffect(() => {
-    void loadMembers();
-  }, [
-    projectUuid,
-  ]);
-
   const resetForm = () => {
     setEditMemberUuid(
       null,
@@ -133,8 +105,6 @@ const ProjectMembersPanel = ({
     setFormData({
       ...initialFormData,
     });
-
-    clearSelectedProjectMember();
   };
 
   const handleCreate = () => {
@@ -156,7 +126,6 @@ const ProjectMembersPanel = ({
       try {
         const member =
           await fetchProjectMember(
-            projectUuid,
             memberUuid,
           );
 
@@ -212,18 +181,14 @@ const ProjectMembersPanel = ({
           editMemberUuid
         ) {
           await update(
-            projectUuid,
             editMemberUuid,
             payload,
           );
         } else {
           await assign(
-            projectUuid,
             payload,
           );
         }
-
-        await loadMembers();
 
         handleCancel();
       } catch (error) {
@@ -249,11 +214,8 @@ const ProjectMembersPanel = ({
 
       try {
         await remove(
-          projectUuid,
           memberUuid,
         );
-
-        await loadMembers();
       } catch (error) {
         console.error(
           "Failed to remove project member:",
@@ -261,6 +223,12 @@ const ProjectMembersPanel = ({
         );
       }
     };
+
+  const activeMembersCount =
+    projectMembers.filter(
+      (member) =>
+        member.isActive,
+    ).length;
 
   if (showForm) {
     return (
@@ -326,7 +294,7 @@ const ProjectMembersPanel = ({
         >
           <Button
             variant="secondary"
-            disabled={loading}
+            disabled={saving}
             onClick={
               handleCancel
             }
@@ -335,7 +303,7 @@ const ProjectMembersPanel = ({
           </Button>
 
           <Button
-            loading={loading}
+            loading={saving}
             disabled={
               !formData.employeeUuid ||
               !formData.projectRoleUuid
@@ -383,19 +351,17 @@ const ProjectMembersPanel = ({
               color: "#6b7280",
             }}
           >
-            {
-              projectMembers.filter(
-                (member) =>
-                  member.isActive,
-              ).length
-            }{" "}
+            {activeMembersCount}{" "}
             active member
-            {projectMembers.filter(
-              (member) =>
-                member.isActive,
-            ).length === 1
+            {activeMembersCount ===
+            1
               ? ""
               : "s"}
+
+            {fetching &&
+            !loading
+              ? " · Updating..."
+              : ""}
           </div>
         </div>
 
@@ -422,6 +388,18 @@ const ProjectMembersPanel = ({
           handleDelete
         }
       />
+
+      {deleting && (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: "#6b7280",
+          }}
+        >
+          Removing member...
+        </div>
+      )}
     </>
   );
 };

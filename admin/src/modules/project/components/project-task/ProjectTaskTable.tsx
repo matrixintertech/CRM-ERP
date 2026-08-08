@@ -37,6 +37,11 @@ const formatDate = (
 
   return date.toLocaleDateString(
     "en-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
   );
 };
 
@@ -84,7 +89,9 @@ const ProjectTaskTable = ({
       title: "Assigned To",
 
       render: (_, row) =>
-        getAssigneeName(row),
+        getAssigneeName(
+          row,
+        ),
     },
 
     {

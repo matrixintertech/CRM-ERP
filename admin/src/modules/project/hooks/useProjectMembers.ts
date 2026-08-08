@@ -1,7 +1,8 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   notify,
@@ -17,7 +18,6 @@ import {
 
 import type {
   AssignProjectMemberRequest,
-  ProjectMember,
   UpdateProjectMemberRequest,
 } from "../types/project-member.types";
 
@@ -41,240 +41,258 @@ const getErrorMessage = (
   );
 };
 
-export const useProjectMembers = () => {
-  const [
-    projectMembers,
-    setProjectMembers,
-  ] = useState<ProjectMember[]>([]);
+export const useProjectMembers = (
+  projectUuid?: string,
+  enabled = true,
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [
-    selectedProjectMember,
-    setSelectedProjectMember,
-  ] =
-    useState<ProjectMember | null>(
-      null,
-    );
+  const membersQuery =
+    useQuery({
+      queryKey: [
+        "project-members",
+        projectUuid,
+      ],
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+      queryFn: () =>
+        getProjectMembers(
+          projectUuid!,
+        ),
 
-  const fetchProjectMembers =
-    useCallback(
-      async (
-        projectUuid: string,
-        includeHistory = false,
-      ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await getProjectMembers(
-              projectUuid,
-              includeHistory,
-            );
-
-          setProjectMembers(
-            data,
-          );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load project members.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+      enabled:
+        Boolean(
+          projectUuid,
+        ) &&
+        enabled,
+    });
 
   const fetchProjectMember =
-    useCallback(
-      async (
-        projectUuid: string,
-        memberUuid: string,
-      ) => {
-        try {
-          setLoading(true);
+    async (
+      memberUuid: string,
+    ) => {
+      if (!projectUuid) {
+        throw new Error(
+          "Project UUID is required.",
+        );
+      }
 
-          const data =
-            await getProjectMemberByUuid(
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "project-member",
+            projectUuid,
+            memberUuid,
+          ],
+
+          queryFn: () =>
+            getProjectMemberByUuid(
               projectUuid,
               memberUuid,
-            );
-
-          setSelectedProjectMember(
-            data,
-          );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to load project member.",
             ),
-          );
+        });
+      } catch (error) {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load project member.",
+          ),
+        );
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+        throw error;
+      }
+    };
 
-  const assign =
-    useCallback(
-      async (
-        projectUuid: string,
+  const assignMutation =
+    useMutation({
+      mutationFn: (
         payload:
           AssignProjectMemberRequest,
       ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await assignProjectMember(
-              projectUuid,
-              payload,
-            );
-
-          notify.success(
-            "Project member assigned successfully.",
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
           );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to assign project member.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
 
-  const update =
-    useCallback(
-      async (
-        projectUuid: string,
-        memberUuid: string,
+        return assignProjectMember(
+          projectUuid,
+          payload,
+        );
+      },
+
+      onSuccess: async () => {
+        notify.success(
+          "Project member assigned successfully.",
+        );
+
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "project-members",
+            projectUuid,
+          ],
+        });
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to assign project member.",
+          ),
+        );
+      },
+    });
+
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        memberUuid,
+        payload,
+      }: {
+        memberUuid: string;
         payload:
-          UpdateProjectMemberRequest,
-      ) => {
-        try {
-          setLoading(true);
-
-          const data =
-            await updateProjectMember(
-              projectUuid,
-              memberUuid,
-              payload,
-            );
-
-          notify.success(
-            "Project member updated successfully.",
+          UpdateProjectMemberRequest;
+      }) => {
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
           );
-
-          return data;
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to update project member.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
 
-  const remove =
-    useCallback(
-      async (
-        projectUuid: string,
+        return updateProjectMember(
+          projectUuid,
+          memberUuid,
+          payload,
+        );
+      },
+
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
+        notify.success(
+          "Project member updated successfully.",
+        );
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-members",
+              projectUuid,
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-member",
+              projectUuid,
+              variables.memberUuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update project member.",
+          ),
+        );
+      },
+    });
+
+  const removeMutation =
+    useMutation({
+      mutationFn: (
         memberUuid: string,
       ) => {
-        try {
-          setLoading(true);
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
+          );
+        }
 
-          await removeProjectMember(
+        return removeProjectMember(
+          projectUuid,
+          memberUuid,
+        );
+      },
+
+      onSuccess: async (
+        _data,
+        memberUuid,
+      ) => {
+        notify.success(
+          "Project member removed successfully.",
+        );
+
+        queryClient.removeQueries({
+          queryKey: [
+            "project-member",
             projectUuid,
             memberUuid,
-          );
+          ],
+        });
 
-          setProjectMembers(
-            (previous) =>
-              previous.filter(
-                (member) =>
-                  member.uuid !==
-                  memberUuid,
-              ),
-          );
-
-          notify.success(
-            "Project member removed successfully.",
-          );
-        } catch (error) {
-          notify.error(
-            getErrorMessage(
-              error,
-              "Failed to remove project member.",
-            ),
-          );
-
-          throw error;
-        } finally {
-          setLoading(false);
-        }
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "project-members",
+            projectUuid,
+          ],
+        });
       },
-      [],
-    );
 
-  const clearSelectedProjectMember =
-    useCallback(() => {
-      setSelectedProjectMember(
-        null,
-      );
-    }, []);
-
-  const clearProjectMembers =
-    useCallback(() => {
-      setProjectMembers([]);
-    }, []);
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to remove project member.",
+          ),
+        );
+      },
+    });
 
   return {
-    projectMembers,
-    selectedProjectMember,
-    loading,
+    projectMembers:
+      membersQuery.data ?? [],
 
-    fetchProjectMembers,
+    loading:
+      membersQuery.isLoading,
+
+    fetching:
+      membersQuery.isFetching,
+
+    error:
+      membersQuery.error,
+
+    refetch:
+      membersQuery.refetch,
+
     fetchProjectMember,
 
-    assign,
-    update,
-    remove,
+    assign:
+      assignMutation.mutateAsync,
 
-    clearSelectedProjectMember,
-    clearProjectMembers,
+    update: (
+      memberUuid: string,
+      payload:
+        UpdateProjectMemberRequest,
+    ) =>
+      updateMutation.mutateAsync({
+        memberUuid,
+        payload,
+      }),
+
+    remove:
+      removeMutation.mutateAsync,
+
+    saving:
+      assignMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      removeMutation.isPending,
   };
 };

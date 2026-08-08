@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -52,17 +51,21 @@ const ProjectTasksPanel = ({
 }: Props) => {
   const {
     projectTasks,
-    loading,
 
-    fetchProjectTasks,
+    loading,
+    fetching,
+
     fetchProjectTask,
 
     create,
     update,
     remove,
 
-    clearSelectedProjectTask,
-  } = useProjectTasks();
+    saving,
+    deleting,
+  } = useProjectTasks(
+    projectUuid,
+  );
 
   const [
     showForm,
@@ -84,15 +87,6 @@ const ProjectTasksPanel = ({
       ...initialFormData,
     });
 
-  useEffect(() => {
-    void fetchProjectTasks(
-      projectUuid,
-    );
-  }, [
-    projectUuid,
-    fetchProjectTasks,
-  ]);
-
   const resetForm = () => {
     setEditTaskUuid(
       null,
@@ -101,8 +95,6 @@ const ProjectTasksPanel = ({
     setFormData({
       ...initialFormData,
     });
-
-    clearSelectedProjectTask();
   };
 
   const handleCreate = () => {
@@ -117,69 +109,69 @@ const ProjectTasksPanel = ({
     setShowForm(false);
   };
 
-  const handleEdit = async (
-    taskUuid: string,
-  ) => {
-    try {
-      const task =
-        await fetchProjectTask(
-          projectUuid,
+  const handleEdit =
+    async (
+      taskUuid: string,
+    ) => {
+      try {
+        const task =
+          await fetchProjectTask(
+            taskUuid,
+          );
+
+        setEditTaskUuid(
           taskUuid,
         );
 
-      setEditTaskUuid(
-        taskUuid,
-      );
+        setFormData({
+          title:
+            task.title,
 
-      setFormData({
-        title:
-          task.title,
+          description:
+            task.description ??
+            "",
 
-        description:
-          task.description ??
-          "",
+          priority:
+            task.priority,
 
-        priority:
-          task.priority,
+          status:
+            task.status,
 
-        status:
-          task.status,
+          startDate:
+            task.startDate
+              ?.slice(
+                0,
+                10,
+              ) ?? "",
 
-        startDate:
-          task.startDate
-            ?.slice(
-              0,
-              10,
-            ) ?? "",
+          dueDate:
+            task.dueDate
+              ?.slice(
+                0,
+                10,
+              ) ?? "",
 
-        dueDate:
-          task.dueDate
-            ?.slice(
-              0,
-              10,
-            ) ?? "",
+          assignedProjectMemberUuid:
+            task.assignedProjectMember
+              ?.uuid ?? "",
 
-        assignedProjectMemberUuid:
-          task.assignedProjectMember
-            ?.uuid ?? "",
+          remarks:
+            task.remarks ??
+            "",
 
-        remarks:
-          task.remarks ??
-          "",
+          sortOrder:
+            task.sortOrder ??
+            0,
+        });
 
-        sortOrder:
-          task.sortOrder ??
-          0,
-      });
-
-      setShowForm(true);
-    } catch (error) {
-      console.error(
-        "Failed to load project task:",
-        error,
-      );
-    }
-  };
+        setShowForm(true);
+      } catch (error) {
+        console.error(
+          "Failed to load project task:",
+          error,
+        );
+      }
+    };
 
   const handleSubmit =
     async () => {
@@ -199,7 +191,9 @@ const ProjectTasksPanel = ({
           return;
         }
 
-        if (editTaskUuid) {
+        if (
+          editTaskUuid
+        ) {
           const payload:
             UpdateProjectTaskRequest = {
             title:
@@ -242,7 +236,6 @@ const ProjectTasksPanel = ({
           };
 
           await update(
-            projectUuid,
             editTaskUuid,
             payload,
           );
@@ -289,14 +282,9 @@ const ProjectTasksPanel = ({
           };
 
           await create(
-            projectUuid,
             payload,
           );
         }
-
-        await fetchProjectTasks(
-          projectUuid,
-        );
 
         handleCancel();
       } catch (error) {
@@ -322,12 +310,7 @@ const ProjectTasksPanel = ({
 
       try {
         await remove(
-          projectUuid,
           taskUuid,
-        );
-
-        await fetchProjectTasks(
-          projectUuid,
         );
       } catch (error) {
         console.error(
@@ -354,6 +337,18 @@ const ProjectTasksPanel = ({
             {editTaskUuid
               ? "Edit Task"
               : "Create Task"}
+          </div>
+
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 12,
+              color: "#6b7280",
+            }}
+          >
+            {editTaskUuid
+              ? "Update task details and assignment."
+              : "Create a new task for this project."}
           </div>
         </div>
 
@@ -388,9 +383,7 @@ const ProjectTasksPanel = ({
         >
           <Button
             variant="secondary"
-            disabled={
-              loading
-            }
+            disabled={saving}
             onClick={
               handleCancel
             }
@@ -399,9 +392,7 @@ const ProjectTasksPanel = ({
           </Button>
 
           <Button
-            loading={
-              loading
-            }
+            loading={saving}
             disabled={
               !formData.title.trim()
             }
@@ -447,14 +438,17 @@ const ProjectTasksPanel = ({
               color: "#6b7280",
             }}
           >
-            {
-              projectTasks.length
-            }{" "}
+            {projectTasks.length}{" "}
             task
             {projectTasks.length ===
             1
               ? ""
               : "s"}
+
+            {fetching &&
+            !loading
+              ? " · Updating..."
+              : ""}
           </div>
         </div>
 
@@ -481,6 +475,18 @@ const ProjectTasksPanel = ({
           handleDelete
         }
       />
+
+      {deleting && (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: "#6b7280",
+          }}
+        >
+          Deleting task...
+        </div>
+      )}
     </>
   );
 };
