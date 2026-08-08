@@ -69,19 +69,19 @@ const OrganizationUnitForm = ({
   setFormData,
   editingUuid,
 }: Props) => {
-  const {
-    dropdown: states,
-    fetchDropdown: fetchStates,
-  } = useStates();
+  
+  
+  
+const {
+  dropdown:
+    stateOptions,
+} = useStates();
 
   const {
     dropdownCities: cities,
     fetchDropdownCities,
   } = useCities();
 
-  useEffect(() => {
-    void fetchStates();
-  }, [fetchStates]);
 
   useEffect(() => {
     if (!formData.stateUuid) {
