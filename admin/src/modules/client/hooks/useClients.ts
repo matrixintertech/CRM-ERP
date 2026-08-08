@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createClient,
@@ -15,140 +18,94 @@ import {
 } from "../api/client.api";
 
 import type {
-  Client,
-  ClientDropdown,
-  ClientListResponse,
   ClientQueryParams,
   CreateClientDto,
   UpdateClientDto,
 } from "../types/client.types";
 
-const initialFormData: CreateClientDto = {
-  name: "",
-  code: "",
-  contactName: "",
-  mobile: "",
-  email: "",
-  gstNumber: "",
-  panNumber: "",
-  stateUuid: "",
-  cityUuid: "",
-  address: "",
-  pincode: "",
-  remarks: "",
-};
-
 const getErrorMessage = (
   error: unknown,
   fallback: string,
 ) => {
-  const apiError = error as {
-    response?: {
-      data?: {
-        message?: string;
-        errors?: string[];
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: string[];
+        };
       };
     };
-  };
 
   const errors =
-    apiError.response?.data?.errors;
+    apiError.response?.data
+      ?.errors;
 
   if (
     Array.isArray(errors) &&
     errors.length > 0
   ) {
-    return errors.join(", ");
+    return errors.join(
+      ", ",
+    );
   }
 
   return (
-    apiError.response?.data?.message ??
+    apiError.response?.data
+      ?.message ??
     fallback
   );
 };
 
-export const useClients = () => {
-  const [clients, setClients] =
-    useState<Client[]>([]);
+export const useClients = (
+  params: ClientQueryParams = {},
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [total, setTotal] =
-    useState(0);
+  const clientsQuery =
+    useQuery({
+      queryKey: [
+        "clients",
+        params,
+      ],
 
-  const [
-    selectedClient,
-    setSelectedClient,
-  ] = useState<Client | null>(null);
+      queryFn: () =>
+        getClients(
+          params,
+        ),
+    });
 
-  const [loading, setLoading] =
-    useState(false);
+  const dropdownQuery =
+    useQuery({
+      queryKey: [
+        "client-dropdown",
+      ],
 
-  const [formData, setFormData] =
-    useState<CreateClientDto>(
-      () => ({
-        ...initialFormData,
-      }),
-    );
+      queryFn:
+        getClientDropdown,
 
-  const [dropdown, setDropdown] =
-    useState<ClientDropdown[]>([]);
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-  const fetchClients = useCallback(
-    async (
-      params: ClientQueryParams = {},
-    ): Promise<ClientListResponse> => {
-      try {
-        setLoading(true);
-
-        const data =
-          await getClients(params);
-
-        setClients(
-          data.clients ?? [],
-        );
-
-        setTotal(data.total ?? 0);
-
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to fetch clients:",
-          error,
-        );
-
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load clients.",
-          ),
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const fetchClient = useCallback(
+  const fetchClient =
     async (
       uuid: string,
-    ): Promise<Client> => {
+    ) => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "client",
+            uuid,
+          ],
 
-        const client =
-          await getClientByUuid(uuid);
-
-        setSelectedClient(client);
-
-        return client;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to fetch client:",
-          error,
-        );
-
+          queryFn: () =>
+            getClientByUuid(
+              uuid,
+            ),
+        });
+      } catch (error) {
         notify.error(
           getErrorMessage(
             error,
@@ -157,189 +114,208 @@ export const useClients = () => {
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const create = useCallback(
-    async (
-      payload: CreateClientDto,
-    ) => {
-      try {
-        setLoading(true);
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload:
+          CreateClientDto,
+      ) =>
+        createClient(
+          payload,
+        ),
 
-        const data =
-          await createClient(payload);
-
+      onSuccess: async () => {
         notify.success(
           "Client created successfully.",
         );
 
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to create client:",
-          error,
-        );
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "clients",
+            ],
+          }),
 
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-dropdown",
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         notify.error(
           getErrorMessage(
             error,
             "Failed to create client.",
           ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
 
-  const update = useCallback(
-    async (
-      uuid: string,
-      payload: UpdateClientDto,
-    ) => {
-      try {
-        setLoading(true);
+        payload:
+          UpdateClientDto;
+      }) =>
+        updateClient(
+          uuid,
+          payload,
+        ),
 
-        const data =
-          await updateClient(
-            uuid,
-            payload,
-          );
-
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
         notify.success(
           "Client updated successfully.",
         );
 
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to update client:",
-          error,
-        );
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "clients",
+            ],
+          }),
 
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client",
+              variables.uuid,
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-dropdown",
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         notify.error(
           getErrorMessage(
             error,
             "Failed to update client.",
           ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        uuid: string,
+      ) =>
+        deleteClient(
+          uuid,
+        ),
 
-  const remove = useCallback(
-    async (uuid: string) => {
-      try {
-        setLoading(true);
-
-        await deleteClient(uuid);
-
-        setClients((previous) =>
-          previous.filter(
-            (client) =>
-              client.uuid !== uuid,
-          ),
-        );
-
-        setTotal((previous) =>
-          Math.max(previous - 1, 0),
-        );
-
+      onSuccess: async (
+        _data,
+        uuid,
+      ) => {
         notify.success(
           "Client deleted successfully.",
         );
-      } catch (error: unknown) {
-        console.error(
-          "Failed to delete client:",
-          error,
-        );
 
+        queryClient.removeQueries({
+          queryKey: [
+            "client",
+            uuid,
+          ],
+        });
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "clients",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "client-dropdown",
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         notify.error(
           getErrorMessage(
             error,
             "Failed to delete client.",
           ),
         );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const fetchDropdown =
-    useCallback(async () => {
-      try {
-        const data =
-          await getClientDropdown();
-
-        setDropdown(data);
-
-        return data;
-      } catch (error: unknown) {
-        console.error(
-          "Failed to fetch client dropdown:",
-          error,
-        );
-
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load client dropdown.",
-          ),
-        );
-
-        throw error;
-      }
-    }, []);
-
-  const resetForm = useCallback(() => {
-    setFormData({
-      ...initialFormData,
+      },
     });
-  }, []);
-
-  const clearSelectedClient =
-    useCallback(() => {
-      setSelectedClient(null);
-    }, []);
 
   return {
-    loading,
+    clients:
+      clientsQuery.data
+        ?.clients ?? [],
 
-    clients,
-    total,
-    selectedClient,
+    total:
+      clientsQuery.data
+        ?.total ?? 0,
 
-    dropdown,
-    fetchDropdown,
+    dropdown:
+      dropdownQuery.data ??
+      [],
 
-    formData,
-    setFormData,
+    loading:
+      clientsQuery.isLoading,
 
-    fetchClients,
+    fetching:
+      clientsQuery.isFetching,
+
+    dropdownLoading:
+      dropdownQuery.isLoading,
+
+    dropdownFetching:
+      dropdownQuery.isFetching,
+
     fetchClient,
 
-    create,
-    update,
-    remove,
+    create:
+      createMutation.mutateAsync,
 
-    resetForm,
-    clearSelectedClient,
+    update: (
+      uuid: string,
+      payload:
+        UpdateClientDto,
+    ) =>
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
+
+    refetch:
+      clientsQuery.refetch,
+
+    refetchDropdown:
+      dropdownQuery.refetch,
   };
 };
