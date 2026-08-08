@@ -94,13 +94,10 @@ const ProjectListPage = () => {
     saving,
   } = useProjects();
 
-  const {
-    dropdown:
-      clientDropdown,
-
-    fetchDropdown:
-      fetchClientDropdown,
-  } = useClients();
+ const {
+  dropdown:
+    clientDropdown,
+} = useClients();
 
   const {
     dropdown:
@@ -190,7 +187,6 @@ const ProjectListPage = () => {
   const loadFormDropdowns =
     async () => {
       await Promise.all([
-        fetchClientDropdown(),
         fetchStateDropdown(),
         fetchCategories(),
         fetchOrganizationUnits(),
