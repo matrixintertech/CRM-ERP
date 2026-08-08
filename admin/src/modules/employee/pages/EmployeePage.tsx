@@ -101,7 +101,6 @@ const EmployeePage = () => {
 
   const {
     organizationUnits,
-    fetchOrganizationUnits,
   } = useOrganizationUnits();
 
   const {
@@ -161,15 +160,11 @@ const EmployeePage = () => {
     Employee | null
   >(null);
 
-  useEffect(() => {
-    void Promise.all([
-      fetchOrganizationUnits(),
-      fetchRoles(),
-    ]);
-  }, [
-    fetchOrganizationUnits,
-    fetchRoles,
-  ]);
+useEffect(() => {
+  void fetchRoles();
+}, [
+  fetchRoles,
+]);
 
   const resetForm =
     useCallback(() => {
