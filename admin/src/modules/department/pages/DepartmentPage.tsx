@@ -33,22 +33,16 @@ import {
 } from "../../organization-unit/hooks/useOrganizationUnits";
 
 import type {
+  Department,
   DepartmentFormData,
 } from "../types/department.types";
 
 const createDefaultForm =
   (): DepartmentFormData => ({
-    organizationUnitUuid:
-      "",
-
-    name:
-      "",
-
-    code:
-      "",
-
-    description:
-      "",
+    organizationUnitUuid: "",
+    name: "",
+    code: "",
+    description: "",
   });
 
 const DepartmentPage = () => {
@@ -244,7 +238,7 @@ const DepartmentPage = () => {
     };
 
   const columns:
-    DataTableColumn[] = [
+    DataTableColumn<Department>[] = [
     {
       key:
         "organizationUnit",

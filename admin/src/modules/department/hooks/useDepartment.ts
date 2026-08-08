@@ -49,18 +49,18 @@ export const useDepartment =
     /*
      * Department list
      */
-    const departmentsQuery =
-      useQuery({
-        queryKey: [
-          "departments",
-        ],
+   const departmentsQuery =
+  useQuery({
+    queryKey: [
+      "departments",
+    ],
 
-        queryFn:
-          getDepartments,
+    queryFn: () =>
+      getDepartments(),
 
-        staleTime:
-          5 * 60 * 1000,
-      });
+    staleTime:
+      5 * 60 * 1000,
+  });
 
     /*
      * Single department

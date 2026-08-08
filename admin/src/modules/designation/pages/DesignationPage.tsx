@@ -32,6 +32,7 @@ import {
 } from "../../department/hooks/useDepartment";
 
 import type {
+  Designation,
   DesignationFormData,
 } from "../types/designation.types";
 
@@ -62,8 +63,6 @@ const DesignationPage = () => {
 
   const {
     departments,
-    loading:
-      loadingDepartments,
   } = useDepartment();
 
   const [
@@ -231,7 +230,7 @@ const DesignationPage = () => {
     };
 
   const columns:
-    DataTableColumn[] = [
+    DataTableColumn<Designation>[] = [
     {
       key:
         "location",
