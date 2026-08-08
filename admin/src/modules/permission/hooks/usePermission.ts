@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createPermission,
@@ -16,223 +19,289 @@ import {
 
 import type {
   CreatePermissionDto,
-  Permission,
-  PermissionGroup,
   UpdatePermissionDto,
 } from "../types/permission.types";
 
-export const usePermission = () => {
-  const [loading, setLoading] =
-    useState(false);
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  const [
-    permissions,
-    setPermissions,
-  ] = useState<Permission[]>([]);
-
-  const [
-    groupedPermissions,
-    setGroupedPermissions,
-  ] = useState<PermissionGroup[]>(
-    [],
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
   );
+};
 
-  const [
-    selectedPermission,
-    setSelectedPermission,
-  ] = useState<Permission | null>(
-    null,
-  );
+export const usePermission =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-  const fetchPermissions =
-    useCallback(async () => {
-      setLoading(true);
+    const permissionsQuery =
+      useQuery({
+        queryKey: [
+          "permissions",
+        ],
 
-      try {
-        const data =
-          await getPermissions();
+        queryFn: () =>
+          getPermissions(),
 
-        setPermissions(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        return data;
-      } catch (error) {
-        notify.error(
-          "Failed to load permissions.",
-        );
+    const groupedPermissionsQuery =
+      useQuery({
+        queryKey: [
+          "grouped-permissions",
+        ],
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
+        queryFn: () =>
+          getGroupedPermissions(),
 
-  const fetchGroupedPermissions =
-    useCallback(async () => {
-      setLoading(true);
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-      try {
-        const data =
-          await getGroupedPermissions();
-
-        setGroupedPermissions(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
-
-        return data;
-      } catch (error) {
-        notify.error(
-          "Failed to load grouped permissions.",
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const fetchPermission =
-    useCallback(
+    const fetchPermission =
       async (
         id: string,
       ) => {
-        setLoading(true);
-
         try {
-          const data =
-            await getPermission(
+          return await queryClient.fetchQuery({
+            queryKey: [
+              "permission",
               id,
-            );
+            ],
 
-          setSelectedPermission(
-            data,
-          );
-
-          return data;
+            queryFn: () =>
+              getPermission(
+                id,
+              ),
+          });
         } catch (error) {
           notify.error(
-            "Failed to load permission.",
+            getErrorMessage(
+              error,
+              "Failed to load permission.",
+            ),
           );
 
           throw error;
-        } finally {
-          setLoading(false);
         }
-      },
-      [],
-    );
+      };
 
-  const create = async (
-    payload: CreatePermissionDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await createPermission(
-          payload,
-        );
-
-      notify.success(
-        "Permission created successfully.",
-      );
-
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to create permission.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const update = async (
-    id: string,
-    payload: UpdatePermissionDto,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await updatePermission(
-          id,
-          payload,
-        );
-
-      notify.success(
-        "Permission updated successfully.",
-      );
-
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to update permission.",
-      );
-
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const remove = async (
-    id: string,
-  ) => {
-    setLoading(true);
-
-    try {
-      const data =
-        await deletePermission(
-          id,
-        );
-
-      setPermissions(
-        (previous) =>
-          previous.filter(
-            (permission) =>
-              String(
-                permission.id,
-              ) !== id,
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            CreatePermissionDto,
+        ) =>
+          createPermission(
+            payload,
           ),
-      );
 
-      notify.success(
-        "Permission deleted successfully.",
-      );
+        onSuccess: async () => {
+          notify.success(
+            "Permission created successfully.",
+          );
 
-      return data;
-    } catch (error) {
-      notify.error(
-        "Failed to delete permission.",
-      );
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "permissions",
+              ],
+            }),
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+            queryClient.invalidateQueries({
+              queryKey: [
+                "grouped-permissions",
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to create permission.",
+            ),
+          );
+        },
+      });
+
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          id,
+          payload,
+        }: {
+          id: string;
+
+          payload:
+            UpdatePermissionDto;
+        }) =>
+          updatePermission(
+            id,
+            payload,
+          ),
+
+        onSuccess: async (
+          _data,
+          variables,
+        ) => {
+          notify.success(
+            "Permission updated successfully.",
+          );
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "permissions",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "grouped-permissions",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "permission",
+                variables.id,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to update permission.",
+            ),
+          );
+        },
+      });
+
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          id: string,
+        ) =>
+          deletePermission(
+            id,
+          ),
+
+        onSuccess: async (
+          _data,
+          id,
+        ) => {
+          notify.success(
+            "Permission deleted successfully.",
+          );
+
+          queryClient.removeQueries({
+            queryKey: [
+              "permission",
+              id,
+            ],
+          });
+
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "permissions",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "grouped-permissions",
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to delete permission.",
+            ),
+          );
+        },
+      });
+
+    return {
+      permissions:
+        Array.isArray(
+          permissionsQuery.data,
+        )
+          ? permissionsQuery.data
+          : [],
+
+      groupedPermissions:
+        Array.isArray(
+          groupedPermissionsQuery.data,
+        )
+          ? groupedPermissionsQuery.data
+          : [],
+
+      loading:
+        permissionsQuery.isLoading ||
+        groupedPermissionsQuery.isLoading,
+
+      fetching:
+        permissionsQuery.isFetching ||
+        groupedPermissionsQuery.isFetching,
+
+      error:
+        permissionsQuery.error ??
+        groupedPermissionsQuery.error,
+
+      refetchPermissions:
+        permissionsQuery.refetch,
+
+      refetchGroupedPermissions:
+        groupedPermissionsQuery.refetch,
+
+      fetchPermission,
+
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        id: string,
+        payload:
+          UpdatePermissionDto,
+      ) =>
+        updateMutation.mutateAsync({
+          id,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-
-  return {
-    loading,
-
-    permissions,
-    groupedPermissions,
-    selectedPermission,
-
-    fetchPermissions,
-    fetchGroupedPermissions,
-    fetchPermission,
-
-    create,
-    update,
-    remove,
-  };
-};

@@ -1,202 +1,341 @@
-import { useEffect, useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
 
-import { SquarePen, Trash2 } from "lucide-react";
+import {
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
 
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import DataTable from "@/shared/components/DataTable/DataTable";
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import PermissionModal from "../components/PermissionModal";
 
-import { usePermission } from "../hooks/usePermission";
+import {
+  usePermission,
+} from "../hooks/usePermission";
 
-import type { Permission, PermissionFormData } from "../types/permission.types";
+import type {
+  Permission,
+  PermissionFormData,
+} from "../types/permission.types";
 
-const createDefaultForm = (): PermissionFormData => ({
-  module: "DASHBOARD",
+const createDefaultForm =
+  (): PermissionFormData => ({
+    module: "DASHBOARD",
 
-  name: "",
-  code: "",
+    name: "",
+    code: "",
 
-  description: "",
+    description: "",
 
-  status: "ACTIVE",
-});
+    status: "ACTIVE",
+  });
 
 const PermissionPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  useDocumentTitle("All Permissions");
+  useDocumentTitle(
+    "All Permissions",
+  );
 
   const {
     loading,
     permissions,
-    fetchPermissions,
+
     fetchPermission,
+
     create,
     update,
     remove,
+
+    saving,
   } = usePermission();
 
-  const [open, setOpen] = useState(false);
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
 
-  const [editId, setEditId] = useState<string | null>(null);
+  const [
+    editId,
+    setEditId,
+  ] = useState<
+    string | null
+  >(null);
 
-  const [formData, setFormData] =
-    useState<PermissionFormData>(createDefaultForm);
-
-  useEffect(() => {
-    void fetchPermissions();
-  }, [fetchPermissions]);
+  const [
+    formData,
+    setFormData,
+  ] =
+    useState<PermissionFormData>(
+      createDefaultForm,
+    );
 
   const resetForm = () => {
-    setEditId(null);
+    setEditId(
+      null,
+    );
 
-    setFormData(createDefaultForm());
+    setFormData(
+      createDefaultForm(),
+    );
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpen(true);
-  };
+  const handleOpenCreate =
+    () => {
+      resetForm();
 
-  const handleClose = () => {
-    setOpen(false);
-    resetForm();
-  };
+      setOpen(
+        true,
+      );
+    };
 
-  const handleSubmit = async () => {
-    try {
-      const payload: PermissionFormData = {
-        module: formData.module,
+  const handleClose =
+    () => {
+      setOpen(
+        false,
+      );
 
-        name: formData.name.trim(),
+      resetForm();
+    };
 
-        code: formData.code.trim().toLowerCase(),
+  const handleSubmit =
+    async () => {
+      try {
+        const payload:
+          PermissionFormData = {
+          module:
+            formData.module,
 
-        description: formData.description?.trim() || undefined,
+          name:
+            formData.name.trim(),
 
-        status: formData.status ?? "ACTIVE",
-      };
+          code:
+            formData.code
+              .trim()
+              .toLowerCase(),
 
-      if (editId) {
-        await update(editId, payload);
-      } else {
-        await create(payload);
+          description:
+            formData.description
+              ?.trim() ||
+            undefined,
+
+          status:
+            formData.status ??
+            "ACTIVE",
+        };
+
+        if (editId) {
+          await update(
+            editId,
+            payload,
+          );
+        } else {
+          await create(
+            payload,
+          );
+        }
+
+        handleClose();
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
       }
+    };
 
-      await fetchPermissions();
+  const handleEdit =
+    async (
+      id: string,
+    ) => {
+      try {
+        const permission =
+          await fetchPermission(
+            id,
+          );
 
-      handleClose();
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
+        if (!permission) {
+          return;
+        }
 
-  const handleEdit = async (id: string) => {
-    try {
-      const permission = await fetchPermission(id);
+        setEditId(
+          id,
+        );
 
-      if (!permission) {
+        setFormData({
+          module:
+            permission.module,
+
+          name:
+            permission.name,
+
+          code:
+            permission.code,
+
+          description:
+            permission.description ??
+            "",
+
+          status:
+            permission.status,
+        });
+
+        setOpen(
+          true,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
+
+  const handleDelete =
+    async (
+      id: string,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this permission?",
+        );
+
+      if (!confirmed) {
         return;
       }
 
-      setEditId(id);
+      try {
+        await remove(
+          id,
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      }
+    };
 
-      setFormData({
-        module: permission.module,
-
-        name: permission.name,
-
-        code: permission.code,
-
-        description: permission.description ?? "",
-
-        status: permission.status,
-      });
-
-      setOpen(true);
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this permission?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(id);
-    } catch (error: any) {
-      console.error(error?.response?.data ?? error);
-    }
-  };
-
-  const columns: DataTableColumn<Permission>[] = [
+  const columns:
+    DataTableColumn<Permission>[] = [
     {
       key: "module",
       title: "Module",
 
-      render: (row) =>
+      render: (
+        row,
+      ) =>
         row.module
-          .replaceAll("_", " ")
+          .replaceAll(
+            "_",
+            " ",
+          )
           .toLowerCase()
-          .replace(/\b\w/g, (character) => character.toUpperCase()),
+          .replace(
+            /\b\w/g,
+            (
+              character,
+            ) =>
+              character.toUpperCase(),
+          ),
     },
+
     {
       key: "name",
       title: "Permission",
     },
+
     {
       key: "code",
       title: "Code",
     },
-    {
-      key: "description",
-      title: "Description",
 
-      render: (row) => row.description || "-",
+    {
+      key:
+        "description",
+
+      title:
+        "Description",
+
+      render: (
+        row,
+      ) =>
+        row.description ||
+        "-",
     },
+
     {
       key: "status",
       title: "Status",
-      align: "center",
+      align:
+        "center",
     },
+
     {
       key: "actions",
       title: "Actions",
-      align: "center",
+      align:
+        "center",
 
-      render: (row) => (
+      render: (
+        row,
+      ) => (
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
+            display:
+              "flex",
+            justifyContent:
+              "center",
             gap: 8,
           }}
         >
-          <Button size="sm" onClick={() => handleEdit(String(row.id))}>
-            <SquarePen size={16} />
+          <Button
+            size="sm"
+            onClick={() =>
+              handleEdit(
+                String(
+                  row.id,
+                ),
+              )
+            }
+          >
+            <SquarePen
+              size={16}
+            />
           </Button>
 
           <Button
             size="sm"
             variant="danger"
-            onClick={() => handleDelete(String(row.id))}
+            onClick={() =>
+              handleDelete(
+                String(
+                  row.id,
+                ),
+              )
+            }
           >
-            <Trash2 size={16} />
+            <Trash2
+              size={16}
+            />
           </Button>
         </div>
       ),
@@ -211,24 +350,44 @@ const PermissionPage = () => {
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               gap: 12,
             }}
           >
-            <Button variant="secondary" onClick={() => navigate(-1)}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  -1,
+                )
+              }
+            >
               Back
             </Button>
 
-            <Button onClick={handleOpenCreate}>Add Permission</Button>
+            <Button
+              onClick={
+                handleOpenCreate
+              }
+            >
+              Add Permission
+            </Button>
           </div>
         }
       />
 
       <Card>
         <DataTable
-          loading={loading}
-          data={permissions ?? []}
-          columns={columns}
+          loading={
+            loading
+          }
+          data={
+            permissions
+          }
+          columns={
+            columns
+          }
           keyField="id"
           showSerialNumber
           emptyMessage="No Permissions Found."
@@ -236,14 +395,34 @@ const PermissionPage = () => {
       </Card>
 
       <PermissionModal
-        title={editId ? "Edit Permission" : "Create Permission"}
-        isEdit={Boolean(editId)}
-        open={open}
-        loading={loading}
-        formData={formData}
-        setFormData={setFormData}
-        onClose={handleClose}
-        onSubmit={handleSubmit}
+        title={
+          editId
+            ? "Edit Permission"
+            : "Create Permission"
+        }
+        isEdit={
+          Boolean(
+            editId,
+          )
+        }
+        open={
+          open
+        }
+        loading={
+          saving
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleClose
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
     </>
   );
