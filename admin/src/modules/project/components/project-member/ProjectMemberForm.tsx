@@ -8,7 +8,7 @@ import Select from "@/shared/components/Select";
 
 import type {
   ProjectMemberFormData,
-} from "../types/project-member.types";
+} from "../../types/project-member.types";
 
 interface EmployeeOption {
   uuid: string;

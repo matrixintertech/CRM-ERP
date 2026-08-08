@@ -7,7 +7,7 @@ import Table, {
 
 import type {
   ProjectMember,
-} from "../types/project-member.types";
+} from "../../types/project-member.types";
 
 interface Props {
   data: ProjectMember[];
