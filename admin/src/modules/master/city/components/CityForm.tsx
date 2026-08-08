@@ -45,12 +45,14 @@ const {
         label="State"
         value={formData.stateUuid}
         required
-        options={dropdown.map(
-          (state) => ({
-            label: state.name,
-            value: state.uuid,
-          }),
-        )}
+        options={
+            states.map(
+              (state) => ({
+                label: state.name,
+                value: state.uuid,
+              }),
+            )
+}
         onChange={(e) =>
           handleChange(
             "stateUuid",
