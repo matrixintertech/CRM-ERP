@@ -6,37 +6,26 @@ import Table, {
 } from "@/shared/components/Table";
 
 import type {
-  Project,
-} from "../types/project.types";
+  ProjectTask,
+} from "../../types/project-task.types";
 
 interface Props {
-  data: Project[];
+  data: ProjectTask[];
   loading: boolean;
 
-  onManage:
-    (uuid: string) => void;
-
-  onEdit:
-    (uuid: string) => void;
-
-  onDelete:
-    (uuid: string) => void;
+  onEdit: (uuid: string) => void;
+  onDelete: (uuid: string) => void;
 }
 
 const formatDate = (
-  value: unknown,
+  value?: string | null,
 ) => {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+  if (!value) {
     return "-";
   }
 
-  const date = new Date(
-    String(value),
-  );
+  const date =
+    new Date(value);
 
   if (
     Number.isNaN(
@@ -51,80 +40,94 @@ const formatDate = (
   );
 };
 
-const ProjectTable = ({
+const getAssigneeName = (
+  task: ProjectTask,
+) => {
+  const member =
+    task.assignedProjectMember;
+
+  if (!member) {
+    return "Unassigned";
+  }
+
+  const employee =
+    member.employee;
+
+  return (
+    employee.displayName ||
+    [
+      employee.firstName,
+      employee.lastName,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
+    employee.employeeCode ||
+    "-"
+  );
+};
+
+const ProjectTaskTable = ({
   data,
   loading,
-  onManage,
   onEdit,
   onDelete,
 }: Props) => {
   const columns:
-    Column<Project>[] = [
+    Column<ProjectTask>[] = [
     {
-      key: "srn",
-      title: "SRN",
+      key: "title",
+      title: "Task",
     },
 
     {
-      key: "name",
-      title: "Project Name",
-    },
-
-    {
-      key: "client",
-      title: "Client",
+      key: "assignedProjectMember",
+      title: "Assigned To",
 
       render: (_, row) =>
-        row.client?.name ?? "-",
+        getAssigneeName(row),
     },
 
     {
-      key: "category",
-      title: "Category",
+      key: "projectRole",
+      title: "Role",
 
       render: (_, row) =>
-        row.category?.name ?? "-",
+        row.assignedProjectMember
+          ?.projectRole.name ??
+        "-",
     },
 
     {
-      key: "organizationUnit",
-      title: "Branch",
+      key: "priority",
+      title: "Priority",
 
-      render: (_, row) =>
-        row.organizationUnit
-          ?.name ?? "-",
-    },
-
-    {
-      key: "state",
-      title: "State",
-
-      render: (_, row) =>
-        row.state?.name ?? "-",
-    },
-
-    {
-      key: "city",
-      title: "City",
-
-      render: (_, row) =>
-        row.city?.name ?? "-",
+      render: (_, row) => (
+        <Badge
+          status={
+            row.priority
+          }
+        />
+      ),
     },
 
     {
       key: "startDate",
       title: "Start Date",
 
-      render: (value) =>
-        formatDate(value),
+      render: (_, row) =>
+        formatDate(
+          row.startDate,
+        ),
     },
 
     {
-      key: "expectedEndDate",
-      title: "Expected End",
+      key: "dueDate",
+      title: "Due Date",
 
-      render: (value) =>
-        formatDate(value),
+      render: (_, row) =>
+        formatDate(
+          row.dueDate,
+        ),
     },
 
     {
@@ -133,7 +136,9 @@ const ProjectTable = ({
 
       render: (_, row) => (
         <Badge
-          status={row.status}
+          status={
+            row.status
+          }
         />
       ),
     },
@@ -150,18 +155,6 @@ const ProjectTable = ({
             flexWrap: "wrap",
           }}
         >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              onManage(
-                row.uuid,
-              )
-            }
-          >
-            Manage
-          </Button>
-
           <Button
             size="sm"
             onClick={() =>
@@ -198,4 +191,4 @@ const ProjectTable = ({
   );
 };
 
-export default ProjectTable;
+export default ProjectTaskTable;

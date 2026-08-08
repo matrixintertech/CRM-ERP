@@ -11,10 +11,13 @@ import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import PageHeader from "@/shared/components/PageHeader";
 
-import ProjectDetailsModal from "../components/ProjectDetailsModal";
+
 import ProjectModal from "../components/ProjectModal";
 import ProjectTable from "../components/ProjectTable";
-import ProjectMembersModal from "../components/ProjectMemberModal";
+
+
+import ProjectWorkspaceModal from "../components/ProjectWorkspaceModal";
+
 
 import {
   useProjects,
@@ -47,6 +50,10 @@ import {
 import {
   useProjectRoles,
 } from "../../project-role/hooks/useProjectRoles";
+
+
+
+
 
 import type {
   CreateProjectRequest,
@@ -94,6 +101,7 @@ const ProjectListPage = () => {
 
     clearSelectedProject,
   } = useProjects();
+
 
   const {
     dropdown:
@@ -150,26 +158,10 @@ const ProjectListPage = () => {
   ] = useState(false);
 
   const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+  openWorkspace,
+  setOpenWorkspace,
+] = useState(false);
 
-  const [
-    openMembers,
-    setOpenMembers,
-  ] = useState(false);
-
-  const [
-    memberProjectUuid,
-    setMemberProjectUuid,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    memberProjectName,
-    setMemberProjectName,
-  ] = useState("");
 
   const [
     editId,
@@ -228,24 +220,6 @@ const ProjectListPage = () => {
       setOpenModal(false);
 
       resetForm();
-    };
-
-  const handleCloseDetails =
-    () => {
-      setOpenDetails(false);
-
-      clearSelectedProject();
-    };
-
-  const handleCloseMembers =
-    () => {
-      setOpenMembers(false);
-
-      setMemberProjectUuid(
-        null,
-      );
-
-      setMemberProjectName("");
     };
 
   const handleStateChange =
@@ -440,61 +414,39 @@ const ProjectListPage = () => {
       }
     };
 
-  const handleView =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        clearSelectedProject();
 
-        setOpenDetails(true);
+  const handleManage =
+  async (
+    uuid: string,
+  ) => {
+    try {
+      clearSelectedProject();
 
-        await fetchProject(
-          uuid,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load project details:",
-          error,
-        );
+      await Promise.all([
+        fetchProject(uuid),
+        fetchEmployees(),
+        fetchProjectRoles(),
+      ]);
 
-        setOpenDetails(false);
-      }
-    };
+      setOpenWorkspace(
+        true,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to open project workspace:",
+        error,
+      );
+    }
+  };
 
-  const handleMembers =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        const project =
-          projects.find(
-            (item) =>
-              item.uuid ===
-              uuid,
-          );
+const handleCloseWorkspace =
+  () => {
+    setOpenWorkspace(
+      false,
+    );
 
-        setMemberProjectUuid(
-          uuid,
-        );
-
-        setMemberProjectName(
-          project?.name ?? "",
-        );
-
-        await Promise.all([
-          fetchEmployees(),
-          fetchProjectRoles(),
-        ]);
-
-        setOpenMembers(true);
-      } catch (error) {
-        console.error(
-          "Failed to prepare project members:",
-          error,
-        );
-      }
-    };
+    clearSelectedProject();
+  };
 
   const handleDelete =
     async (
@@ -624,18 +576,19 @@ const ProjectListPage = () => {
       />
 
       <Card>
-        <ProjectTable
-          data={projects}
-          loading={loading}
-          onView={handleView}
-          onMembers={
-            handleMembers
-          }
-          onEdit={handleEdit}
-          onDelete={
-            handleDelete
-          }
-        />
+       <ProjectTable
+  data={projects}
+  loading={loading}
+  onManage={
+    handleManage
+  }
+  onEdit={
+    handleEdit
+  }
+  onDelete={
+    handleDelete
+  }
+/>
       </Card>
 
       <ProjectModal
@@ -681,41 +634,33 @@ const ProjectListPage = () => {
         }
       />
 
-      <ProjectDetailsModal
-        open={openDetails}
-        loading={loading}
-        project={
-          selectedProject
-        }
-        onClose={
-          handleCloseDetails
-        }
-      />
+      <ProjectWorkspaceModal
+  open={
+    openWorkspace
+  }
+  project={
+    selectedProject
+  }
+  employees={
+    employeeOptions
+  }
+  projectRoles={
+    projectRoleOptions
+  }
+  loadingProject={
+    loading
+  }
+  loadingEmployees={
+    loadingEmployees
+  }
+  loadingRoles={
+    loadingRoles
+  }
+  onClose={
+    handleCloseWorkspace
+  }
+/>
 
-      <ProjectMembersModal
-        open={openMembers}
-        projectUuid={
-          memberProjectUuid
-        }
-        projectName={
-          memberProjectName
-        }
-        employees={
-          employeeOptions
-        }
-        projectRoles={
-          projectRoleOptions
-        }
-        loadingEmployees={
-          loadingEmployees
-        }
-        loadingRoles={
-          loadingRoles
-        }
-        onClose={
-          handleCloseMembers
-        }
-      />
     </>
   );
 };
