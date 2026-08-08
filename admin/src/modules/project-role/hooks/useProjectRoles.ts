@@ -1,7 +1,8 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   notify,
@@ -17,7 +18,6 @@ import {
 
 import type {
   CreateProjectRoleRequest,
-  ProjectRole,
   UpdateProjectRoleRequest,
 } from "../types/project-role.types";
 
@@ -41,215 +41,214 @@ const getErrorMessage = (
   );
 };
 
-export const useProjectRoles = () => {
-  const [
-    projectRoles,
-    setProjectRoles,
-  ] = useState<ProjectRole[]>([]);
+export const useProjectRoles =
+  () => {
+    const queryClient =
+      useQueryClient();
 
-  const [
-    selectedProjectRole,
-    setSelectedProjectRole,
-  ] =
-    useState<ProjectRole | null>(
-      null,
-    );
+    const rolesQuery =
+      useQuery({
+        queryKey: [
+          "project-roles",
+        ],
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+        queryFn:
+          getProjectRoles,
 
-  const fetchProjectRoles =
-    useCallback(async () => {
-      try {
-        setLoading(true);
+        staleTime:
+          5 * 60 * 1000,
+      });
 
-        const data =
-          await getProjectRoles();
-
-        setProjectRoles(data);
-
-        return data;
-      } catch (error) {
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load project roles.",
-          ),
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-const fetchProjectRole =
-  useCallback(
-    async (
-      uuid: string,
-    ) => {
-      try {
-        setLoading(true);
-
-        const data =
-          await getProjectRoleByUuid(
-            uuid,
-          );
-
-        setSelectedProjectRole(
-          data,
-        );
-
-        return data;
-      } catch (error) {
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load project role.",
-          ),
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const create =
-    useCallback(
+    const fetchProjectRole =
       async (
-        payload:
-          CreateProjectRoleRequest,
+        uuid: string,
       ) => {
         try {
-          setLoading(true);
+          return await queryClient.fetchQuery({
+            queryKey: [
+              "project-role",
+              uuid,
+            ],
 
-          const data =
-            await createProjectRole(
-              payload,
-            );
+            queryFn: () =>
+              getProjectRoleByUuid(
+                uuid,
+              ),
+          });
+        } catch (error) {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to load project role.",
+            ),
+          );
 
+          throw error;
+        }
+      };
+
+    const createMutation =
+      useMutation({
+        mutationFn: (
+          payload:
+            CreateProjectRoleRequest,
+        ) =>
+          createProjectRole(
+            payload,
+          ),
+
+        onSuccess: async () => {
           notify.success(
             "Project role created successfully.",
           );
 
-          return data;
-        } catch (error) {
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "project-roles",
+            ],
+          });
+        },
+
+        onError: (error) => {
           notify.error(
             getErrorMessage(
               error,
               "Failed to create project role.",
             ),
           );
+        },
+      });
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+    const updateMutation =
+      useMutation({
+        mutationFn: ({
+          uuid,
+          payload,
+        }: {
+          uuid: string;
 
-  const update =
-    useCallback(
-      async (
-        uuid: string,
-        payload:
-          UpdateProjectRoleRequest,
-      ) => {
-        try {
-          setLoading(true);
+          payload:
+            UpdateProjectRoleRequest;
+        }) =>
+          updateProjectRole(
+            uuid,
+            payload,
+          ),
 
-          const data =
-            await updateProjectRole(
-              uuid,
-              payload,
-            );
-
+        onSuccess: async (
+          _data,
+          variables,
+        ) => {
           notify.success(
             "Project role updated successfully.",
           );
 
-          return data;
-        } catch (error) {
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: [
+                "project-roles",
+              ],
+            }),
+
+            queryClient.invalidateQueries({
+              queryKey: [
+                "project-role",
+                variables.uuid,
+              ],
+            }),
+          ]);
+        },
+
+        onError: (error) => {
           notify.error(
             getErrorMessage(
               error,
               "Failed to update project role.",
             ),
           );
+        },
+      });
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
-
-  const remove =
-    useCallback(
-      async (
-        uuid: string,
-      ) => {
-        try {
-          setLoading(true);
-
-          await deleteProjectRole(
+    const deleteMutation =
+      useMutation({
+        mutationFn: (
+          uuid: string,
+        ) =>
+          deleteProjectRole(
             uuid,
-          );
+          ),
 
-          setProjectRoles(
-            (previous) =>
-              previous.filter(
-                (role) =>
-                  role.uuid !==
-                  uuid,
-              ),
-          );
-
+        onSuccess: async (
+          _data,
+          uuid,
+        ) => {
           notify.success(
             "Project role deleted successfully.",
           );
-        } catch (error) {
+
+          queryClient.removeQueries({
+            queryKey: [
+              "project-role",
+              uuid,
+            ],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: [
+              "project-roles",
+            ],
+          });
+        },
+
+        onError: (error) => {
           notify.error(
             getErrorMessage(
               error,
               "Failed to delete project role.",
             ),
           );
+        },
+      });
 
-          throw error;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+    return {
+      projectRoles:
+        rolesQuery.data ?? [],
 
-  const clearSelectedProjectRole =
-    useCallback(() => {
-      setSelectedProjectRole(
-        null,
-      );
-    }, []);
+      loading:
+        rolesQuery.isLoading,
 
-  return {
-    projectRoles,
-    selectedProjectRole,
-    loading,
+      fetching:
+        rolesQuery.isFetching,
 
-    fetchProjectRoles,
-    fetchProjectRole,
+      error:
+        rolesQuery.error,
 
-    create,
-    update,
-    remove,
+      refetch:
+        rolesQuery.refetch,
 
-    clearSelectedProjectRole,
+      fetchProjectRole,
+
+      create:
+        createMutation.mutateAsync,
+
+      update: (
+        uuid: string,
+        payload:
+          UpdateProjectRoleRequest,
+      ) =>
+        updateMutation.mutateAsync({
+          uuid,
+          payload,
+        }),
+
+      remove:
+        deleteMutation.mutateAsync,
+
+      saving:
+        createMutation.isPending ||
+        updateMutation.isPending,
+
+      deleting:
+        deleteMutation.isPending,
+    };
   };
-};

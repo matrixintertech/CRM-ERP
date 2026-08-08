@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -21,11 +20,13 @@ import {
 
 import type {
   CreateProjectRoleRequest,
+  ProjectRole,
   ProjectRoleFormData,
   UpdateProjectRoleRequest,
 } from "../types/project-role.types";
 
-const initialFormData: ProjectRoleFormData = {
+const initialFormData:
+  ProjectRoleFormData = {
   name: "",
   code: "",
   description: "",
@@ -42,17 +43,16 @@ const ProjectRoleListPage = () => {
 
   const {
     loading,
-    projectRoles,
-    selectedProjectRole,
 
-    fetchProjectRoles,
+    projectRoles,
+
     fetchProjectRole,
 
     create,
     update,
     remove,
 
-    clearSelectedProjectRole,
+    saving,
   } = useProjectRoles();
 
   const [
@@ -66,25 +66,31 @@ const ProjectRoleListPage = () => {
   ] = useState(false);
 
   const [
+    selectedProjectRole,
+    setSelectedProjectRole,
+  ] = useState<
+    ProjectRole | null
+  >(null);
+
+  const [
     editId,
     setEditId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     formData,
     setFormData,
-  ] = useState(() => ({
-    ...initialFormData,
-  }));
-
-  useEffect(() => {
-    void fetchProjectRoles();
-  }, [fetchProjectRoles]);
+  ] =
+    useState<ProjectRoleFormData>({
+      ...initialFormData,
+    });
 
   const resetForm = () => {
-    setEditId(null);
+    setEditId(
+      null,
+    );
 
     setFormData({
       ...initialFormData,
@@ -95,21 +101,29 @@ const ProjectRoleListPage = () => {
     () => {
       resetForm();
 
-      setOpenModal(true);
+      setOpenModal(
+        true,
+      );
     };
 
   const handleCloseModal =
     () => {
-      setOpenModal(false);
+      setOpenModal(
+        false,
+      );
 
       resetForm();
     };
 
   const handleCloseDetails =
     () => {
-      setOpenDetails(false);
+      setOpenDetails(
+        false,
+      );
 
-      clearSelectedProjectRole();
+      setSelectedProjectRole(
+        null,
+      );
     };
 
   const handleSubmit =
@@ -171,8 +185,6 @@ const ProjectRoleListPage = () => {
           );
         }
 
-        await fetchProjectRoles();
-
         handleCloseModal();
       } catch (error) {
         console.error(
@@ -192,7 +204,9 @@ const ProjectRoleListPage = () => {
             uuid,
           );
 
-        setEditId(uuid);
+        setEditId(
+          uuid,
+        );
 
         setFormData({
           name:
@@ -220,7 +234,9 @@ const ProjectRoleListPage = () => {
             projectRole.status,
         });
 
-        setOpenModal(true);
+        setOpenModal(
+          true,
+        );
       } catch (error) {
         console.error(
           "Failed to load project role:",
@@ -233,13 +249,22 @@ const ProjectRoleListPage = () => {
     async (
       uuid: string,
     ) => {
+      setSelectedProjectRole(
+        null,
+      );
+
+      setOpenDetails(
+        true,
+      );
+
       try {
-        clearSelectedProjectRole();
+        const projectRole =
+          await fetchProjectRole(
+            uuid,
+          );
 
-        setOpenDetails(true);
-
-        await fetchProjectRole(
-          uuid,
+        setSelectedProjectRole(
+          projectRole,
         );
       } catch (error) {
         console.error(
@@ -247,7 +272,9 @@ const ProjectRoleListPage = () => {
           error,
         );
 
-        setOpenDetails(false);
+        setOpenDetails(
+          false,
+        );
       }
     };
 
@@ -265,7 +292,9 @@ const ProjectRoleListPage = () => {
       }
 
       try {
-        await remove(uuid);
+        await remove(
+          uuid,
+        );
       } catch (error) {
         console.error(
           "Failed to delete project role:",
@@ -292,10 +321,18 @@ const ProjectRoleListPage = () => {
 
       <Card>
         <ProjectRoleTable
-          data={projectRoles}
-          loading={loading}
-          onView={handleView}
-          onEdit={handleEdit}
+          data={
+            projectRoles
+          }
+          loading={
+            loading
+          }
+          onView={
+            handleView
+          }
+          onEdit={
+            handleEdit
+          }
           onDelete={
             handleDelete
           }
@@ -303,27 +340,49 @@ const ProjectRoleListPage = () => {
       </Card>
 
       <ProjectRoleModal
-  open={openModal}
-  loading={loading}
-  title={
-    editId
-      ? "Edit Project Role"
-      : "Create Project Role"
-  }
-  isEdit={Boolean(editId)}
-  formData={formData}
-  setFormData={setFormData}
-  projectRoles={projectRoles}
-  currentRoleUuid={editId}
-  onClose={handleCloseModal}
-  onSubmit={handleSubmit}
-/>
+        open={
+          openModal
+        }
+        loading={
+          saving
+        }
+        title={
+          editId
+            ? "Edit Project Role"
+            : "Create Project Role"
+        }
+        isEdit={
+          Boolean(
+            editId,
+          )
+        }
+        formData={
+          formData
+        }
+        setFormData={
+          setFormData
+        }
+        projectRoles={
+          projectRoles
+        }
+        currentRoleUuid={
+          editId
+        }
+        onClose={
+          handleCloseModal
+        }
+        onSubmit={
+          handleSubmit
+        }
+      />
+
       <ProjectRoleDetailsModal
         open={
           openDetails
         }
         loading={
-          loading
+          openDetails &&
+          !selectedProjectRole
         }
         projectRole={
           selectedProjectRole
