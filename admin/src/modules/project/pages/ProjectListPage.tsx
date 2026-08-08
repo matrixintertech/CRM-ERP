@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -11,13 +10,9 @@ import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import PageHeader from "@/shared/components/PageHeader";
 
-
 import ProjectModal from "../components/ProjectModal";
 import ProjectTable from "../components/ProjectTable";
-
-
 import ProjectWorkspaceModal from "../components/ProjectWorkspaceModal";
-
 
 import {
   useProjects,
@@ -51,17 +46,15 @@ import {
   useProjectRoles,
 } from "../../project-role/hooks/useProjectRoles";
 
-
-
-
-
 import type {
   CreateProjectRequest,
+  Project,
   ProjectFormData,
   UpdateProjectRequest,
 } from "../types/project.types";
 
-const initialFormData: ProjectFormData = {
+const initialFormData:
+  ProjectFormData = {
   clientUuid: "",
   categoryUuid: "",
   organizationUnitUuid: "",
@@ -89,19 +82,17 @@ const ProjectListPage = () => {
 
   const {
     loading,
-    projects,
-    selectedProject,
 
-    fetchProjects,
+    projects,
+
     fetchProject,
 
     create,
     update,
     remove,
 
-    clearSelectedProject,
+    saving,
   } = useProjects();
-
 
   const {
     dropdown:
@@ -141,6 +132,7 @@ const ProjectListPage = () => {
   const {
     employees,
     fetchEmployees,
+
     loading:
       loadingEmployees,
   } = useEmployee();
@@ -148,6 +140,7 @@ const ProjectListPage = () => {
   const {
     projectRoles,
     fetchProjectRoles,
+
     loading:
       loadingRoles,
   } = useProjectRoles();
@@ -158,10 +151,16 @@ const ProjectListPage = () => {
   ] = useState(false);
 
   const [
-  openWorkspace,
-  setOpenWorkspace,
-] = useState(false);
+    openWorkspace,
+    setOpenWorkspace,
+  ] = useState(false);
 
+  const [
+    selectedProject,
+    setSelectedProject,
+  ] = useState<
+    Project | null
+  >(null);
 
   const [
     editId,
@@ -173,16 +172,15 @@ const ProjectListPage = () => {
   const [
     formData,
     setFormData,
-  ] = useState(() => ({
-    ...initialFormData,
-  }));
-
-  useEffect(() => {
-    void fetchProjects();
-  }, [fetchProjects]);
+  ] =
+    useState<ProjectFormData>({
+      ...initialFormData,
+    });
 
   const resetForm = () => {
-    setEditId(null);
+    setEditId(
+      null,
+    );
 
     setFormData({
       ...initialFormData,
@@ -206,7 +204,9 @@ const ProjectListPage = () => {
 
         resetForm();
 
-        setOpenModal(true);
+        setOpenModal(
+          true,
+        );
       } catch (error) {
         console.error(
           "Failed to prepare project form:",
@@ -217,7 +217,9 @@ const ProjectListPage = () => {
 
   const handleCloseModal =
     () => {
-      setOpenModal(false);
+      setOpenModal(
+        false,
+      );
 
       resetForm();
     };
@@ -229,8 +231,11 @@ const ProjectListPage = () => {
       setFormData(
         (previous) => ({
           ...previous,
+
           stateUuid,
-          cityUuid: "",
+
+          cityUuid:
+            "",
         }),
       );
 
@@ -321,8 +326,6 @@ const ProjectListPage = () => {
           );
         }
 
-        await fetchProjects();
-
         handleCloseModal();
       } catch (error) {
         console.error(
@@ -352,7 +355,9 @@ const ProjectListPage = () => {
           );
         }
 
-        setEditId(uuid);
+        setEditId(
+          uuid,
+        );
 
         setFormData({
           clientUuid:
@@ -371,18 +376,20 @@ const ProjectListPage = () => {
             project.name,
 
           stateUuid:
-            project.state?.uuid ??
-            "",
+            project.state
+              ?.uuid ?? "",
 
           cityUuid:
-            project.city?.uuid ??
-            "",
+            project.city
+              ?.uuid ?? "",
 
           address:
-            project.address ?? "",
+            project.address ??
+            "",
 
           pincode:
-            project.pincode ?? "",
+            project.pincode ??
+            "",
 
           startDate:
             project.startDate
@@ -399,13 +406,16 @@ const ProjectListPage = () => {
               ) ?? "",
 
           remarks:
-            project.remarks ?? "",
+            project.remarks ??
+            "",
 
           status:
             project.status,
         });
 
-        setOpenModal(true);
+        setOpenModal(
+          true,
+        );
       } catch (error) {
         console.error(
           "Failed to load project:",
@@ -414,39 +424,59 @@ const ProjectListPage = () => {
       }
     };
 
-
   const handleManage =
-  async (
-    uuid: string,
-  ) => {
-    try {
-      clearSelectedProject();
+    async (
+      uuid: string,
+    ) => {
+      try {
+        setSelectedProject(
+          null,
+        );
 
-      await Promise.all([
-        fetchProject(uuid),
-        fetchEmployees(),
-        fetchProjectRoles(),
-      ]);
+        const [
+          project,
+        ] =
+          await Promise.all([
+            fetchProject(
+              uuid,
+            ),
 
+            employees.length ===
+            0
+              ? fetchEmployees()
+              : Promise.resolve(),
+
+            projectRoles.length ===
+            0
+              ? fetchProjectRoles()
+              : Promise.resolve(),
+          ]);
+
+        setSelectedProject(
+          project,
+        );
+
+        setOpenWorkspace(
+          true,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to open project workspace:",
+          error,
+        );
+      }
+    };
+
+  const handleCloseWorkspace =
+    () => {
       setOpenWorkspace(
-        true,
+        false,
       );
-    } catch (error) {
-      console.error(
-        "Failed to open project workspace:",
-        error,
+
+      setSelectedProject(
+        null,
       );
-    }
-  };
-
-const handleCloseWorkspace =
-  () => {
-    setOpenWorkspace(
-      false,
-    );
-
-    clearSelectedProject();
-  };
+    };
 
   const handleDelete =
     async (
@@ -462,7 +492,9 @@ const handleCloseWorkspace =
       }
 
       try {
-        await remove(uuid);
+        await remove(
+          uuid,
+        );
       } catch (error) {
         console.error(
           "Failed to delete project:",
@@ -474,16 +506,22 @@ const handleCloseWorkspace =
   const clientOptions =
     clientDropdown.map(
       (item) => ({
-        label: item.name,
-        value: item.uuid,
+        label:
+          item.name,
+
+        value:
+          item.uuid,
       }),
     );
 
   const categoryOptions =
     categories.map(
       (item) => ({
-        label: item.name,
-        value: item.uuid,
+        label:
+          item.name,
+
+        value:
+          item.uuid,
       }),
     );
 
@@ -494,56 +532,66 @@ const handleCloseWorkspace =
           item.status ===
           "ACTIVE",
       )
-      .map((item) => ({
-        label:
-          `${item.name} (${item.code})`,
+      .map(
+        (item) => ({
+          label:
+            `${item.name} (${item.code})`,
 
-        value:
-          item.uuid,
-      }));
+          value:
+            item.uuid,
+        }),
+      );
 
   const stateOptions =
     stateDropdown.map(
       (item) => ({
-        label: item.name,
-        value: item.uuid,
+        label:
+          item.name,
+
+        value:
+          item.uuid,
       }),
     );
 
   const cityOptions =
     cityDropdown.map(
       (item) => ({
-        label: item.name,
-        value: item.uuid,
+        label:
+          item.name,
+
+        value:
+          item.uuid,
       }),
     );
 
- const employeeOptions =
-  employees
-    .filter(
-      (employee) =>
-        employee.status ===
-        "ACTIVE",
-    )
-    .map((employee) => {
-      const fullName = [
-        employee.firstName,
-        employee.lastName,
-      ]
-        .filter(Boolean)
-        .join(" ");
+  const employeeOptions =
+    employees
+      .filter(
+        (employee) =>
+          employee.status ===
+          "ACTIVE",
+      )
+      .map(
+        (employee) => {
+          const fullName = [
+            employee.firstName,
+            employee.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ");
 
-      return {
-        uuid: employee.uuid,
+          return {
+            uuid:
+              employee.uuid,
 
-        label:
-          employee.displayName ||
-          fullName ||
-          employee.employeeCode ||
-          "-",
-      };
-    });
-
+            label:
+              employee.displayName ||
+              fullName ||
+              employee.employeeCode ||
+              "-",
+          };
+        },
+      );
 
   const projectRoleOptions =
     projectRoles.map(
@@ -576,31 +624,41 @@ const handleCloseWorkspace =
       />
 
       <Card>
-       <ProjectTable
-  data={projects}
-  loading={loading}
-  onManage={
-    handleManage
-  }
-  onEdit={
-    handleEdit
-  }
-  onDelete={
-    handleDelete
-  }
-/>
+        <ProjectTable
+          data={
+            projects
+          }
+          loading={
+            loading
+          }
+          onManage={
+            handleManage
+          }
+          onEdit={
+            handleEdit
+          }
+          onDelete={
+            handleDelete
+          }
+        />
       </Card>
 
       <ProjectModal
-        open={openModal}
-        loading={loading}
+        open={
+          openModal
+        }
+        loading={
+          saving
+        }
         title={
           editId
             ? "Edit Project"
             : "Create Project"
         }
         isEdit={
-          Boolean(editId)
+          Boolean(
+            editId,
+          )
         }
         formData={
           formData
@@ -635,32 +693,31 @@ const handleCloseWorkspace =
       />
 
       <ProjectWorkspaceModal
-  open={
-    openWorkspace
-  }
-  project={
-    selectedProject
-  }
-  employees={
-    employeeOptions
-  }
-  projectRoles={
-    projectRoleOptions
-  }
-  loadingProject={
-    loading
-  }
-  loadingEmployees={
-    loadingEmployees
-  }
-  loadingRoles={
-    loadingRoles
-  }
-  onClose={
-    handleCloseWorkspace
-  }
-/>
-
+        open={
+          openWorkspace
+        }
+        project={
+          selectedProject
+        }
+        employees={
+          employeeOptions
+        }
+        projectRoles={
+          projectRoleOptions
+        }
+        loadingProject={
+          false
+        }
+        loadingEmployees={
+          loadingEmployees
+        }
+        loadingRoles={
+          loadingRoles
+        }
+        onClose={
+          handleCloseWorkspace
+        }
+      />
     </>
   );
 };

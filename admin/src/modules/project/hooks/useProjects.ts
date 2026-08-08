@@ -1,9 +1,12 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createProject,
@@ -15,252 +18,247 @@ import {
 
 import type {
   CreateProjectRequest,
-  Project,
-  ProjectFormData,
-  ProjectListResponse,
   ProjectQuery,
   UpdateProjectRequest,
 } from "../types/project.types";
 
-const initialFormData: ProjectFormData = {
-  clientUuid: "",
-  categoryUuid: "",
-  organizationUnitUuid: "",
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  const apiError =
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+    };
 
-  name: "",
-
-  stateUuid: "",
-  cityUuid: "",
-
-  address: "",
-  pincode: "",
-
-  startDate: "",
-  expectedEndDate: "",
-
-  remarks: "",
-
-  status: "ACTIVE",
+  return (
+    apiError.response?.data
+      ?.message ??
+    fallback
+  );
 };
 
-export const useProjects = () => {
-  const [projects, setProjects] =
-    useState<Project[]>([]);
+export const useProjects = (
+  params: ProjectQuery = {},
+) => {
+  const queryClient =
+    useQueryClient();
 
-  const [total, setTotal] =
-    useState(0);
+  const projectsQuery =
+    useQuery({
+      queryKey: [
+        "projects",
+        params,
+      ],
 
-  const [
-    selectedProject,
-    setSelectedProject,
-  ] = useState<Project | null>(null);
+      queryFn: () =>
+        getProjects(
+          params,
+        ),
+    });
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [formData, setFormData] =
-    useState<ProjectFormData>(() => ({
-      ...initialFormData,
-    }));
-
-  const fetchProjects = useCallback(
-    async (
-      params: ProjectQuery = {},
-    ): Promise<ProjectListResponse> => {
-      try {
-        setLoading(true);
-
-        const data =
-          await getProjects(params);
-
-        setProjects(
-          data.projects ?? [],
-        );
-
-        setTotal(
-          data.total ?? 0,
-        );
-
-        return data;
-      } catch (error) {
-        notify.error(
-          "Failed to load projects.",
-        );
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const fetchProject = useCallback(
+  const fetchProject =
     async (
       uuid: string,
-    ): Promise<Project> => {
+    ) => {
       try {
-        setLoading(true);
-
-        const project =
-          await getProjectByUuid(
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "project",
             uuid,
-          );
+          ],
 
-        setSelectedProject(
-          project,
-        );
-
-        return project;
+          queryFn: () =>
+            getProjectByUuid(
+              uuid,
+            ),
+        });
       } catch (error) {
         notify.error(
-          "Failed to load project details.",
+          getErrorMessage(
+            error,
+            "Failed to load project details.",
+          ),
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const create = useCallback(
-    async (
-      payload:
-        CreateProjectRequest,
-    ) => {
-      try {
-        setLoading(true);
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload:
+          CreateProjectRequest,
+      ) =>
+        createProject(
+          payload,
+        ),
 
-        const data =
-          await createProject(
-            payload,
-          );
-
+      onSuccess: async () => {
         notify.success(
           "Project created successfully.",
         );
 
-        return data;
-      } catch (error) {
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "projects",
+          ],
+        });
+      },
+
+      onError: (error) => {
         notify.error(
-          "Failed to create project.",
+          getErrorMessage(
+            error,
+            "Failed to create project.",
+          ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
 
-  const update = useCallback(
-    async (
-      uuid: string,
-      payload:
-        UpdateProjectRequest,
-    ) => {
-      try {
-        setLoading(true);
+        payload:
+          UpdateProjectRequest;
+      }) =>
+        updateProject(
+          uuid,
+          payload,
+        ),
 
-        const data =
-          await updateProject(
-            uuid,
-            payload,
-          );
-
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
         notify.success(
           "Project updated successfully.",
         );
 
-        return data;
-      } catch (error) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "projects",
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project",
+              variables.uuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
         notify.error(
-          "Failed to update project.",
+          getErrorMessage(
+            error,
+            "Failed to update project.",
+          ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        uuid: string,
+      ) =>
+        deleteProject(
+          uuid,
+        ),
 
-  const remove = useCallback(
-    async (
-      uuid: string,
-    ) => {
-      try {
-        setLoading(true);
-
-        await deleteProject(uuid);
-
-        setProjects(
-          (previous) =>
-            previous.filter(
-              (project) =>
-                project.uuid !==
-                uuid,
-            ),
-        );
-
-        setTotal(
-          (previous) =>
-            Math.max(
-              previous - 1,
-              0,
-            ),
-        );
-
+      onSuccess: async (
+        _data,
+        uuid,
+      ) => {
         notify.success(
           "Project deleted successfully.",
         );
-      } catch (error) {
+
+        queryClient.removeQueries({
+          queryKey: [
+            "project",
+            uuid,
+          ],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "projects",
+          ],
+        });
+      },
+
+      onError: (error) => {
         notify.error(
-          "Failed to delete project.",
+          getErrorMessage(
+            error,
+            "Failed to delete project.",
+          ),
         );
+      },
+    });
 
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const projects =
+    projectsQuery.data
+      ?.projects ?? [];
 
-  const resetForm =
-    useCallback(() => {
-      setFormData({
-        ...initialFormData,
-      });
-    }, []);
-
-  const clearSelectedProject =
-    useCallback(() => {
-      setSelectedProject(null);
-    }, []);
+  const total =
+    projectsQuery.data
+      ?.total ?? 0;
 
   return {
-    loading,
-
     projects,
     total,
-    selectedProject,
 
-    formData,
-    setFormData,
+    loading:
+      projectsQuery.isLoading,
 
-    fetchProjects,
+    fetching:
+      projectsQuery.isFetching,
+
+    error:
+      projectsQuery.error,
+
+    refetch:
+      projectsQuery.refetch,
+
     fetchProject,
 
-    create,
-    update,
-    remove,
+    create:
+      createMutation.mutateAsync,
 
-    resetForm,
-    clearSelectedProject,
+    update: (
+      uuid: string,
+      payload:
+        UpdateProjectRequest,
+    ) =>
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };
