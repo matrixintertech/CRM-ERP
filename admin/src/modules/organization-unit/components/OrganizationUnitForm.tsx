@@ -1,17 +1,10 @@
-import {
-  useEffect,
-} from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
-import {
-  useStates,
-} from "../../master/state/hooks/useStates";
-
-import {
-  useCities,
-} from "../../master/city/hooks/useCities";
+import { useCities } from "../../master/city/hooks/useCities";
+import { useStates } from "../../master/state/hooks/useStates";
 
 import type {
   OrganizationUnit,
@@ -26,9 +19,7 @@ interface Props {
 
   formData: OrganizationUnitFormData;
 
-  setFormData: React.Dispatch<
-    React.SetStateAction<OrganizationUnitFormData>
-  >;
+  setFormData: Dispatch<SetStateAction<OrganizationUnitFormData>>;
 
   editingUuid?: string | null;
 }
@@ -69,32 +60,12 @@ const OrganizationUnitForm = ({
   setFormData,
   editingUuid,
 }: Props) => {
-  
-  
-  
-const {
-  dropdown:
-    stateOptions,
-} = useStates();
+  const { dropdown: stateOptions } = useStates();
 
-  const {
-    dropdownCities: cities,
-    fetchDropdownCities,
-  } = useCities();
-
-
-  useEffect(() => {
-    if (!formData.stateUuid) {
-      return;
-    }
-
-    void fetchDropdownCities(
-      formData.stateUuid,
-    );
-  }, [
-    formData.stateUuid,
-    fetchDropdownCities,
-  ]);
+  const { dropdownCities: cities } = useCities(
+    {},
+    formData.stateUuid || undefined,
+  );
 
   const handleChange = (
     field: keyof OrganizationUnitFormData,
@@ -106,120 +77,80 @@ const {
     }));
   };
 
-  const handleStateChange = async (
-    stateUuid: string,
-  ) => {
+  const handleStateChange = (stateUuid: string) => {
     setFormData((previous) => ({
       ...previous,
       stateUuid,
       cityUuid: "",
     }));
-
-    if (stateUuid) {
-      await fetchDropdownCities(
-        stateUuid,
-      );
-    }
   };
 
-  const allowedParents =
-    organizationUnits.filter((unit) => {
-      if (unit.uuid === editingUuid) {
+  const allowedParents = organizationUnits.filter((unit) => {
+    if (unit.uuid === editingUuid) {
+      return false;
+    }
+
+    switch (formData.type) {
+      case "HEAD_OFFICE":
         return false;
-      }
 
-      switch (formData.type) {
-        case "HEAD_OFFICE":
-          return false;
+      case "REGION":
+        return unit.type === "HEAD_OFFICE";
 
-        case "REGION":
-          return (
-            unit.type ===
-            "HEAD_OFFICE"
-          );
+      case "BRANCH":
+        return unit.type === "HEAD_OFFICE" || unit.type === "REGION";
 
-        case "BRANCH":
-          return (
-            unit.type ===
-              "HEAD_OFFICE" ||
-            unit.type ===
-              "REGION"
-          );
+      case "OFFICE":
+        return unit.type === "BRANCH";
 
-        case "OFFICE":
-          return (
-            unit.type ===
-            "BRANCH"
-          );
+      default:
+        return false;
+    }
+  });
 
-        default:
-          return false;
-      }
-    });
+  const parentOptions = allowedParents.map((unit) => ({
+    label: `${unit.name} (${unit.type
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (character) => character.toUpperCase())})`,
 
-  const parentOptions =
-    allowedParents.map((unit) => ({
-      label: `${unit.name} (${unit.type
-        .replaceAll("_", " ")
-        .toLowerCase()
-        .replace(
-          /\b\w/g,
-          (character) =>
-            character.toUpperCase(),
-        )})`,
+    value: unit.uuid,
+  }));
 
-      value: unit.uuid,
-    }));
-
-  const handleTypeChange = (
-    value: string,
-  ) => {
+  const handleTypeChange = (value: string) => {
     setFormData((previous) => ({
       ...previous,
 
-      type:
-        value as OrganizationUnitType,
+      type: value as OrganizationUnitType,
 
       parentUuid: undefined,
     }));
   };
 
   return (
-    <div className={styles.form}>
+    <div className={styles.formGrid}>
       <Select
         label="Type"
         name="type"
         value={formData.type}
         showPlaceholder={false}
         options={typeOptions}
-        onChange={(event) =>
-          handleTypeChange(
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleTypeChange(event.target.value)}
       />
 
-      {formData.type !==
-        "HEAD_OFFICE" && (
+      {formData.type !== "HEAD_OFFICE" && (
         <Select
           label="Parent Unit"
           name="parentUuid"
           placeholder="Select parent unit"
-          value={
-            formData.parentUuid ??
-            ""
-          }
+          value={formData.parentUuid ?? ""}
           options={parentOptions}
           onChange={(event) =>
-            setFormData(
-              (previous) => ({
-                ...previous,
+            setFormData((previous) => ({
+              ...previous,
 
-                parentUuid:
-                  event.target.value ||
-                  undefined,
-              }),
-            )
+              parentUuid: event.target.value || undefined,
+            }))
           }
         />
       )}
@@ -228,12 +159,7 @@ const {
         label="Name"
         name="name"
         value={formData.name}
-        onChange={(event) =>
-          handleChange(
-            "name",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("name", event.target.value)}
       />
 
       <Input
@@ -243,9 +169,7 @@ const {
         onChange={(event) =>
           handleChange(
             "code",
-            event.target.value
-              .toUpperCase()
-              .replace(/\s+/g, ""),
+            event.target.value.toUpperCase().replace(/\s+/g, ""),
           )
         }
       />
@@ -255,123 +179,66 @@ const {
         name="email"
         type="email"
         value={formData.email}
-        onChange={(event) =>
-          handleChange(
-            "email",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("email", event.target.value)}
       />
 
       <Input
         label="Mobile"
         name="mobile"
         value={formData.mobile}
-        onChange={(event) =>
-          handleChange(
-            "mobile",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("mobile", event.target.value)}
       />
 
       <Input
         label="Address Line 1"
         name="addressLine1"
-        value={
-          formData.addressLine1
-        }
-        onChange={(event) =>
-          handleChange(
-            "addressLine1",
-            event.target.value,
-          )
-        }
+        value={formData.addressLine1}
+        onChange={(event) => handleChange("addressLine1", event.target.value)}
       />
 
       <Input
         label="Address Line 2"
         name="addressLine2"
-        value={
-          formData.addressLine2
-        }
-        onChange={(event) =>
-          handleChange(
-            "addressLine2",
-            event.target.value,
-          )
-        }
+        value={formData.addressLine2}
+        onChange={(event) => handleChange("addressLine2", event.target.value)}
       />
 
       <Select
         label="State"
         name="stateUuid"
         placeholder="Select state"
-        value={
-          formData.stateUuid ??
-          ""
-        }
-        options={states.map(
-          (state) => ({
-            label: state.name,
-            value: state.uuid,
-          }),
-        )}
-        onChange={(event) =>
-          handleStateChange(
-            event.target.value,
-          )
-        }
+        value={formData.stateUuid ?? ""}
+        options={stateOptions.map((state) => ({
+          label: state.name,
+          value: state.uuid,
+        }))}
+        onChange={(event) => handleStateChange(event.target.value)}
       />
 
       <Select
         label="City"
         name="cityUuid"
-        placeholder={
-          formData.stateUuid
-            ? "Select city"
-            : "Select state first"
-        }
-        value={
-          formData.cityUuid ??
-          ""
-        }
-        options={cities.map(
-          (city) => ({
-            label: city.name,
-            value: city.uuid,
-          }),
-        )}
-        onChange={(event) =>
-          handleChange(
-            "cityUuid",
-            event.target.value,
-          )
-        }
+        placeholder={formData.stateUuid ? "Select city" : "Select state first"}
+        value={formData.cityUuid ?? ""}
+        options={cities.map((city) => ({
+          label: city.name,
+          value: city.uuid,
+        }))}
+        onChange={(event) => handleChange("cityUuid", event.target.value)}
       />
 
       <Input
         label="Country"
         name="country"
         value={formData.country}
-        onChange={(event) =>
-          handleChange(
-            "country",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("country", event.target.value)}
       />
 
       <Input
         label="Pincode"
         name="pincode"
         value={formData.pincode}
-        onChange={(event) =>
-          handleChange(
-            "pincode",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("pincode", event.target.value)}
       />
 
       <Select
@@ -380,12 +247,7 @@ const {
         value={formData.status}
         showPlaceholder={false}
         options={statusOptions}
-        onChange={(event) =>
-          handleChange(
-            "status",
-            event.target.value,
-          )
-        }
+        onChange={(event) => handleChange("status", event.target.value)}
       />
     </div>
   );
