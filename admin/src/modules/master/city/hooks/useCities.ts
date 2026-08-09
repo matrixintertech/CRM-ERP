@@ -95,7 +95,6 @@ export const useCities = (
       payload,
     }: {
       uuid: string;
-
       payload: Partial<CityFormData>;
     }) => cityApi.update(uuid, payload),
 
@@ -161,7 +160,8 @@ export const useCities = (
 
     total: citiesResponse?.total ?? 0,
 
-    dropdownCities: dropdownResponse?.cities ?? [],
+    // getDropdown() already returns CityDropdown[]
+    dropdownCities: dropdownResponse ?? [],
 
     loading: citiesQuery.isLoading,
 

@@ -9,7 +9,6 @@ import ClientModal from "../components/ClientModal";
 import ClientTable from "../components/ClientTable";
 
 import { useCities } from "../../master/city/hooks/useCities";
-
 import { useStates } from "../../master/state/hooks/useStates";
 
 import { useClients } from "../hooks/useClients";
@@ -38,39 +37,22 @@ const initialFormData: ClientFormData = {
 };
 
 const ClientListPage = () => {
-  const {
-    loading,
-
-    clients,
-
-    fetchClient,
-
-    create,
-    update,
-    remove,
-
-    saving,
-  } = useClients();
-
-  const { dropdown: stateOptions } = useStates();
-
-  const {
-    dropdownCities: cityOptions,
-
-    dropdownLoading: loadingCities,
-  } = useCities(formData.stateUuid);
-
   const [openModal, setOpenModal] = useState(false);
-
   const [openDetails, setOpenDetails] = useState(false);
-
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
   const [editId, setEditId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<ClientFormData>({
     ...initialFormData,
   });
+
+  const { loading, clients, fetchClient, create, update, remove, saving } =
+    useClients();
+
+  const { dropdown: stateOptions } = useStates();
+
+  const { dropdownCities: cityOptions, dropdownLoading: loadingCities } =
+    useCities({}, formData.stateUuid || undefined);
 
   const resetForm = () => {
     setEditId(null);
@@ -82,28 +64,23 @@ const ClientListPage = () => {
 
   const handleOpenCreateModal = () => {
     resetForm();
-
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
-
     resetForm();
   };
 
   const handleCloseDetails = () => {
     setOpenDetails(false);
-
     setSelectedClient(null);
   };
 
-  const handleStateChange = (stateUuid: string) => {
+  const handleStateChange = async (stateUuid: string): Promise<void> => {
     setFormData((previous) => ({
       ...previous,
-
       stateUuid,
-
       cityUuid: "",
     }));
   };
@@ -141,7 +118,6 @@ const ClientListPage = () => {
       if (editId) {
         const updatePayload: UpdateClientDto = {
           ...basePayload,
-
           status: formData.status,
         };
 
@@ -164,29 +140,17 @@ const ClientListPage = () => {
 
       setFormData({
         name: client.name,
-
         code: client.code,
-
         contactName: client.contactName,
-
         mobile: client.mobile,
-
         email: client.email ?? "",
-
         gstNumber: client.gstNumber ?? "",
-
         panNumber: client.panNumber ?? "",
-
         stateUuid: client.state?.uuid ?? "",
-
         cityUuid: client.city?.uuid ?? "",
-
         pincode: client.pincode ?? "",
-
         address: client.address ?? "",
-
         remarks: client.remarks ?? "",
-
         status: client.status,
       });
 
@@ -198,7 +162,6 @@ const ClientListPage = () => {
 
   const handleView = async (uuid: string) => {
     setSelectedClient(null);
-
     setOpenDetails(true);
 
     try {
@@ -207,7 +170,6 @@ const ClientListPage = () => {
       setSelectedClient(client);
     } catch (error) {
       console.error("Failed to load client details:", error);
-
       setOpenDetails(false);
     }
   };
