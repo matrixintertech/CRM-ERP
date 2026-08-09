@@ -1,10 +1,6 @@
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
-import {
-  useDocumentTitle,
-} from "@/shared/hooks/useDocumentTitle";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -14,37 +10,21 @@ import ProjectModal from "../components/ProjectModal";
 import ProjectTable from "../components/ProjectTable";
 import ProjectWorkspaceModal from "../components/ProjectWorkspaceModal";
 
-import {
-  useProjects,
-} from "../hooks/useProjects";
+import { useProjects } from "../hooks/useProjects";
 
-import {
-  useClients,
-} from "../../client/hooks/useClients";
+import { useClients } from "../../client/hooks/useClients";
 
-import {
-  useStates,
-} from "../../master/state/hooks/useStates";
+import { useStates } from "../../master/state/hooks/useStates";
 
-import {
-  useCities,
-} from "../../master/city/hooks/useCities";
+import { useCities } from "../../master/city/hooks/useCities";
 
-import {
-  useProjectCategories,
-} from "../../project-category/hooks/useProjectCategory";
+import { useProjectCategories } from "../../project-category/hooks/useProjectCategory";
 
-import {
-  useOrganizationUnits,
-} from "../../organization-unit/hooks/useOrganizationUnits";
+import { useOrganizationUnits } from "../../organization-unit/hooks/useOrganizationUnits";
 
-import {
-  useEmployee,
-} from "../../employee/hooks/useEmployee";
+import { useEmployee } from "../../employee/hooks/useEmployee";
 
-import {
-  useProjectRoles,
-} from "../../project-role/hooks/useProjectRoles";
+import { useProjectRoles } from "../../project-role/hooks/useProjectRoles";
 
 import type {
   CreateProjectRequest,
@@ -53,8 +33,7 @@ import type {
   UpdateProjectRequest,
 } from "../types/project.types";
 
-const initialFormData:
-  ProjectFormData = {
+const initialFormData: ProjectFormData = {
   clientUuid: "",
   categoryUuid: "",
   organizationUnitUuid: "",
@@ -76,510 +55,243 @@ const initialFormData:
 };
 
 const ProjectListPage = () => {
-  useDocumentTitle(
-    "All Projects",
+  useDocumentTitle("All Projects");
+
+  const [openModal, setOpenModal] = useState(false);
+
+  const [openWorkspace, setOpenWorkspace] = useState(false);
+
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<ProjectFormData>({
+    ...initialFormData,
+  });
+
+  const { loading, projects, fetchProject, create, update, remove, saving } =
+    useProjects();
+
+  const { dropdown: clientDropdown } = useClients();
+
+  const { dropdown: stateDropdown } = useStates();
+
+  const { dropdownCities: cityDropdown } = useCities(
+    {},
+    formData.stateUuid || undefined,
   );
 
-  const {
-    loading,
+  const { categories } = useProjectCategories();
 
-    projects,
+  const { organizationUnits } = useOrganizationUnits();
 
-    fetchProject,
+  const { employees, loading: loadingEmployees } = useEmployee();
 
-    create,
-    update,
-    remove,
-
-    saving,
-  } = useProjects();
-
- const {
-  dropdown:
-    clientDropdown,
-} = useClients();
-
-  const {
-    dropdown:
-      stateDropdown,
-
-    fetchDropdown:
-      fetchStateDropdown,
-  } = useStates();
-
-  const {
-    dropdownCities:
-      cityDropdown,
-
-    fetchDropdownCities:
-      fetchCityDropdown,
-  } = useCities();
-
- const {
-  categories,
-} = useProjectCategories();
-
-  const {
-    organizationUnits,
-  } =
-    useOrganizationUnits();
-
-const {
-  employees,
-  loading:
-    loadingEmployees,
-} = useEmployee();
-
-const {
-  projectRoles,
-  loading:
-    loadingRoles,
-} = useProjectRoles();
-
-  const [
-    openModal,
-    setOpenModal,
-  ] = useState(false);
-
-  const [
-    openWorkspace,
-    setOpenWorkspace,
-  ] = useState(false);
-
-  const [
-    selectedProject,
-    setSelectedProject,
-  ] = useState<
-    Project | null
-  >(null);
-
-  const [
-    editId,
-    setEditId,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    formData,
-    setFormData,
-  ] =
-    useState<ProjectFormData>({
-      ...initialFormData,
-    });
+  const { projectRoles, loading: loadingRoles } = useProjectRoles();
 
   const resetForm = () => {
-    setEditId(
-      null,
-    );
+    setEditId(null);
 
     setFormData({
       ...initialFormData,
     });
   };
 
-  const loadFormDropdowns =
-    async () => {
-      await Promise.all([
-        fetchStateDropdown(),
-      ]);
-    };
+  const handleOpenCreateModal = () => {
+    resetForm();
 
-  const handleOpenCreateModal =
-    async () => {
-      try {
-        await loadFormDropdowns();
+    setOpenModal(true);
+  };
 
-        resetForm();
+  const handleCloseModal = () => {
+    setOpenModal(false);
 
-        setOpenModal(
-          true,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to prepare project form:",
-          error,
-        );
-      }
-    };
+    resetForm();
+  };
 
-  const handleCloseModal =
-    () => {
-      setOpenModal(
-        false,
-      );
+  const handleStateChange = async (stateUuid: string): Promise<void> => {
+    setFormData((previous) => ({
+      ...previous,
 
-      resetForm();
-    };
+      stateUuid,
 
-  const handleStateChange =
-    async (
-      stateUuid: string,
-    ) => {
-      setFormData(
-        (previous) => ({
-          ...previous,
+      cityUuid: "",
+    }));
+  };
 
-          stateUuid,
+  const getCreatePayload = (): CreateProjectRequest => ({
+    clientUuid: formData.clientUuid,
 
-          cityUuid:
-            "",
-        }),
-      );
+    categoryUuid: formData.categoryUuid,
 
-      if (!stateUuid) {
-        return;
-      }
+    organizationUnitUuid: formData.organizationUnitUuid,
 
-      try {
-        await fetchCityDropdown(
-          stateUuid,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load cities:",
-          error,
-        );
-      }
-    };
+    name: formData.name.trim(),
 
-  const getCreatePayload =
-    (): CreateProjectRequest => ({
-      clientUuid:
-        formData.clientUuid,
+    stateUuid: formData.stateUuid || undefined,
 
-      categoryUuid:
-        formData.categoryUuid,
+    cityUuid: formData.cityUuid || undefined,
 
-      organizationUnitUuid:
-        formData.organizationUnitUuid,
+    address: formData.address?.trim() || undefined,
 
-      name:
-        formData.name.trim(),
+    pincode: formData.pincode?.trim() || undefined,
 
-      stateUuid:
-        formData.stateUuid ||
-        undefined,
+    startDate: formData.startDate || undefined,
 
-      cityUuid:
-        formData.cityUuid ||
-        undefined,
+    expectedEndDate: formData.expectedEndDate || undefined,
 
-      address:
-        formData.address
-          ?.trim() ||
-        undefined,
+    remarks: formData.remarks?.trim() || undefined,
+  });
 
-      pincode:
-        formData.pincode
-          ?.trim() ||
-        undefined,
-
-      startDate:
-        formData.startDate ||
-        undefined,
-
-      expectedEndDate:
-        formData.expectedEndDate ||
-        undefined,
-
-      remarks:
-        formData.remarks
-          ?.trim() ||
-        undefined,
-    });
-
-  const handleSubmit =
-    async () => {
-      try {
-        const basePayload =
-          getCreatePayload();
-
-        if (editId) {
-          const payload:
-            UpdateProjectRequest = {
-            ...basePayload,
-
-            status:
-              formData.status,
-          };
-
-          await update(
-            editId,
-            payload,
-          );
-        } else {
-          await create(
-            basePayload,
-          );
-        }
-
-        handleCloseModal();
-      } catch (error) {
-        console.error(
-          "Failed to save project:",
-          error,
-        );
-      }
-    };
-
-  const handleEdit =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        await loadFormDropdowns();
-
-        const project =
-          await fetchProject(
-            uuid,
-          );
-
-        if (
-          project.state?.uuid
-        ) {
-          await fetchCityDropdown(
-            project.state.uuid,
-          );
-        }
-
-        setEditId(
-          uuid,
-        );
-
-        setFormData({
-          clientUuid:
-            project.client
-              ?.uuid ?? "",
-
-          categoryUuid:
-            project.category
-              ?.uuid ?? "",
-
-          organizationUnitUuid:
-            project.organizationUnit
-              ?.uuid ?? "",
-
-          name:
-            project.name,
-
-          stateUuid:
-            project.state
-              ?.uuid ?? "",
-
-          cityUuid:
-            project.city
-              ?.uuid ?? "",
-
-          address:
-            project.address ??
-            "",
-
-          pincode:
-            project.pincode ??
-            "",
-
-          startDate:
-            project.startDate
-              ?.slice(
-                0,
-                10,
-              ) ?? "",
-
-          expectedEndDate:
-            project.expectedEndDate
-              ?.slice(
-                0,
-                10,
-              ) ?? "",
-
-          remarks:
-            project.remarks ??
-            "",
-
-          status:
-            project.status,
-        });
-
-        setOpenModal(
-          true,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to load project:",
-          error,
-        );
-      }
-    };
-
-const handleManage =
-  async (
-    uuid: string,
-  ) => {
+  const handleSubmit = async () => {
     try {
-      setSelectedProject(
-        null,
-      );
+      const basePayload = getCreatePayload();
 
-      const project =
-        await fetchProject(
-          uuid,
-        );
+      if (editId) {
+        const payload: UpdateProjectRequest = {
+          ...basePayload,
 
-      setSelectedProject(
-        project,
-      );
+          status: formData.status,
+        };
 
-      setOpenWorkspace(
-        true,
-      );
+        await update(editId, payload);
+      } else {
+        await create(basePayload);
+      }
+
+      handleCloseModal();
     } catch (error) {
-      console.error(
-        "Failed to open project workspace:",
-        error,
-      );
+      console.error("Failed to save project:", error);
     }
   };
 
-  const handleCloseWorkspace =
-    () => {
-      setOpenWorkspace(
-        false,
-      );
+  const handleEdit = async (uuid: string) => {
+    try {
+      const project = await fetchProject(uuid);
 
-      setSelectedProject(
-        null,
-      );
-    };
+      setEditId(uuid);
 
-  const handleDelete =
-    async (
-      uuid: string,
-    ) => {
-      const confirmed =
-        window.confirm(
-          "Are you sure you want to delete this project?",
-        );
+      setFormData({
+        clientUuid: project.client?.uuid ?? "",
 
-      if (!confirmed) {
-        return;
-      }
+        categoryUuid: project.category?.uuid ?? "",
 
-      try {
-        await remove(
-          uuid,
-        );
-      } catch (error) {
-        console.error(
-          "Failed to delete project:",
-          error,
-        );
-      }
-    };
+        organizationUnitUuid: project.organizationUnit?.uuid ?? "",
 
-  const clientOptions =
-    clientDropdown.map(
-      (item) => ({
-        label:
-          item.name,
+        name: project.name,
 
-        value:
-          item.uuid,
-      }),
+        stateUuid: project.state?.uuid ?? "",
+
+        cityUuid: project.city?.uuid ?? "",
+
+        address: project.address ?? "",
+
+        pincode: project.pincode ?? "",
+
+        startDate: project.startDate?.slice(0, 10) ?? "",
+
+        expectedEndDate: project.expectedEndDate?.slice(0, 10) ?? "",
+
+        remarks: project.remarks ?? "",
+
+        status: project.status,
+      });
+
+      setOpenModal(true);
+    } catch (error) {
+      console.error("Failed to load project:", error);
+    }
+  };
+
+  const handleManage = async (uuid: string) => {
+    try {
+      setSelectedProject(null);
+
+      const project = await fetchProject(uuid);
+
+      setSelectedProject(project);
+
+      setOpenWorkspace(true);
+    } catch (error) {
+      console.error("Failed to open project workspace:", error);
+    }
+  };
+
+  const handleCloseWorkspace = () => {
+    setOpenWorkspace(false);
+
+    setSelectedProject(null);
+  };
+
+  const handleDelete = async (uuid: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project?",
     );
 
-  const categoryOptions =
-    categories.map(
-      (item) => ({
-        label:
-          item.name,
+    if (!confirmed) {
+      return;
+    }
 
-        value:
-          item.uuid,
-      }),
-    );
+    try {
+      await remove(uuid);
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+    }
+  };
 
-  const branchOptions =
-    organizationUnits
-      .filter(
-        (item) =>
-          item.status ===
-          "ACTIVE",
-      )
-      .map(
-        (item) => ({
-          label:
-            `${item.name} (${item.code})`,
+  const clientOptions = clientDropdown.map((item) => ({
+    label: item.name,
 
-          value:
-            item.uuid,
-        }),
-      );
+    value: item.uuid,
+  }));
 
-  const stateOptions =
-    stateDropdown.map(
-      (item) => ({
-        label:
-          item.name,
+  const categoryOptions = categories.map((item) => ({
+    label: item.name,
 
-        value:
-          item.uuid,
-      }),
-    );
+    value: item.uuid,
+  }));
 
-  const cityOptions =
-    cityDropdown.map(
-      (item) => ({
-        label:
-          item.name,
+  const branchOptions = organizationUnits
+    .filter((item) => item.status === "ACTIVE")
+    .map((item) => ({
+      label: `${item.name} (${item.code})`,
 
-        value:
-          item.uuid,
-      }),
-    );
+      value: item.uuid,
+    }));
 
-  const employeeOptions =
-    employees
-      .filter(
-        (employee) =>
-          employee.status ===
-          "ACTIVE",
-      )
-      .map(
-        (employee) => {
-          const fullName = [
-            employee.firstName,
-            employee.lastName,
-          ]
-            .filter(Boolean)
-            .join(" ");
+  const stateOptions = stateDropdown.map((item) => ({
+    label: item.name,
 
-          return {
-            uuid:
-              employee.uuid,
+    value: item.uuid,
+  }));
 
-            label:
-              employee.displayName ||
-              fullName ||
-              employee.employeeCode ||
-              "-",
-          };
-        },
-      );
+  const cityOptions = cityDropdown.map((item) => ({
+    label: item.name,
 
-  const projectRoleOptions =
-    projectRoles.map(
-      (role) => ({
-        uuid:
-          role.uuid,
+    value: item.uuid,
+  }));
 
-        name:
-          role.name,
+  const employeeOptions = employees
+    .filter((employee) => employee.status === "ACTIVE")
+    .map((employee) => {
+      const fullName = [employee.firstName, employee.lastName]
+        .filter(Boolean)
+        .join(" ");
 
-        status:
-          role.status,
-      }),
-    );
+      return {
+        uuid: employee.uuid,
+
+        label: employee.displayName || fullName || employee.employeeCode || "-",
+      };
+    });
+
+  const projectRoleOptions = projectRoles.map((role) => ({
+    uuid: role.uuid,
+
+    name: role.name,
+
+    status: role.status,
+  }));
 
   return (
     <>
@@ -587,110 +299,46 @@ const handleManage =
         title="Projects"
         subtitle="Manage company projects"
         actions={
-          <Button
-            onClick={
-              handleOpenCreateModal
-            }
-          >
-            Create Project
-          </Button>
+          <Button onClick={handleOpenCreateModal}>Create Project</Button>
         }
       />
 
       <Card>
         <ProjectTable
-          data={
-            projects
-          }
-          loading={
-            loading
-          }
-          onManage={
-            handleManage
-          }
-          onEdit={
-            handleEdit
-          }
-          onDelete={
-            handleDelete
-          }
+          data={projects}
+          loading={loading}
+          onManage={handleManage}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
       </Card>
 
       <ProjectModal
-        open={
-          openModal
-        }
-        loading={
-          saving
-        }
-        title={
-          editId
-            ? "Edit Project"
-            : "Create Project"
-        }
-        isEdit={
-          Boolean(
-            editId,
-          )
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        clientOptions={
-          clientOptions
-        }
-        categoryOptions={
-          categoryOptions
-        }
-        branchOptions={
-          branchOptions
-        }
-        stateOptions={
-          stateOptions
-        }
-        cityOptions={
-          cityOptions
-        }
-        onStateChange={
-          handleStateChange
-        }
-        onClose={
-          handleCloseModal
-        }
-        onSubmit={
-          handleSubmit
-        }
+        open={openModal}
+        loading={saving}
+        title={editId ? "Edit Project" : "Create Project"}
+        isEdit={Boolean(editId)}
+        formData={formData}
+        setFormData={setFormData}
+        clientOptions={clientOptions}
+        categoryOptions={categoryOptions}
+        branchOptions={branchOptions}
+        stateOptions={stateOptions}
+        cityOptions={cityOptions}
+        onStateChange={handleStateChange}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
       />
 
       <ProjectWorkspaceModal
-        open={
-          openWorkspace
-        }
-        project={
-          selectedProject
-        }
-        employees={
-          employeeOptions
-        }
-        projectRoles={
-          projectRoleOptions
-        }
-        loadingProject={
-          false
-        }
-        loadingEmployees={
-          loadingEmployees
-        }
-        loadingRoles={
-          loadingRoles
-        }
-        onClose={
-          handleCloseWorkspace
-        }
+        open={openWorkspace}
+        project={selectedProject}
+        employees={employeeOptions}
+        projectRoles={projectRoleOptions}
+        loadingProject={false}
+        loadingEmployees={loadingEmployees}
+        loadingRoles={loadingRoles}
+        onClose={handleCloseWorkspace}
       />
     </>
   );
