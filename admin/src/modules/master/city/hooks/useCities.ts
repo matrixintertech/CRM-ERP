@@ -1,358 +1,196 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-  notify,
-} from "@/shared/utils/notify";
+import { notify } from "@/shared/utils/notify";
 
-import {
-  cityApi,
-} from "../api/city.api";
+import { cityApi } from "../api/city.api";
 
-import type {
-  CityFormData,
-  CityQueryParams,
-} from "../types/city.types";
+import type { CityFormData, CityQueryParams } from "../types/city.types";
 
-const getErrorMessage = (
-  error: unknown,
-  fallbackMessage: string,
-) => {
-  const apiError =
-    error as {
-      response?: {
-        data?: {
-          message?: string;
-          errors?: string[];
-        };
+const getErrorMessage = (error: unknown, fallbackMessage: string) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
       };
     };
+  };
 
-  const errors =
-    apiError.response?.data
-      ?.errors;
+  const errors = apiError.response?.data?.errors;
 
-  if (
-    Array.isArray(errors) &&
-    errors.length > 0
-  ) {
-    return errors.join(
-      ", ",
-    );
+  if (Array.isArray(errors) && errors.length > 0) {
+    return errors.join(", ");
   }
 
-  return (
-    apiError.response?.data
-      ?.message ??
-    fallbackMessage
-  );
+  return apiError.response?.data?.message ?? fallbackMessage;
 };
 
 export const useCities = (
   params: CityQueryParams = {},
   dropdownStateUuid?: string,
 ) => {
-  const queryClient =
-    useQueryClient();
+  const queryClient = useQueryClient();
 
-  const citiesQuery =
-    useQuery({
-      queryKey: [
-        "cities",
-        params,
-      ],
+  const citiesQuery = useQuery({
+    queryKey: ["cities", params],
 
-      queryFn: () =>
-        cityApi.getAll(
-          params,
-        ),
+    queryFn: () => cityApi.getAll(params),
 
-      staleTime:
-        5 * 60 * 1000,
-    });
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const dropdownQuery =
-    useQuery({
-      queryKey: [
-        "city-dropdown",
-        dropdownStateUuid ??
-          null,
-      ],
+  const dropdownQuery = useQuery({
+    queryKey: ["city-dropdown", dropdownStateUuid ?? null],
 
-      queryFn: () =>
-        cityApi.getDropdown(
-          dropdownStateUuid,
-        ),
+    queryFn: () => cityApi.getDropdown(dropdownStateUuid),
 
-      staleTime:
-        5 * 60 * 1000,
-    });
+    enabled: Boolean(dropdownStateUuid),
 
-  const fetchCity =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        return await queryClient.fetchQuery({
-          queryKey: [
-            "city",
-            uuid,
-          ],
+    staleTime: 5 * 60 * 1000,
+  });
 
-          queryFn: () =>
-            cityApi.getByUuid(
-              uuid,
-            ),
-        });
-      } catch (error) {
-        console.error(
-          "Failed to fetch city:",
-          error,
-        );
+  const fetchCity = async (uuid: string) => {
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: ["city", uuid],
 
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to load city details.",
-          ),
-        );
+        queryFn: () => cityApi.getByUuid(uuid),
+      });
+    } catch (error) {
+      console.error("Failed to fetch city:", error);
 
-        throw error;
-      }
-    };
+      notify.error(getErrorMessage(error, "Failed to load city details."));
 
-  const createMutation =
-    useMutation({
-      mutationFn: (
-        payload:
-          CityFormData,
-      ) =>
-        cityApi.create(
-          payload,
-        ),
+      throw error;
+    }
+  };
 
-      onSuccess: async (
-        response,
-      ) => {
-        notify.success(
-          response?.message ??
-            "City created successfully.",
-        );
+  const createMutation = useMutation({
+    mutationFn: (payload: CityFormData) => cityApi.create(payload),
 
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: [
-              "cities",
-            ],
-          }),
+    onSuccess: async (response) => {
+      notify.success(response?.message ?? "City created successfully.");
 
-          queryClient.invalidateQueries({
-            queryKey: [
-              "city-dropdown",
-            ],
-          }),
-        ]);
-      },
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["cities"],
+        }),
 
-      onError: (error) => {
-        console.error(
-          "Failed to create city:",
-          error,
-        );
+        queryClient.invalidateQueries({
+          queryKey: ["city-dropdown"],
+        }),
+      ]);
+    },
 
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to create city.",
-          ),
-        );
-      },
-    });
+    onError: (error) => {
+      console.error("Failed to create city:", error);
 
-  const updateMutation =
-    useMutation({
-      mutationFn: ({
-        uuid,
-        payload,
-      }: {
-        uuid: string;
+      notify.error(getErrorMessage(error, "Failed to create city."));
+    },
+  });
 
-        payload:
-          Partial<CityFormData>;
-      }) =>
-        cityApi.update(
-          uuid,
-          payload,
-        ),
+  const updateMutation = useMutation({
+    mutationFn: ({
+      uuid,
+      payload,
+    }: {
+      uuid: string;
 
-      onSuccess: async (
-        response,
-        variables,
-      ) => {
-        notify.success(
-          response?.message ??
-            "City updated successfully.",
-        );
+      payload: Partial<CityFormData>;
+    }) => cityApi.update(uuid, payload),
 
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: [
-              "cities",
-            ],
-          }),
+    onSuccess: async (response, variables) => {
+      notify.success(response?.message ?? "City updated successfully.");
 
-          queryClient.invalidateQueries({
-            queryKey: [
-              "city-dropdown",
-            ],
-          }),
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["cities"],
+        }),
 
-          queryClient.invalidateQueries({
-            queryKey: [
-              "city",
-              variables.uuid,
-            ],
-          }),
-        ]);
-      },
+        queryClient.invalidateQueries({
+          queryKey: ["city-dropdown"],
+        }),
 
-      onError: (error) => {
-        console.error(
-          "Failed to update city:",
-          error,
-        );
+        queryClient.invalidateQueries({
+          queryKey: ["city", variables.uuid],
+        }),
+      ]);
+    },
 
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to update city.",
-          ),
-        );
-      },
-    });
+    onError: (error) => {
+      console.error("Failed to update city:", error);
 
-  const deleteMutation =
-    useMutation({
-      mutationFn: (
-        uuid: string,
-      ) =>
-        cityApi.remove(
-          uuid,
-        ),
+      notify.error(getErrorMessage(error, "Failed to update city."));
+    },
+  });
 
-      onSuccess: async (
-        response,
-        uuid,
-      ) => {
-        notify.success(
-          response?.message ??
-            "City deleted successfully.",
-        );
+  const deleteMutation = useMutation({
+    mutationFn: (uuid: string) => cityApi.remove(uuid),
 
-        queryClient.removeQueries({
-          queryKey: [
-            "city",
-            uuid,
-          ],
-        });
+    onSuccess: async (response, uuid) => {
+      notify.success(response?.message ?? "City deleted successfully.");
 
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: [
-              "cities",
-            ],
-          }),
+      queryClient.removeQueries({
+        queryKey: ["city", uuid],
+      });
 
-          queryClient.invalidateQueries({
-            queryKey: [
-              "city-dropdown",
-            ],
-          }),
-        ]);
-      },
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["cities"],
+        }),
 
-      onError: (error) => {
-        console.error(
-          "Failed to delete city:",
-          error,
-        );
+        queryClient.invalidateQueries({
+          queryKey: ["city-dropdown"],
+        }),
+      ]);
+    },
 
-        notify.error(
-          getErrorMessage(
-            error,
-            "Failed to delete city.",
-          ),
-        );
-      },
-    });
+    onError: (error) => {
+      console.error("Failed to delete city:", error);
 
-  const citiesResponse =
-    citiesQuery.data;
+      notify.error(getErrorMessage(error, "Failed to delete city."));
+    },
+  });
 
-  const dropdownResponse =
-    dropdownQuery.data;
+  const citiesResponse = citiesQuery.data;
+
+  const dropdownResponse = dropdownQuery.data;
 
   return {
-    cities:
-      citiesResponse
-        ?.cities ?? [],
+    cities: citiesResponse?.cities ?? [],
 
-    total:
-      citiesResponse
-        ?.total ?? 0,
+    total: citiesResponse?.total ?? 0,
 
-    dropdownCities:
-      dropdownResponse
-        ?.cities ?? [],
+    dropdownCities: dropdownResponse?.cities ?? [],
 
-    loading:
-      citiesQuery.isLoading,
+    loading: citiesQuery.isLoading,
 
-    fetching:
-      citiesQuery.isFetching,
+    fetching: citiesQuery.isFetching,
 
-    dropdownLoading:
-      dropdownQuery.isLoading,
+    dropdownLoading: dropdownQuery.isLoading,
 
-    dropdownFetching:
-      dropdownQuery.isFetching,
+    dropdownFetching: dropdownQuery.isFetching,
 
-    error:
-      citiesQuery.error ??
-      dropdownQuery.error,
+    error: citiesQuery.error ?? dropdownQuery.error,
 
-    refetch:
-      citiesQuery.refetch,
+    refetch: citiesQuery.refetch,
 
-    refetchDropdown:
-      dropdownQuery.refetch,
+    refetchDropdown: dropdownQuery.refetch,
 
     fetchCity,
 
-    create:
-      createMutation.mutateAsync,
+    create: createMutation.mutateAsync,
 
-    update: (
-      uuid: string,
-      payload:
-        Partial<CityFormData>,
-    ) =>
+    update: (uuid: string, payload: Partial<CityFormData>) =>
       updateMutation.mutateAsync({
         uuid,
         payload,
       }),
 
-    remove:
-      deleteMutation.mutateAsync,
+    remove: deleteMutation.mutateAsync,
 
-    saving:
-      createMutation.isPending ||
-      updateMutation.isPending,
+    saving: createMutation.isPending || updateMutation.isPending,
 
-    deleting:
-      deleteMutation.isPending,
+    deleting: deleteMutation.isPending,
   };
 };
