@@ -1,11 +1,9 @@
 import {
-  useCallback,
-  useState,
-} from "react";
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import {
-  notify,
-} from "@/shared/utils/notify";
+import { notify } from "@/shared/utils/notify";
 
 import {
   getProfile,
@@ -14,6 +12,10 @@ import {
 import type {
   UserProfile,
 } from "../types/profile.types";
+
+const PROFILE_QUERY_KEY = [
+  "profile",
+] as const;
 
 const getErrorMessage = (
   error: unknown,
@@ -45,29 +47,32 @@ const getErrorMessage = (
 };
 
 export const useProfile = () => {
-  const [
-    profile,
-    setProfile,
-  ] = useState<UserProfile | null>(
-    null,
-  );
+  const queryClient =
+    useQueryClient();
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  const profileQuery = useQuery({
+    queryKey: PROFILE_QUERY_KEY,
+
+    queryFn: getProfile,
+
+    staleTime: 5 * 60 * 1000,
+
+    retry: false,
+  });
 
   const fetchProfile =
-    useCallback(async () => {
+    async () => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey:
+            PROFILE_QUERY_KEY,
 
-        const data =
-          await getProfile();
+          queryFn:
+            getProfile,
 
-        setProfile(data);
-
-        return data;
+          staleTime:
+            5 * 60 * 1000,
+        });
       } catch (error: unknown) {
         console.error(
           "Failed to load profile:",
@@ -82,21 +87,41 @@ export const useProfile = () => {
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    }, []);
+    };
 
-  const clearProfile =
-    useCallback(() => {
-      setProfile(null);
-    }, []);
+  const clearProfile = () => {
+    queryClient.setQueryData<
+      UserProfile | null
+    >(
+      PROFILE_QUERY_KEY,
+      null,
+    );
+
+    queryClient.removeQueries({
+      queryKey:
+        PROFILE_QUERY_KEY,
+    });
+  };
 
   return {
-    loading,
-    profile,
+    loading:
+      profileQuery.isLoading,
+
+    fetching:
+      profileQuery.isFetching,
+
+    profile:
+      profileQuery.data ?? null,
+
+    error:
+      profileQuery.error,
+
+    refetch:
+      profileQuery.refetch,
 
     fetchProfile,
+
     clearProfile,
   };
 };
