@@ -1,7 +1,4 @@
-import type {
-  Dispatch,
-  SetStateAction,
-} from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import Button from "@/shared/components/Button";
 import Modal from "@/shared/components/Modal";
@@ -19,22 +16,19 @@ interface Props {
   open: boolean;
   isEdit: boolean;
   loading: boolean;
+  loadingCities: boolean;
 
   formData: ClientFormData;
 
-  setFormData: Dispatch<
-    SetStateAction<ClientFormData>
-  >;
+  setFormData: Dispatch<SetStateAction<ClientFormData>>;
 
   stateOptions: StateOption[];
   cityOptions: CityOption[];
 
-  onStateChange: (
-    stateUuid: string,
-  ) => Promise<void>;
+  onStateChange: (stateUuid: string) => Promise<void>;
 
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
 }
 
 const ClientModal = ({
@@ -51,19 +45,13 @@ const ClientModal = ({
   onSubmit,
 }: Props) => {
   return (
-    <Modal
-      open={open}
-      title={title}
-      onClose={onClose}
-      size="lg"
-    >
+    <Modal open={open} title={title} onClose={onClose}>
       <ClientForm
         formData={formData}
         setFormData={setFormData}
         stateOptions={stateOptions}
         cityOptions={cityOptions}
         onStateChange={onStateChange}
-        isEdit={isEdit}
       />
 
       <div
@@ -74,20 +62,12 @@ const ClientModal = ({
           marginTop: 24,
         }}
       >
-        <Button
-          variant="secondary"
-          onClick={onClose}
-        >
+        <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
 
-        <Button
-          loading={loading}
-          onClick={onSubmit}
-        >
-          {isEdit
-            ? "Update Client"
-            : "Create Client"}
+        <Button loading={loading} onClick={onSubmit}>
+          {isEdit ? "Update Client" : "Create Client"}
         </Button>
       </div>
     </Modal>

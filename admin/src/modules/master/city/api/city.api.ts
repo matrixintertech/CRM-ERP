@@ -21,77 +21,48 @@ interface CityDropdownResponse {
 }
 
 export const cityApi = {
-  async getAll(
-    params: CityQueryParams = {},
-  ): Promise<CityListResponse> {
-    const { data } = await api.get(
-      "/master/cities",
-      {
-        params,
-      },
-    );
+  async getAll(params: CityQueryParams = {}): Promise<CityListResponse> {
+    const { data } = await api.get("/master/cities", {
+      params,
+    });
 
     return data.data;
   },
 
-  async getByUuid(
-    uuid: string,
-  ): Promise<City> {
-    const { data } = await api.get(
-      `/master/cities/${uuid}`,
-    );
+  async getByUuid(uuid: string): Promise<City> {
+    const { data } = await api.get(`/master/cities/${uuid}`);
 
-    return (
-      data.data as CityDetailsResponse
-    ).city;
+    return (data.data as CityDetailsResponse).city;
   },
 
-  async create(
-    payload: CityFormData,
-  ) {
-    const { data } = await api.post(
-      "/master/cities",
-      payload,
-    );
+  async create(payload: CityFormData) {
+    const { data } = await api.post("/master/cities", payload);
 
     return data;
   },
 
-  async update(
-    uuid: string,
-    payload: Partial<CityFormData>,
-  ) {
-    const { data } = await api.patch(
-      `/master/cities/${uuid}`,
-      payload,
-    );
+  async update(uuid: string, payload: Partial<CityFormData>) {
+    const { data } = await api.patch(`/master/cities/${uuid}`, payload);
 
     return data;
   },
 
-  async remove(
-    uuid: string,
-  ) {
-    const { data } = await api.delete(
-      `/master/cities/${uuid}`,
-    );
+  async remove(uuid: string) {
+    const { data } = await api.delete(`/master/cities/${uuid}`);
 
     return data;
   },
 
-  async getDropdown(
-    stateUuid?: string,
-  ): Promise<CityDropdownResponse> {
-    const { data } = await api.get(
-      "/master/cities/dropdown",
-      {
-        params: {
-          stateUuid,
-          status: "ACTIVE",
-        },
+  async getDropdown(stateUuid?: string): Promise<CityDropdown[]> {
+    const { data } = await api.get("/master/cities/dropdown", {
+      params: {
+        stateUuid,
+        status: "ACTIVE",
       },
-    );
+    });
 
-    return data.data;
+    const response = data.data as CityDropdownResponse | CityDropdown[];
+
+    return Array.isArray(response) ? response : response.cities;
   },
 };
