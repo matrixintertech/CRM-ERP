@@ -1,12 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { Prisma, Status } from '@prisma/client';
+import {
+  PermissionScope,
+  PermissionType,
+  Prisma,
+  Status,
+} from '@prisma/client';
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
+
+export interface RolePermissionAssignment {
+  permissionUuid: string;
+  scope: PermissionScope;
+}
 
 @Injectable()
 export class RoleRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma:
+      PrismaService,
+  ) {}
 
   private readonly include = {
     rolePermissions: {
@@ -22,72 +39,107 @@ export class RoleRepository {
     },
   } satisfies Prisma.RoleInclude;
 
-  async create(data: Prisma.RoleCreateInput, tx?: Prisma.TransactionClient) {
-    const client = tx ?? this.prisma;
+  async create(
+    data: Prisma.RoleCreateInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client =
+      tx ?? this.prisma;
 
     return client.role.create({
       data,
-      include: this.include,
+
+      include:
+        this.include,
     });
   }
 
-  async findCompanyById(id: bigint) {
+  async findCompanyById(
+    id: bigint,
+  ) {
     return this.prisma.company.findFirst({
       where: {
         id,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
 
-  async findCompanyByUuid(uuid: string) {
+  async findCompanyByUuid(
+    uuid: string,
+  ) {
     return this.prisma.company.findFirst({
       where: {
         uuid,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
 
-  async findById(companyId: bigint, id: bigint) {
+  async findById(
+    companyId: bigint,
+    id: bigint,
+  ) {
     return this.prisma.role.findFirst({
       where: {
         id,
+
         companyId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async findByUuid(companyId: bigint, uuid: string) {
+  async findByUuid(
+    companyId: bigint,
+    uuid: string,
+  ) {
     return this.prisma.role.findFirst({
       where: {
         uuid,
+
         companyId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async findByCompanyId(companyId: bigint) {
+  async findByCompanyId(
+    companyId: bigint,
+  ) {
     return this.prisma.role.findMany({
       where: {
         companyId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
 
       orderBy: [
         {
-          isSystem: 'desc',
+          isSystem:
+            'desc',
         },
         {
-          name: 'asc',
+          name:
+            'asc',
         },
       ],
     });
@@ -96,88 +148,130 @@ export class RoleRepository {
   async findAll() {
     return this.prisma.role.findMany({
       where: {
-        deletedAt: null,
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
 
       orderBy: [
         {
           company: {
-            name: 'asc',
+            name:
+              'asc',
           },
         },
         {
-          isSystem: 'desc',
+          isSystem:
+            'desc',
         },
         {
-          name: 'asc',
+          name:
+            'asc',
         },
       ],
     });
   }
 
-  async findActiveByCompanyId(companyId: bigint) {
+  async findActiveByCompanyId(
+    companyId: bigint,
+  ) {
     return this.prisma.role.findMany({
       where: {
         companyId,
-        status: Status.ACTIVE,
-        deletedAt: null,
+
+        status:
+          Status.ACTIVE,
+
+        deletedAt:
+          null,
       },
 
       select: {
-        uuid: true,
-        name: true,
-        code: true,
-        isSystem: true,
+        uuid:
+          true,
+
+        name:
+          true,
+
+        code:
+          true,
+
+        isSystem:
+          true,
       },
 
       orderBy: {
-        name: 'asc',
+        name:
+          'asc',
       },
     });
   }
 
-  async findByCode(companyId: bigint, code: string) {
+  async findByCode(
+    companyId: bigint,
+    code: string,
+  ) {
     return this.prisma.role.findFirst({
       where: {
         companyId,
 
-        code: code.trim().toUpperCase(),
+        code:
+          code
+            .trim()
+            .toUpperCase(),
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
     });
   }
 
-  async findByName(companyId: bigint, name: string) {
+  async findByName(
+    companyId: bigint,
+    name: string,
+  ) {
     return this.prisma.role.findFirst({
       where: {
         companyId,
 
         name: {
-          equals: name.trim(),
+          equals:
+            name.trim(),
 
-          mode: 'insensitive',
+          mode:
+            'insensitive',
         },
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
     });
   }
 
-  async update(companyId: bigint, uuid: string, data: Prisma.RoleUpdateInput) {
-    const role = await this.prisma.role.findFirst({
-      where: {
-        companyId,
-        uuid,
-        deletedAt: null,
-      },
+  async update(
+    companyId: bigint,
+    uuid: string,
+    data:
+      Prisma.RoleUpdateInput,
+  ) {
+    const role =
+      await this.prisma.role.findFirst({
+        where: {
+          companyId,
 
-      select: {
-        id: true,
-      },
-    });
+          uuid,
+
+          deletedAt:
+            null,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
 
     if (!role) {
       return null;
@@ -185,27 +279,37 @@ export class RoleRepository {
 
     return this.prisma.role.update({
       where: {
-        id: role.id,
+        id:
+          role.id,
       },
 
       data,
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async softDelete(companyId: bigint, uuid: string) {
-    const role = await this.prisma.role.findFirst({
-      where: {
-        companyId,
-        uuid,
-        deletedAt: null,
-      },
+  async softDelete(
+    companyId: bigint,
+    uuid: string,
+  ) {
+    const role =
+      await this.prisma.role.findFirst({
+        where: {
+          companyId,
 
-      select: {
-        id: true,
-      },
-    });
+          uuid,
+
+          deletedAt:
+            null,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
 
     if (!role) {
       return null;
@@ -213,43 +317,77 @@ export class RoleRepository {
 
     return this.prisma.role.update({
       where: {
-        id: role.id,
+        id:
+          role.id,
       },
 
       data: {
-        deletedAt: new Date(),
+        deletedAt:
+          new Date(),
 
-        status: Status.INACTIVE,
+        status:
+          Status.INACTIVE,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async findRolePermissions(companyId: bigint, roleUuid: string) {
+  async findRolePermissions(
+    companyId: bigint,
+    roleUuid: string,
+  ) {
     return this.prisma.rolePermission.findMany({
       where: {
         role: {
           companyId,
-          uuid: roleUuid,
-          deletedAt: null,
+
+          uuid:
+            roleUuid,
+
+          deletedAt:
+            null,
         },
 
         permission: {
-          deletedAt: null,
+          type:
+            PermissionType.COMPANY,
+
+          deletedAt:
+            null,
         },
       },
 
       select: {
+        scope:
+          true,
+
         permission: {
           select: {
-            id: true,
-            uuid: true,
-            module: true,
-            name: true,
-            code: true,
-            description: true,
-            status: true,
+            id:
+              true,
+
+            uuid:
+              true,
+
+            module:
+              true,
+
+            name:
+              true,
+
+            code:
+              true,
+
+            description:
+              true,
+
+            type:
+              true,
+
+            status:
+              true,
           },
         },
       },
@@ -257,12 +395,14 @@ export class RoleRepository {
       orderBy: [
         {
           permission: {
-            module: 'asc',
+            module:
+              'asc',
           },
         },
         {
           permission: {
-            name: 'asc',
+            name:
+              'asc',
           },
         },
       ],
@@ -272,86 +412,184 @@ export class RoleRepository {
   async assignPermissions(
     companyId: bigint,
     roleUuid: string,
-    permissionUuids: string[],
+    assignments:
+      RolePermissionAssignment[],
   ) {
-    return this.prisma.$transaction(async (transaction) => {
-      const role = await transaction.role.findFirst({
-        where: {
-          companyId,
-          uuid: roleUuid,
-          deletedAt: null,
-        },
+    return this.prisma.$transaction(
+      async (
+        transaction,
+      ) => {
+        const role =
+          await transaction.role.findFirst({
+            where: {
+              companyId,
 
-        select: {
-          id: true,
-        },
-      });
+              uuid:
+                roleUuid,
 
-      if (!role) {
-        return null;
-      }
+              deletedAt:
+                null,
+            },
 
-      const permissions =
-        permissionUuids.length > 0
-          ? await transaction.permission.findMany({
-              where: {
-                uuid: {
-                  in: permissionUuids,
+            select: {
+              id:
+                true,
+            },
+          });
+
+        if (!role) {
+          return null;
+        }
+
+        const permissionUuids =
+          assignments.map(
+            (
+              assignment,
+            ) =>
+              assignment
+                .permissionUuid,
+          );
+
+        const uniquePermissionUuids = [
+          ...new Set(
+            permissionUuids,
+          ),
+        ];
+
+        const permissions =
+          uniquePermissionUuids
+            .length > 0
+            ? await transaction.permission.findMany({
+                where: {
+                  uuid: {
+                    in:
+                      uniquePermissionUuids,
+                  },
+
+                  type:
+                    PermissionType.COMPANY,
+
+                  status:
+                    Status.ACTIVE,
+
+                  deletedAt:
+                    null,
                 },
 
-                status: Status.ACTIVE,
+                select: {
+                  id:
+                    true,
 
-                deletedAt: null,
-              },
+                  uuid:
+                    true,
+                },
+              })
+            : [];
 
-              select: {
-                id: true,
-                uuid: true,
-              },
-            })
-          : [];
+        const scopeByPermissionUuid =
+          new Map<
+            string,
+            PermissionScope
+          >();
 
-      await transaction.rolePermission.deleteMany({
-        where: {
-          roleId: role.id,
-        },
-      });
+        for (
+          const assignment
+          of assignments
+        ) {
+          scopeByPermissionUuid.set(
+            assignment
+              .permissionUuid,
 
-      if (permissions.length > 0) {
-        await transaction.rolePermission.createMany({
-          data: permissions.map((permission) => ({
-            roleId: role.id,
+            assignment
+              .scope,
+          );
+        }
 
-            permissionId: permission.id,
-          })),
-
-          skipDuplicates: true,
+        await transaction.rolePermission.deleteMany({
+          where: {
+            roleId:
+              role.id,
+          },
         });
-      }
 
-      return {
-        roleId: role.id,
+        if (
+          permissions.length >
+          0
+        ) {
+          await transaction.rolePermission.createMany({
+            data:
+              permissions.map(
+                (
+                  permission,
+                ) => ({
+                  roleId:
+                    role.id,
 
-        requestedPermissionCount: permissionUuids.length,
+                  permissionId:
+                    permission.id,
 
-        assignedPermissionCount: permissions.length,
+                  scope:
+                    scopeByPermissionUuid.get(
+                      permission.uuid,
+                    ) ??
+                    PermissionScope.OWN,
+                }),
+              ),
 
-        foundPermissionUuids: permissions.map((permission) => permission.uuid),
-      };
-    });
+            skipDuplicates:
+              true,
+          });
+        }
+
+        return {
+          roleId:
+            role.id,
+
+          requestedPermissionCount:
+            uniquePermissionUuids
+              .length,
+
+          assignedPermissionCount:
+            permissions.length,
+
+          assignedPermissions:
+            permissions.map(
+              (
+                permission,
+              ) => ({
+                permissionUuid:
+                  permission.uuid,
+
+                scope:
+                  scopeByPermissionUuid.get(
+                    permission.uuid,
+                  ) ??
+                  PermissionScope.OWN,
+              }),
+            ),
+        };
+      },
+    );
   }
 
-  async countUsers(companyId: bigint, roleUuid: string) {
+  async countUsers(
+    companyId: bigint,
+    roleUuid: string,
+  ) {
     return this.prisma.user.count({
       where: {
         companyId,
 
         role: {
-          uuid: roleUuid,
-          deletedAt: null,
+          uuid:
+            roleUuid,
+
+          deletedAt:
+            null,
         },
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
     });
   }

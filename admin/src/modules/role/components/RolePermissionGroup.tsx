@@ -6,15 +6,29 @@ import type {
   PermissionGroup,
 } from "../../permission/types/permission.types";
 
+import type {
+  PermissionScope,
+  RolePermissionScopeMap,
+} from "../../role-permission/types/role-permission.types";
+
 interface Props {
   group: PermissionGroup;
 
-  selectedPermissionUuids: string[];
+  selectedPermissionUuids:
+    string[];
+
+  permissionScopes:
+    RolePermissionScopeMap;
 
   disabled?: boolean;
 
   onTogglePermission: (
     permissionUuid: string,
+  ) => void;
+
+  onScopeChange: (
+    permissionUuid: string,
+    scope: PermissionScope,
   ) => void;
 
   onToggleGroup: (
@@ -26,7 +40,10 @@ const formatModuleName = (
   module: string,
 ) =>
   module
-    .replaceAll("_", " ")
+    .replaceAll(
+      "_",
+      " ",
+    )
     .toLowerCase()
     .replace(
       /\b\w/g,
@@ -37,19 +54,25 @@ const formatModuleName = (
 const RolePermissionGroup = ({
   group,
   selectedPermissionUuids,
+  permissionScopes,
   disabled = false,
   onTogglePermission,
+  onScopeChange,
   onToggleGroup,
 }: Props) => {
   const groupPermissionUuids =
     group.permissions.map(
-      (permission) =>
+      (
+        permission,
+      ) =>
         permission.uuid,
     );
 
   const selectedCount =
     groupPermissionUuids.filter(
-      (permissionUuid) =>
+      (
+        permissionUuid,
+      ) =>
         selectedPermissionUuids.includes(
           permissionUuid,
         ),
@@ -67,35 +90,56 @@ const RolePermissionGroup = ({
         border:
           "1px solid var(--border-color, #e5e7eb)",
         borderRadius: 10,
-        overflow: "hidden",
+        overflow:
+          "hidden",
       }}
     >
       <div
         style={{
-          display: "flex",
+          display:
+            "flex",
+
           justifyContent:
             "space-between",
-          alignItems: "center",
-          gap: 12,
-          padding: "14px 16px",
+
+          alignItems:
+            "center",
+
+          gap:
+            12,
+
+          padding:
+            "14px 16px",
+
           background:
             "var(--surface-muted, #f8fafc)",
+
           borderBottom:
             "1px solid var(--border-color, #e5e7eb)",
         }}
       >
         <div>
-          <strong>
+          <div
+            style={{
+              fontWeight:
+                600,
+            }}
+          >
             {formatModuleName(
               group.module,
             )}
-          </strong>
+          </div>
 
           <div
             style={{
-              fontSize: 12,
-              marginTop: 3,
-              opacity: 0.7,
+              fontSize:
+                12,
+
+              marginTop:
+                3,
+
+              opacity:
+                0.7,
             }}
           >
             {selectedCount}/
@@ -113,7 +157,9 @@ const RolePermissionGroup = ({
               0
           }
           onClick={() =>
-            onToggleGroup(group)
+            onToggleGroup(
+              group,
+            )
           }
         >
           {allGroupSelected
@@ -124,24 +170,54 @@ const RolePermissionGroup = ({
 
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
+          display:
+            "flex",
+
+          flexDirection:
+            "column",
         }}
       >
         {group.permissions.map(
-          (permission) => (
-            <RolePermissionCard
-              key={permission.uuid}
-              permission={permission}
-              checked={selectedPermissionUuids.includes(
+          (
+            permission,
+          ) => {
+            const checked =
+              selectedPermissionUuids.includes(
                 permission.uuid,
-              )}
-              disabled={disabled}
-              onToggle={
-                onTogglePermission
-              }
-            />
-          ),
+              );
+
+            const scope =
+              permissionScopes[
+                permission.uuid
+              ] ??
+              "OWN";
+
+            return (
+              <RolePermissionCard
+                key={
+                  permission.uuid
+                }
+                permission={
+                  permission
+                }
+                checked={
+                  checked
+                }
+                scope={
+                  scope
+                }
+                disabled={
+                  disabled
+                }
+                onToggle={
+                  onTogglePermission
+                }
+                onScopeChange={
+                  onScopeChange
+                }
+              />
+            );
+          },
         )}
       </div>
     </div>

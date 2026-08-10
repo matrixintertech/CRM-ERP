@@ -14,20 +14,31 @@ import {
   getRolePermissions,
 } from "../api/role-permission.api";
 
+import type {
+  RolePermissionAssignment,
+} from "../types/role-permission.types";
+
 export const useRolePermissions = (
-  roleId?: string,
+  roleUuid?: string,
 ) => {
   const queryClient =
     useQueryClient();
 
+  /*
+   * Company roles ko sirf
+   * COMPANY permissions dikhani hain.
+   */
   const groupedPermissionsQuery =
     useQuery({
       queryKey: [
         "role-permission-groups",
+        "COMPANY",
       ],
 
       queryFn: () =>
-        getGroupedPermissions(),
+        getGroupedPermissions(
+          "COMPANY",
+        ),
 
       staleTime:
         5 * 60 * 1000,
@@ -37,37 +48,40 @@ export const useRolePermissions = (
     useQuery({
       queryKey: [
         "role-permissions",
-        roleId,
+        roleUuid,
       ],
 
       queryFn: () =>
         getRolePermissions(
-          roleId!,
+          roleUuid!,
         ),
 
       enabled:
         Boolean(
-          roleId,
+          roleUuid,
         ),
+
+      staleTime:
+        5 * 60 * 1000,
     });
 
   const saveMutation =
     useMutation({
       mutationFn: (
-        permissionIds:
-          string[],
+        permissions:
+          RolePermissionAssignment[],
       ) => {
-        if (!roleId) {
+        if (!roleUuid) {
           throw new Error(
-            "Role ID is required.",
+            "Role UUID is required.",
           );
         }
 
         return assignRolePermissions(
-          roleId,
-          permissionIds.map(
-            Number,
-          ),
+          roleUuid,
+          {
+            permissions,
+          },
         );
       },
 
@@ -79,7 +93,7 @@ export const useRolePermissions = (
         await queryClient.invalidateQueries({
           queryKey: [
             "role-permissions",
-            roleId,
+            roleUuid,
           ],
         });
       },
@@ -91,17 +105,39 @@ export const useRolePermissions = (
       },
     });
 
+  const selectedPermissions:
+    RolePermissionAssignment[] =
+      rolePermissionsQuery.data
+        ?.permissions
+        ?.map(
+          (
+            permission,
+          ) => ({
+            permissionUuid:
+              permission.uuid,
+
+            scope:
+              permission.scope,
+          }),
+        ) ?? [];
+
   return {
     groupedPermissions:
       groupedPermissionsQuery.data ??
       [],
 
-    selectedPermissions:
-      (
-        rolePermissionsQuery.data ??
-        []
-      ).map(
-        String,
+    selectedPermissions,
+
+    /*
+     * Temporary/helper value.
+     * Checkbox-only places me useful ho sakta hai.
+     */
+    selectedPermissionUuids:
+      selectedPermissions.map(
+        (
+          permission,
+        ) =>
+          permission.permissionUuid,
       ),
 
     loading:
@@ -116,11 +152,11 @@ export const useRolePermissions = (
       saveMutation.isPending,
 
     savePermissions: (
-      permissionIds:
-        string[],
+      permissions:
+        RolePermissionAssignment[],
     ) =>
       saveMutation.mutateAsync(
-        permissionIds,
+        permissions,
       ),
 
     refetchPermissions:

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -11,9 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import type { Request } from 'express';
+import type {
+  Request,
+} from 'express';
 
-import { UserType } from '@prisma/client';
+import {
+  UserType,
+} from '@prisma/client';
 
 import {
   ApiBearerAuth,
@@ -23,120 +28,195 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { AuthGuard } from '@nestjs/passport';
+import {
+  AuthGuard,
+} from '@nestjs/passport';
 
-import { CreateRoleDto } from '../dto/create-role.dto';
+import {
+  CreateRoleDto,
+} from '../dto/create-role.dto';
 
-import { UpdateRoleDto } from '../dto/update-role.dto';
+import {
+  UpdateRoleDto,
+} from '../dto/update-role.dto';
 
-import { AssignRolePermissionsDto } from '../dto/assign-role-permissions.dto';
+import {
+  AssignRolePermissionsDto,
+} from '../dto/assign-role-permissions.dto';
 
-import { RoleService } from '../services/role.service';
+import {
+  RoleService,
+} from '../services/role.service';
 
 @ApiTags('Role')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+)
 @Controller('roles')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(
+    private readonly roleService:
+      RoleService,
+  ) {}
 
   @Post()
   @ApiOperation({
-    summary: 'Create Role',
+    summary:
+      'Create Role',
   })
   @ApiResponse({
     status: 201,
-    description: 'Role created successfully.',
+    description:
+      'Role created successfully.',
   })
   create(
-    @Req() req: Request,
+    @Req()
+    req: Request,
+
     @Body()
     dto: CreateRoleDto,
   ) {
-    return this.roleService.create(BigInt((req.user as any).companyId), dto);
+    return this.roleService.create(
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
+      dto,
+    );
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Get Roles',
+    summary:
+      'Get Roles',
   })
   @ApiResponse({
     status: 200,
-    description: 'Roles fetched successfully.',
+    description:
+      'Roles fetched successfully.',
   })
-  findAll(@Req() req: Request) {
-    const user = req.user as any;
+  findAll(
+    @Req()
+    req: Request,
+  ) {
+    const user =
+      req.user as any;
 
-    if (user.userType === UserType.PLATFORM_OWNER) {
+    if (
+      user.userType ===
+      UserType.PLATFORM_OWNER
+    ) {
       return this.roleService.findAll();
     }
 
-    return this.roleService.findAll(BigInt(user.companyId));
+    return this.roleService.findAll(
+      BigInt(
+        user.companyId,
+      ),
+    );
   }
 
   /*
-   * Static route ko :uuid route se pehle rakho.
+   * Static route ko :uuid route se
+   * pehle rakho.
    */
   @Get('dropdown')
   @ApiOperation({
-    summary: 'Get Active Role Dropdown',
+    summary:
+      'Get Active Role Dropdown',
   })
   @ApiResponse({
     status: 200,
-    description: 'Role dropdown fetched successfully.',
+    description:
+      'Role dropdown fetched successfully.',
   })
-  findDropdown(@Req() req: Request) {
-    return this.roleService.findDropdown(BigInt((req.user as any).companyId));
+  findDropdown(
+    @Req()
+    req: Request,
+  ) {
+    return this.roleService.findDropdown(
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
+    );
   }
 
   /*
-   * Permission routes ko general :uuid route se
-   * pehle rakhna safer hai.
+   * Permission routes ko general
+   * :uuid route se pehle rakho.
    */
   @Get(':uuid/permissions')
   @ApiOperation({
-    summary: 'Get Role Permissions',
+    summary:
+      'Get Role Permissions',
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      'uuid',
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Role permissions fetched successfully.',
+    description:
+      'Role permissions fetched successfully.',
   })
   findRolePermissions(
-    @Req() req: Request,
-    @Param('uuid')
+    @Req()
+    req: Request,
+
+    @Param(
+      'uuid',
+      ParseUUIDPipe,
+    )
     uuid: string,
   ) {
     return this.roleService.findRolePermissions(
-      BigInt((req.user as any).companyId),
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
       uuid,
     );
   }
 
   @Put(':uuid/permissions')
   @ApiOperation({
-    summary: 'Assign Role Permissions',
+    summary:
+      'Assign Role Permissions With Scope',
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      'uuid',
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Permissions assigned successfully.',
+    description:
+      'Permissions assigned successfully.',
   })
   assignPermissions(
-    @Req() req: Request,
-    @Param('uuid')
+    @Req()
+    req: Request,
+
+    @Param(
+      'uuid',
+      ParseUUIDPipe,
+    )
     uuid: string,
+
     @Body()
-    dto: AssignRolePermissionsDto,
+    dto:
+      AssignRolePermissionsDto,
   ) {
     return this.roleService.assignPermissions(
-      BigInt((req.user as any).companyId),
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
       uuid,
       dto,
     );
@@ -144,45 +224,73 @@ export class RoleController {
 
   @Get(':uuid')
   @ApiOperation({
-    summary: 'Get Role By UUID',
+    summary:
+      'Get Role By UUID',
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      'uuid',
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Role fetched successfully.',
+    description:
+      'Role fetched successfully.',
   })
   findOne(
-    @Req() req: Request,
-    @Param('uuid')
+    @Req()
+    req: Request,
+
+    @Param(
+      'uuid',
+      ParseUUIDPipe,
+    )
     uuid: string,
   ) {
-    return this.roleService.findOne(BigInt((req.user as any).companyId), uuid);
+    return this.roleService.findOne(
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
+      uuid,
+    );
   }
 
   @Patch(':uuid')
   @ApiOperation({
-    summary: 'Update Role',
+    summary:
+      'Update Role',
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      'uuid',
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Role updated successfully.',
+    description:
+      'Role updated successfully.',
   })
   update(
-    @Req() req: Request,
-    @Param('uuid')
+    @Req()
+    req: Request,
+
+    @Param(
+      'uuid',
+      ParseUUIDPipe,
+    )
     uuid: string,
+
     @Body()
     dto: UpdateRoleDto,
   ) {
     return this.roleService.update(
-      BigInt((req.user as any).companyId),
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
       uuid,
       dto,
     );
@@ -190,21 +298,36 @@ export class RoleController {
 
   @Delete(':uuid')
   @ApiOperation({
-    summary: 'Delete Role',
+    summary:
+      'Delete Role',
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      'uuid',
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
-    description: 'Role deleted successfully.',
+    description:
+      'Role deleted successfully.',
   })
   remove(
-    @Req() req: Request,
-    @Param('uuid')
+    @Req()
+    req: Request,
+
+    @Param(
+      'uuid',
+      ParseUUIDPipe,
+    )
     uuid: string,
   ) {
-    return this.roleService.delete(BigInt((req.user as any).companyId), uuid);
+    return this.roleService.delete(
+      BigInt(
+        (req.user as any)
+          .companyId,
+      ),
+      uuid,
+    );
   }
 }

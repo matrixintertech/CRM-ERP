@@ -1,5 +1,8 @@
+import Select from "@/shared/components/Select";
+
 import type {
   Permission,
+  PermissionScope,
 } from "../types/role-permission.types";
 
 interface Props {
@@ -7,35 +10,79 @@ interface Props {
 
   checked: boolean;
 
+  scope: PermissionScope;
+
   onToggle: (
-    permissionId: string,
+    permissionUuid: string,
+  ) => void;
+
+  onScopeChange: (
+    permissionUuid: string,
+    scope: PermissionScope,
   ) => void;
 }
+
+const scopeOptions = [
+  {
+    label: "Own",
+    value: "OWN",
+  },
+  {
+    label: "Team",
+    value: "TEAM",
+  },
+  {
+    label: "Organization Unit",
+    value: "ORGANIZATION_UNIT",
+  },
+  {
+    label: "Project",
+    value: "PROJECT",
+  },
+  {
+    label: "Company",
+    value: "COMPANY",
+  },
+];
 
 const PermissionItem = ({
   permission,
   checked,
+  scope,
   onToggle,
+  onScopeChange,
 }: Props) => {
   return (
-    <label
+    <div
       style={{
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns:
+          "auto minmax(0, 1fr) 180px",
         alignItems: "center",
-        gap: 10,
+        gap: 12,
         padding: "8px 0",
-        cursor: "pointer",
       }}
     >
       <input
         type="checkbox"
         checked={checked}
         onChange={() =>
-          onToggle(permission.id)
+          onToggle(
+            permission.uuid,
+          )
         }
       />
 
-      <div>
+      <div
+        style={{
+          cursor: "pointer",
+        }}
+        onClick={() =>
+          onToggle(
+            permission.uuid,
+          )
+        }
+      >
         <div
           style={{
             fontWeight: 500,
@@ -53,7 +100,21 @@ const PermissionItem = ({
           {permission.code}
         </div>
       </div>
-    </label>
+
+      <Select
+        value={scope}
+        showPlaceholder={false}
+        options={scopeOptions}
+        disabled={!checked}
+        onChange={(event) =>
+          onScopeChange(
+            permission.uuid,
+            event.target
+              .value as PermissionScope,
+          )
+        }
+      />
+    </div>
   );
 };
 

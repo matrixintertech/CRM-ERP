@@ -21,6 +21,8 @@ import PermissionToolbar from "../components/PermissionToolbar";
 
 import type {
   PermissionGroupData,
+  PermissionScope,
+  RolePermissionAssignment,
 } from "../types/role-permission.types";
 
 import {
@@ -64,45 +66,94 @@ const RolePermissionPage = () => {
     selectedPermissions,
     setSelectedPermissions,
   ] = useState<
-    string[]
+    RolePermissionAssignment[]
   >([]);
 
   useEffect(() => {
     setSelectedPermissions(
-      serverSelectedPermissions,
+      serverSelectedPermissions.map(
+        (
+          permission,
+        ) => ({
+          ...permission,
+        }),
+      ),
     );
   }, [
     serverSelectedPermissions,
   ]);
 
   const togglePermission = (
-    permissionId: string,
+    permissionUuid: string,
   ) => {
     setSelectedPermissions(
       (previous) => {
-        if (
-          previous.includes(
-            permissionId,
-          )
-        ) {
+        const exists =
+          previous.some(
+            (
+              permission,
+            ) =>
+              permission
+                .permissionUuid ===
+              permissionUuid,
+          );
+
+        if (exists) {
           return previous.filter(
-            (id) =>
-              id !==
-              permissionId,
+            (
+              permission,
+            ) =>
+              permission
+                .permissionUuid !==
+              permissionUuid,
           );
         }
 
         return [
           ...previous,
-          permissionId,
+          {
+            permissionUuid,
+
+            scope:
+              "OWN",
+          },
         ];
       },
     );
   };
 
+  const handleScopeChange = (
+    permissionUuid: string,
+    scope: PermissionScope,
+  ) => {
+    setSelectedPermissions(
+      (previous) =>
+        previous.map(
+          (
+            permission,
+          ) =>
+            permission
+              .permissionUuid ===
+            permissionUuid
+              ? {
+                  ...permission,
+
+                  scope,
+                }
+              : permission,
+        ),
+    );
+  };
+
   const handleReset = () => {
     setSelectedPermissions(
-      serverSelectedPermissions,
+      serverSelectedPermissions.map(
+        (
+          permission,
+        ) => ({
+          ...permission,
+        }),
+      ),
     );
   };
 
@@ -124,56 +175,96 @@ const RolePermissionPage = () => {
       }
     };
 
-const filteredGroups:
-  PermissionGroupData[] =
-  useMemo(() => {
-    const normalizedSearch =
-      search
-        .trim()
-        .toLowerCase();
+  const selectedPermissionUuids =
+    useMemo(
+      () =>
+        selectedPermissions.map(
+          (
+            permission,
+          ) =>
+            permission
+              .permissionUuid,
+        ),
+      [
+        selectedPermissions,
+      ],
+    );
 
-    if (!normalizedSearch) {
-      return groupedPermissions;
-    }
+  const permissionScopes =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          selectedPermissions.map(
+            (
+              permission,
+            ) => [
+              permission
+                .permissionUuid,
 
-    return groupedPermissions
-      .map(
-        (
-          group:
-            PermissionGroupData,
-        ) => ({
-          ...group,
+              permission.scope,
+            ],
+          ),
+        ) as Record<
+          string,
+          PermissionScope
+        >,
+      [
+        selectedPermissions,
+      ],
+    );
 
-          permissions:
-            group.permissions.filter(
-              (
-                permission,
-              ) =>
-                permission.name
-                  .toLowerCase()
-                  .includes(
-                    normalizedSearch,
-                  ) ||
-                permission.code
-                  .toLowerCase()
-                  .includes(
-                    normalizedSearch,
-                  ),
-            ),
-        }),
-      )
-      .filter(
-        (
-          group:
-            PermissionGroupData,
-        ) =>
-          group.permissions
-            .length > 0,
-      );
-  }, [
-    groupedPermissions,
-    search,
-  ]);
+  const filteredGroups:
+    PermissionGroupData[] =
+    useMemo(() => {
+      const normalizedSearch =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (
+        !normalizedSearch
+      ) {
+        return groupedPermissions;
+      }
+
+      return groupedPermissions
+        .map(
+          (
+            group:
+              PermissionGroupData,
+          ) => ({
+            ...group,
+
+            permissions:
+              group.permissions.filter(
+                (
+                  permission,
+                ) =>
+                  permission.name
+                    .toLowerCase()
+                    .includes(
+                      normalizedSearch,
+                    ) ||
+                  permission.code
+                    .toLowerCase()
+                    .includes(
+                      normalizedSearch,
+                    ),
+              ),
+          }),
+        )
+        .filter(
+          (
+            group:
+              PermissionGroupData,
+          ) =>
+            group.permissions
+              .length > 0,
+        );
+    }, [
+      groupedPermissions,
+      search,
+    ]);
 
   return (
     <>
@@ -216,10 +307,16 @@ const filteredGroups:
                   group.permissions
                 }
                 selectedPermissions={
-                  selectedPermissions
+                  selectedPermissionUuids
+                }
+                permissionScopes={
+                  permissionScopes
                 }
                 onToggle={
                   togglePermission
+                }
+                onScopeChange={
+                  handleScopeChange
                 }
               />
             ),

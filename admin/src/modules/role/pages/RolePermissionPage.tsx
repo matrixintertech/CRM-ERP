@@ -41,6 +41,11 @@ import type {
   RolePermissionResponse,
 } from "../types/role.types";
 
+import type {
+  PermissionScope,
+  RolePermissionAssignment,
+} from "../../role-permission/types/role-permission.types";
+
 const RolePermissionPage = () => {
   const navigate =
     useNavigate();
@@ -55,12 +60,18 @@ const RolePermissionPage = () => {
     uuid: string;
   }>();
 
+  /*
+   * Company roles should only see
+   * COMPANY permissions.
+   */
   const {
     loading:
       permissionLoading,
 
     groupedPermissions,
-  } = usePermission();
+  } = usePermission({
+    type: "COMPANY",
+  });
 
   const {
     fetchRolePermissions,
@@ -82,18 +93,22 @@ const RolePermissionPage = () => {
     setRolePermissionLoading,
   ] = useState(false);
 
+  /*
+   * Selected permissions now store
+   * both permission UUID and scope.
+   */
   const [
-    selectedPermissionUuids,
-    setSelectedPermissionUuids,
+    selectedPermissions,
+    setSelectedPermissions,
   ] = useState<
-    string[]
+    RolePermissionAssignment[]
   >([]);
 
   const [
-    initialPermissionUuids,
-    setInitialPermissionUuids,
+    initialPermissions,
+    setInitialPermissions,
   ] = useState<
-    string[]
+    RolePermissionAssignment[]
   >([]);
 
   const [
@@ -101,60 +116,118 @@ const RolePermissionPage = () => {
     setSearch,
   ] = useState("");
 
-  useEffect(() => {
-    if (!uuid) {
-      return;
-    }
+useEffect(() => {
+  if (!uuid) {
+    return;
+  }
 
-    const loadRolePermissions =
-      async () => {
-        try {
-          setRolePermissionLoading(
-            true,
+  const loadRolePermissions =
+    async () => {
+      try {
+        setRolePermissionLoading(
+          true,
+        );
+
+        const response =
+          await fetchRolePermissions(
+            uuid,
           );
 
-          const response =
-            await fetchRolePermissions(
-              uuid,
-            );
+        setRolePermissionData(
+          response,
+        );
 
-          setRolePermissionData(
-            response,
-          );
+        const permissions:
+          RolePermissionAssignment[] =
+          response
+            ?.permissions
+            ?.map(
+              (permission) => ({
+                permissionUuid:
+                  permission.uuid,
 
-          const permissionUuids =
-            response
-              ?.permissionUuids ??
-            [];
+                scope:
+                  permission.scope,
+              }),
+            ) ?? [];
 
-          setSelectedPermissionUuids(
-            [
-              ...permissionUuids,
+        setSelectedPermissions(
+          permissions.map(
+            (permission) => ({
+              ...permission,
+            }),
+          ),
+        );
+
+        setInitialPermissions(
+          permissions.map(
+            (permission) => ({
+              ...permission,
+            }),
+          ),
+        );
+      } catch (error: any) {
+        console.error(
+          error?.response?.data ??
+            error,
+        );
+      } finally {
+        setRolePermissionLoading(
+          false,
+        );
+      }
+    };
+
+  void loadRolePermissions();
+}, [
+  uuid,
+]);
+
+  /*
+   * Derived UUID array is useful
+   * for checkbox/group selection.
+   */
+  const selectedPermissionUuids =
+    useMemo(
+      () =>
+        selectedPermissions.map(
+          (
+            permission,
+          ) =>
+            permission
+              .permissionUuid,
+        ),
+      [
+        selectedPermissions,
+      ],
+    );
+
+  /*
+   * Fast lookup for each
+   * permission's current scope.
+   */
+  const permissionScopes =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          selectedPermissions.map(
+            (
+              permission,
+            ) => [
+              permission
+                .permissionUuid,
+
+              permission.scope,
             ],
-          );
-
-          setInitialPermissionUuids(
-            [
-              ...permissionUuids,
-            ],
-          );
-        } catch (error: any) {
-          console.error(
-            error?.response
-              ?.data ??
-              error,
-          );
-        } finally {
-          setRolePermissionLoading(
-            false,
-          );
-        }
-      };
-
-    void loadRolePermissions();
-  }, [
-    uuid,
-  ]);
+          ),
+        ) as Record<
+          string,
+          PermissionScope
+        >,
+      [
+        selectedPermissions,
+      ],
+    );
 
   const filteredGroups =
     useMemo<
@@ -267,49 +340,115 @@ const RolePermissionPage = () => {
         ),
     );
 
+  /*
+   * Compare permission + scope.
+   * Scope change must also enable Save.
+   */
   const hasChanges =
     useMemo(() => {
       if (
-        initialPermissionUuids.length !==
-        selectedPermissionUuids.length
+        initialPermissions.length !==
+        selectedPermissions.length
       ) {
         return true;
       }
 
-      return !initialPermissionUuids.every(
+      return initialPermissions.some(
         (
-          permissionUuid,
-        ) =>
-          selectedPermissionUuids.includes(
-            permissionUuid,
-          ),
+          initialPermission,
+        ) => {
+          const currentPermission =
+            selectedPermissions.find(
+              (
+                permission,
+              ) =>
+                permission
+                  .permissionUuid ===
+                initialPermission
+                  .permissionUuid,
+            );
+
+          if (
+            !currentPermission
+          ) {
+            return true;
+          }
+
+          return (
+            currentPermission.scope !==
+            initialPermission.scope
+          );
+        },
       );
     }, [
-      initialPermissionUuids,
-      selectedPermissionUuids,
+      initialPermissions,
+      selectedPermissions,
     ]);
 
   const togglePermission = (
     permissionUuid: string,
   ) => {
-    setSelectedPermissionUuids(
+    setSelectedPermissions(
+      (
+        previous,
+      ) => {
+        const exists =
+          previous.some(
+            (
+              permission,
+            ) =>
+              permission
+                .permissionUuid ===
+              permissionUuid,
+          );
+
+        if (exists) {
+          return previous.filter(
+            (
+              permission,
+            ) =>
+              permission
+                .permissionUuid !==
+              permissionUuid,
+          );
+        }
+
+        return [
+          ...previous,
+
+          {
+            permissionUuid,
+
+            scope:
+              "OWN",
+          },
+        ];
+      },
+    );
+  };
+
+  const handleScopeChange = (
+    permissionUuid: string,
+    scope: PermissionScope,
+  ) => {
+    setSelectedPermissions(
       (
         previous,
       ) =>
-        previous.includes(
-          permissionUuid,
-        )
-          ? previous.filter(
-              (
-                item,
-              ) =>
-                item !==
-                permissionUuid,
-            )
-          : [
-              ...previous,
-              permissionUuid,
-            ],
+        previous.map(
+          (
+            permission,
+          ) =>
+            permission
+              .permissionUuid ===
+            permissionUuid
+              ? {
+                  ...permission,
+
+                  scope,
+                }
+              : permission,
+        ),
     );
   };
 
@@ -337,7 +476,7 @@ const RolePermissionPage = () => {
           ),
       );
 
-    setSelectedPermissionUuids(
+    setSelectedPermissions(
       (
         previous,
       ) => {
@@ -346,36 +485,79 @@ const RolePermissionPage = () => {
         ) {
           return previous.filter(
             (
-              permissionUuid,
+              permission,
             ) =>
               !groupPermissionUuids.includes(
-                permissionUuid,
+                permission
+                  .permissionUuid,
               ),
           );
         }
 
-        return Array.from(
-          new Set([
-            ...previous,
-            ...groupPermissionUuids,
-          ]),
-        );
+        const alreadySelected =
+          new Set(
+            previous.map(
+              (
+                permission,
+              ) =>
+                permission
+                  .permissionUuid,
+            ),
+          );
+
+        const newPermissions:
+          RolePermissionAssignment[] =
+          groupPermissionUuids
+            .filter(
+              (
+                permissionUuid,
+              ) =>
+                !alreadySelected.has(
+                  permissionUuid,
+                ),
+            )
+            .map(
+              (
+                permissionUuid,
+              ) => ({
+                permissionUuid,
+
+                scope:
+                  "OWN",
+              }),
+            );
+
+        return [
+          ...previous,
+          ...newPermissions,
+        ];
       },
     );
   };
 
   const toggleAllVisible =
     () => {
-      setSelectedPermissionUuids(
+      setSelectedPermissions(
         (
           previous,
         ) => {
+          const selectedUuids =
+            new Set(
+              previous.map(
+                (
+                  permission,
+                ) =>
+                  permission
+                    .permissionUuid,
+              ),
+            );
+
           const allVisibleSelected =
             visiblePermissionUuids.every(
               (
                 permissionUuid,
               ) =>
-                previous.includes(
+                selectedUuids.has(
                   permissionUuid,
                 ),
             );
@@ -385,20 +567,41 @@ const RolePermissionPage = () => {
           ) {
             return previous.filter(
               (
-                permissionUuid,
+                permission,
               ) =>
                 !visiblePermissionUuids.includes(
-                  permissionUuid,
+                  permission
+                    .permissionUuid,
                 ),
             );
           }
 
-          return Array.from(
-            new Set([
-              ...previous,
-              ...visiblePermissionUuids,
-            ]),
-          );
+          const newPermissions:
+            RolePermissionAssignment[] =
+            visiblePermissionUuids
+              .filter(
+                (
+                  permissionUuid,
+                ) =>
+                  !selectedUuids.has(
+                    permissionUuid,
+                  ),
+              )
+              .map(
+                (
+                  permissionUuid,
+                ) => ({
+                  permissionUuid,
+
+                  scope:
+                    "OWN",
+                }),
+              );
+
+          return [
+            ...previous,
+            ...newPermissions,
+          ];
         },
       );
     };
@@ -413,19 +616,26 @@ const RolePermissionPage = () => {
         await assignPermissions(
           uuid,
           {
-            permissionUuids:
-              selectedPermissionUuids,
+            permissions:
+              selectedPermissions,
           },
         );
 
-        setInitialPermissionUuids(
-          [
-            ...selectedPermissionUuids,
-          ],
+        setInitialPermissions(
+          selectedPermissions.map(
+            (
+              permission,
+            ) => ({
+              ...permission,
+            }),
+          ),
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
-          error?.response?.data ??
+          error?.response
+            ?.data ??
             error,
         );
       }
@@ -433,10 +643,14 @@ const RolePermissionPage = () => {
 
   const handleReset =
     () => {
-      setSelectedPermissionUuids(
-        [
-          ...initialPermissionUuids,
-        ],
+      setSelectedPermissions(
+        initialPermissions.map(
+          (
+            permission,
+          ) => ({
+            ...permission,
+          }),
+        ),
       );
     };
 
@@ -605,6 +819,7 @@ const RolePermissionPage = () => {
                   <CheckSquare
                     size={16}
                   />
+
                   Clear Visible
                 </>
               ) : (
@@ -612,6 +827,7 @@ const RolePermissionPage = () => {
                   <Square
                     size={16}
                   />
+
                   Select Visible
                 </>
               )}
@@ -637,7 +853,7 @@ const RolePermissionPage = () => {
               Selected permissions:{" "}
               <strong>
                 {
-                  selectedPermissionUuids.length
+                  selectedPermissions.length
                 }
               </strong>
             </span>
@@ -670,7 +886,7 @@ const RolePermissionPage = () => {
                   "grid",
 
                 gridTemplateColumns:
-                  "repeat(auto-fit, minmax(320px, 1fr))",
+                  "repeat(auto-fit, minmax(360px, 1fr))",
 
                 gap:
                   20,
@@ -694,12 +910,18 @@ const RolePermissionPage = () => {
                     selectedPermissionUuids={
                       selectedPermissionUuids
                     }
+                    permissionScopes={
+                      permissionScopes
+                    }
                     disabled={
                       loading ||
                       actionLoading
                     }
                     onTogglePermission={
                       togglePermission
+                    }
+                    onScopeChange={
+                      handleScopeChange
                     }
                     onToggleGroup={
                       toggleGroup

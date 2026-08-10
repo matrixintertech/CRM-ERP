@@ -2,6 +2,7 @@ import PermissionItem from "./PermissionItem";
 
 import type {
   Permission,
+  PermissionScope,
 } from "../types/role-permission.types";
 
 interface Props {
@@ -11,8 +12,18 @@ interface Props {
 
   selectedPermissions: string[];
 
+  permissionScopes: Record<
+    string,
+    PermissionScope
+  >;
+
   onToggle: (
-    permissionId: string,
+    permissionUuid: string,
+  ) => void;
+
+  onScopeChange: (
+    permissionUuid: string,
+    scope: PermissionScope,
   ) => void;
 }
 
@@ -20,12 +31,15 @@ const PermissionGroup = ({
   module,
   permissions,
   selectedPermissions,
+  permissionScopes,
   onToggle,
+  onScopeChange,
 }: Props) => {
   return (
     <div
       style={{
-        border: "1px solid #e5e7eb",
+        border:
+          "1px solid #e5e7eb",
         borderRadius: 8,
         padding: 16,
         marginBottom: 20,
@@ -42,15 +56,27 @@ const PermissionGroup = ({
       {permissions.map(
         (permission) => (
           <PermissionItem
-            key={permission.id}
+            key={
+              permission.uuid
+            }
             permission={
               permission
             }
-            checked={selectedPermissions.includes(
-              permission.id,
-            )}
+            checked={
+              selectedPermissions.includes(
+                permission.uuid,
+              )
+            }
+            scope={
+              permissionScopes[
+                permission.uuid
+              ] ?? "OWN"
+            }
             onToggle={
               onToggle
+            }
+            onScopeChange={
+              onScopeChange
             }
           />
         ),
