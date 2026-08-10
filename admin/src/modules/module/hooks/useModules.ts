@@ -1,4 +1,8 @@
-import { useCallback, useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -14,140 +18,220 @@ import type {
   ModuleFormData,
 } from "../types/module.types";
 
-export const useModule = () => {
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(false);
+const MODULES_QUERY_KEY = [
+  "modules",
+] as const;
 
-  const getErrorMessage = (error: any) => {
-    const errors = error?.response?.data?.errors;
-
-    if (Array.isArray(errors) && errors.length > 0) {
-      return errors.join("\n");
-    }
-
-    return (
-      error?.response?.data?.message ??
-      "Something went wrong."
-    );
+const getErrorMessage = (
+  error: unknown,
+  fallbackMessage = "Something went wrong.",
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
   };
 
-  const fetchModules = useCallback(async () => {
-    try {
-      setLoading(true);
+  const errors =
+    apiError.response?.data?.errors;
 
-      const result = await getModules();
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join("\n");
+  }
 
-      setModules(result);
-    } catch (error: any) {
-      console.error("Failed to fetch modules:", error);
+  return (
+    apiError.response?.data?.message ??
+    fallbackMessage
+  );
+};
 
-      notify.error(getErrorMessage(error));
+export const useModule = () => {
+  const queryClient =
+    useQueryClient();
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const modulesQuery = useQuery({
+    queryKey: MODULES_QUERY_KEY,
 
-  const create = useCallback(
-    async (payload: ModuleFormData) => {
+    queryFn: getModules,
+
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (
+      payload: ModuleFormData,
+    ) =>
+      createModule(payload),
+
+    onSuccess: async (response) => {
+      notify.success(
+        response?.message ??
+          "Module created successfully.",
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: MODULES_QUERY_KEY,
+      });
+    },
+
+    onError: (error) => {
+      console.error(
+        "Failed to create module:",
+        error,
+      );
+
+      notify.error(
+        getErrorMessage(
+          error,
+          "Failed to create module.",
+        ),
+      );
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<ModuleFormData>;
+    }) =>
+      updateModule(
+        id,
+        payload,
+      ),
+
+    onSuccess: async (response) => {
+      notify.success(
+        response?.message ??
+          "Module updated successfully.",
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: MODULES_QUERY_KEY,
+      });
+    },
+
+    onError: (error) => {
+      console.error(
+        "Failed to update module:",
+        error,
+      );
+
+      notify.error(
+        getErrorMessage(
+          error,
+          "Failed to update module.",
+        ),
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      deleteModule(id),
+
+    onSuccess: async (response) => {
+      notify.success(
+        response?.message ??
+          "Module deleted successfully.",
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: MODULES_QUERY_KEY,
+      });
+    },
+
+    onError: (error) => {
+      console.error(
+        "Failed to delete module:",
+        error,
+      );
+
+      notify.error(
+        getErrorMessage(
+          error,
+          "Failed to delete module.",
+        ),
+      );
+    },
+  });
+
+  const fetchModules =
+    async (): Promise<Module[]> => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey:
+            MODULES_QUERY_KEY,
 
-        const response = await createModule(payload);
+          queryFn:
+            getModules,
 
-        notify.success(
-          response.message ??
-            "Module created successfully.",
-        );
-
-        return response;
-      } catch (error: any) {
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
         console.error(
-          "Failed to create module:",
+          "Failed to fetch modules:",
           error,
         );
 
-        notify.error(getErrorMessage(error));
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load modules.",
+          ),
+        );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
-
-  const update = useCallback(
-    async (
-      id: string,
-      payload: Partial<ModuleFormData>,
-    ) => {
-      try {
-        setLoading(true);
-
-        const response = await updateModule(
-          id,
-          payload,
-        );
-
-        notify.success(
-          response.message ??
-            "Module updated successfully.",
-        );
-
-        return response;
-      } catch (error: any) {
-        console.error(
-          "Failed to update module:",
-          error,
-        );
-
-        notify.error(getErrorMessage(error));
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const remove = useCallback(
-    async (id: string) => {
-      try {
-        setLoading(true);
-
-        const response = await deleteModule(id);
-
-        notify.success(
-          response.message ??
-            "Module deleted successfully.",
-        );
-
-        return response;
-      } catch (error: any) {
-        console.error(
-          "Failed to delete module:",
-          error,
-        );
-
-        notify.error(getErrorMessage(error));
-
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+    };
 
   return {
-    loading,
-    modules,
+    modules:
+      modulesQuery.data ?? [],
+
+    loading:
+      modulesQuery.isLoading,
+
+    fetching:
+      modulesQuery.isFetching,
+
+    error:
+      modulesQuery.error,
+
+    refetch:
+      modulesQuery.refetch,
+
     fetchModules,
-    create,
-    update,
-    remove,
+
+    create:
+      createMutation.mutateAsync,
+
+    update: (
+      id: string,
+      payload: Partial<ModuleFormData>,
+    ) =>
+      updateMutation.mutateAsync({
+        id,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };
