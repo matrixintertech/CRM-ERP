@@ -318,16 +318,19 @@ const UserListPage = () => {
       );
 
       try {
-        const [
+       const [
           userPermissions,
-          globalPermissions,
+          globalPermissionsResponse,
         ] =
           await Promise.all([
             fetchPermissions(
               uuid,
             ),
 
-            getPermissions(),
+            getPermissions({
+              page: 1,
+              limit: 100,
+            }),
           ]);
 
         setPermissions(
@@ -335,7 +338,7 @@ const UserListPage = () => {
         );
 
         setAllPermissions(
-          globalPermissions,
+          globalPermissionsResponse.permissions,
         );
       } catch {
         setOpenPermissions(
