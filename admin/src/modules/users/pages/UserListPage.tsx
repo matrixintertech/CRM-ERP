@@ -123,19 +123,21 @@ const UserListPage = () => {
    * grouped permissions dobara
    * fetch nahi hongi.
    */
-  const groupedPermissionsQuery =
-    useQuery({
-      queryKey: [
-        "grouped-permissions",
-      ],
+const groupedPermissionsQuery =
+  useQuery({
+    queryKey: [
+      "grouped-permissions",
+      "COMPANY",
+    ],
 
-      queryFn:
-        getGroupedPermissions,
+    queryFn: () =>
+      getGroupedPermissions(
+        "COMPANY",
+      ),
 
-      staleTime:
-        5 * 60 * 1000,
-    });
-
+    staleTime:
+      5 * 60 * 1000,
+  });
   const [
     searchValue,
     setSearchValue,
