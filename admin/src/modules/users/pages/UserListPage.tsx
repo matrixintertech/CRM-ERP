@@ -4,6 +4,10 @@ import {
 } from "react";
 
 import {
+  useQuery,
+} from "@tanstack/react-query";
+
+import {
   useDocumentTitle,
 } from "@/shared/hooks/useDocumentTitle";
 
@@ -43,7 +47,6 @@ import UserModal, {
 import UserPermissionsModal from "../components/UserPermissionsModal";
 
 import type {
-  Permission,
   SortOrder,
   User,
   UserPermissions,
@@ -112,6 +115,27 @@ const UserListPage = () => {
     roles,
   } = useRole();
 
+  /*
+   * Load all active permissions once
+   * and keep them in React Query cache.
+   *
+   * Permission modal click par
+   * grouped permissions dobara
+   * fetch nahi hongi.
+   */
+  const groupedPermissionsQuery =
+    useQuery({
+      queryKey: [
+        "grouped-permissions",
+      ],
+
+      queryFn:
+        getGroupedPermissions,
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
   const [
     searchValue,
     setSearchValue,
@@ -154,13 +178,6 @@ const UserListPage = () => {
   >(null);
 
   const [
-    allPermissions,
-    setAllPermissions,
-  ] = useState<
-    Permission[]
-  >([]);
-
-  const [
     accountUpdating,
     setAccountUpdating,
   ] = useState(false);
@@ -185,6 +202,24 @@ const UserListPage = () => {
           ),
       [
         roles,
+      ],
+    );
+
+  /*
+   * Flatten grouped permissions once.
+   */
+  const allPermissions =
+    useMemo(
+      () =>
+        groupedPermissionsQuery
+          .data
+          ?.flatMap(
+            (group) =>
+              group.permissions,
+          ) ?? [],
+      [
+        groupedPermissionsQuery
+          .data,
       ],
     );
 
@@ -349,6 +384,15 @@ const UserListPage = () => {
       }
     };
 
+  /*
+   * Permission button:
+   *
+   * Only selected user's permissions
+   * are fetched here.
+   *
+   * Global permissions already
+   * React Query cache me hain.
+   */
   const handlePermissions =
     async (
       uuid: string,
@@ -366,27 +410,13 @@ const UserListPage = () => {
       );
 
       try {
-        const [
-          userPermissions,
-          permissionGroups,
-        ] =
-          await Promise.all([
-            fetchPermissions(
-              uuid,
-            ),
-
-            getGroupedPermissions(),
-          ]);
+        const userPermissions =
+          await fetchPermissions(
+            uuid,
+          );
 
         setPermissions(
           userPermissions,
-        );
-
-        setAllPermissions(
-          permissionGroups.flatMap(
-            (group) =>
-              group.permissions,
-          ),
         );
       } catch {
         setOpenPermissions(
@@ -399,10 +429,6 @@ const UserListPage = () => {
 
         setPermissions(
           null,
-        );
-
-        setAllPermissions(
-          [],
         );
       }
     };
@@ -517,10 +543,6 @@ const UserListPage = () => {
         setPermissions(
           null,
         );
-
-        setAllPermissions(
-          [],
-        );
       } catch (
         error
       ) {
@@ -537,6 +559,14 @@ const UserListPage = () => {
   const backgroundFetching =
     fetching &&
     !loading;
+
+  const permissionModalLoading =
+    openPermissions &&
+    (
+      !permissions ||
+      groupedPermissionsQuery
+        .isLoading
+    );
 
   return (
     <>
@@ -1056,8 +1086,7 @@ const UserListPage = () => {
           openPermissions
         }
         loading={
-          openPermissions &&
-          !permissions
+          permissionModalLoading
         }
         permissions={
           permissions
@@ -1076,10 +1105,6 @@ const UserListPage = () => {
 
           setPermissions(
             null,
-          );
-
-          setAllPermissions(
-            [],
           );
         }}
         onSubmit={
