@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -12,7 +12,9 @@ import PlatformUserTable from "../components/PlatformUserTable";
 
 import { usePlatformUsers } from "../hooks/usePlatformUsers";
 
-import type { PlatformUserFormData } from "../types/platform-user.types";
+import type {
+  PlatformUserFormData,
+} from "../types/platform-user.types";
 
 const initialFormData: PlatformUserFormData = {
   displayName: "",
@@ -27,9 +29,11 @@ const PlatformUserPage = () => {
   const {
     users,
     selectedUser,
-    loading,
 
-    fetchUsers,
+    loading,
+    detailsLoading,
+    saving,
+
     fetchUser,
 
     create,
@@ -39,19 +43,27 @@ const PlatformUserPage = () => {
     clearSelectedUser,
   } = usePlatformUsers();
 
-  const [openModal, setOpenModal] = useState(false);
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
 
-  const [openDetails, setOpenDetails] = useState(false);
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
 
-  const [editUuid, setEditUuid] = useState<string | null>(null);
+  const [
+    editUuid,
+    setEditUuid,
+  ] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<PlatformUserFormData>(() => ({
+  const [
+    formData,
+    setFormData,
+  ] = useState<PlatformUserFormData>({
     ...initialFormData,
-  }));
-
-  useEffect(() => {
-    void fetchUsers();
-  }, [fetchUsers]);
+  });
 
   const resetForm = () => {
     setEditUuid(null);
@@ -63,71 +75,142 @@ const PlatformUserPage = () => {
 
   const handleOpenCreate = () => {
     resetForm();
+
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
+
     resetForm();
   };
 
+  const handleCloseDetails = () => {
+    setOpenDetails(false);
+
+    clearSelectedUser();
+  };
+
   const handleSubmit = async () => {
-    const payload = {
-      displayName: formData.displayName.trim(),
+    try {
+      const payload = {
+        displayName:
+          formData.displayName.trim(),
 
-      email: formData.email.trim().toLowerCase(),
+        email:
+          formData.email
+            .trim()
+            .toLowerCase(),
 
-      mobile: formData.mobile.trim() || undefined,
-    };
+        mobile:
+          formData.mobile.trim() ||
+          undefined,
+      };
 
-    if (editUuid) {
-      await update(editUuid, {
-        ...payload,
-        status: formData.status,
-      });
-    } else {
-      await create(payload);
+      if (editUuid) {
+        await update(
+          editUuid,
+          {
+            ...payload,
+
+            status:
+              formData.status,
+          },
+        );
+      } else {
+        await create(
+          payload,
+        );
+      }
+
+      handleCloseModal();
+    } catch (error) {
+      console.error(
+        "Failed to save platform user:",
+        error,
+      );
     }
-
-    await fetchUsers();
-
-    handleCloseModal();
   };
 
-  const handleView = async (uuid: string) => {
-    await fetchUser(uuid);
+  const handleView = async (
+    uuid: string,
+  ) => {
+    try {
+      clearSelectedUser();
 
-    setOpenDetails(true);
+      setOpenDetails(true);
+
+      await fetchUser(
+        uuid,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load platform user details:",
+        error,
+      );
+
+      setOpenDetails(false);
+    }
   };
 
-  const handleEdit = async (uuid: string) => {
-    const user = await fetchUser(uuid);
+  const handleEdit = async (
+    uuid: string,
+  ) => {
+    try {
+      const user =
+        await fetchUser(
+          uuid,
+        );
 
-    setEditUuid(uuid);
+      setEditUuid(
+        uuid,
+      );
 
-    setFormData({
-      displayName: user.displayName ?? "",
+      setFormData({
+        displayName:
+          user.displayName ?? "",
 
-      email: user.email ?? "",
+        email:
+          user.email ?? "",
 
-      mobile: user.mobile ?? "",
+        mobile:
+          user.mobile ?? "",
 
-      status: user.status,
-    });
+        status:
+          user.status,
+      });
 
-    setOpenModal(true);
+      setOpenModal(true);
+    } catch (error) {
+      console.error(
+        "Failed to load platform user:",
+        error,
+      );
+    }
   };
 
-  const handleDelete = async (uuid: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this platform user?",
-    );
+  const handleDelete = async (
+    uuid: string,
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this platform user?",
+      );
 
     if (!confirmed) {
       return;
     }
 
-    await remove(uuid);
+    try {
+      await remove(
+        uuid,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to delete platform user:",
+        error,
+      );
+    }
   };
 
   return (
@@ -136,7 +219,13 @@ const PlatformUserPage = () => {
         title="Platform Users"
         subtitle="Manage platform-level users"
         actions={
-          <Button onClick={handleOpenCreate}>Create Platform User</Button>
+          <Button
+            onClick={
+              handleOpenCreate
+            }
+          >
+            Create Platform User
+          </Button>
         }
       />
 
@@ -152,23 +241,38 @@ const PlatformUserPage = () => {
 
       <PlatformUserModal
         open={openModal}
-        loading={loading}
-        title={editUuid ? "Edit Platform User" : "Create Platform User"}
-        isEdit={Boolean(editUuid)}
+        loading={saving}
+        title={
+          editUuid
+            ? "Edit Platform User"
+            : "Create Platform User"
+        }
+        isEdit={
+          Boolean(editUuid)
+        }
         formData={formData}
-        setFormData={setFormData}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
+        setFormData={
+          setFormData
+        }
+        onClose={
+          handleCloseModal
+        }
+        onSubmit={
+          handleSubmit
+        }
       />
 
       <PlatformUserDetailsModal
         open={openDetails}
-        loading={loading}
-        user={selectedUser}
-        onClose={() => {
-          setOpenDetails(false);
-          clearSelectedUser();
-        }}
+        loading={
+          detailsLoading
+        }
+        user={
+          selectedUser
+        }
+        onClose={
+          handleCloseDetails
+        }
       />
     </>
   );

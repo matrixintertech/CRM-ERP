@@ -1,6 +1,12 @@
 import axios from "axios";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
+
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -20,13 +26,36 @@ import type {
 
 interface ApiErrorResponse {
   message?: string;
-  errors?: string;
+  errors?: string | string[];
 }
 
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+const PLATFORM_USERS_QUERY_KEY = [
+  "platform-users",
+] as const;
+
+const getErrorMessage = (
+  error: unknown,
+  fallback: string,
+) => {
+  if (
+    axios.isAxiosError<ApiErrorResponse>(
+      error,
+    )
+  ) {
+    const errors =
+      error.response?.data?.errors;
+
+    if (
+      Array.isArray(errors) &&
+      errors.length > 0
+    ) {
+      return errors.join(", ");
+    }
+
     return (
-      error.response?.data?.message ?? error.response?.data?.errors ?? fallback
+      error.response?.data?.message ??
+      errors ??
+      fallback
     );
   }
 
@@ -34,121 +63,313 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 export const usePlatformUsers = () => {
-  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const queryClient =
+    useQueryClient();
 
-  const [selectedUser, setSelectedUser] = useState<PlatformUser | null>(null);
+  const [
+    selectedUserUuid,
+    setSelectedUserUuid,
+  ] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const usersQuery = useQuery({
+    queryKey:
+      PLATFORM_USERS_QUERY_KEY,
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
+    queryFn:
+      getPlatformUsers,
 
-      const data = await getPlatformUsers();
+    staleTime:
+      5 * 60 * 1000,
+  });
 
-      setUsers(data);
+  const selectedUserQuery =
+    useQuery({
+      queryKey: [
+        "platform-user",
+        selectedUserUuid,
+      ],
 
-      return data;
-    } catch (error) {
-      notify.error(getErrorMessage(error, "Failed to load platform users."));
+      queryFn: () =>
+        getPlatformUserByUuid(
+          selectedUserUuid!,
+        ),
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      enabled:
+        Boolean(selectedUserUuid),
 
-  const fetchUser = useCallback(async (uuid: string) => {
-    try {
-      setLoading(true);
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-      const data = await getPlatformUserByUuid(uuid);
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload: CreatePlatformUserDto,
+      ) =>
+        createPlatformUser(
+          payload,
+        ),
 
-      setSelectedUser(data);
+      onSuccess: async () => {
+        notify.success(
+          "Platform user created successfully.",
+        );
 
-      return data;
-    } catch (error) {
-      notify.error(getErrorMessage(error, "Failed to load platform user."));
+        await queryClient.invalidateQueries({
+          queryKey:
+            PLATFORM_USERS_QUERY_KEY,
+        });
+      },
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      onError: (error) => {
+        console.error(
+          "Failed to create platform user:",
+          error,
+        );
 
-  const create = useCallback(async (payload: CreatePlatformUserDto) => {
-    try {
-      setLoading(true);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create platform user.",
+          ),
+        );
+      },
+    });
 
-      const data = await createPlatformUser(payload);
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        uuid,
+        payload,
+      }: {
+        uuid: string;
+        payload: UpdatePlatformUserDto;
+      }) =>
+        updatePlatformUser(
+          uuid,
+          payload,
+        ),
 
-      notify.success("Platform user created successfully.");
+      onSuccess: async (
+        _response,
+        variables,
+      ) => {
+        notify.success(
+          "Platform user updated successfully.",
+        );
 
-      return data;
-    } catch (error) {
-      notify.error(getErrorMessage(error, "Failed to create platform user."));
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_USERS_QUERY_KEY,
+          }),
 
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+          queryClient.invalidateQueries({
+            queryKey: [
+              "platform-user",
+              variables.uuid,
+            ],
+          }),
+        ]);
+      },
 
-  const update = useCallback(
-    async (uuid: string, payload: UpdatePlatformUserDto) => {
+      onError: (error) => {
+        console.error(
+          "Failed to update platform user:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update platform user.",
+          ),
+        );
+      },
+    });
+
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        uuid: string,
+      ) =>
+        deletePlatformUser(
+          uuid,
+        ),
+
+      onSuccess: async (
+        _response,
+        uuid,
+      ) => {
+        notify.success(
+          "Platform user deleted successfully.",
+        );
+
+        queryClient.removeQueries({
+          queryKey: [
+            "platform-user",
+            uuid,
+          ],
+        });
+
+        if (
+          selectedUserUuid === uuid
+        ) {
+          setSelectedUserUuid(
+            null,
+          );
+        }
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            PLATFORM_USERS_QUERY_KEY,
+        });
+      },
+
+      onError: (error) => {
+        console.error(
+          "Failed to delete platform user:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete platform user.",
+          ),
+        );
+      },
+    });
+
+  const fetchUsers =
+    async (): Promise<
+      PlatformUser[]
+    > => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey:
+            PLATFORM_USERS_QUERY_KEY,
 
-        const data = await updatePlatformUser(uuid, payload);
+          queryFn:
+            getPlatformUsers,
 
-        notify.success("Platform user updated successfully.");
-
-        return data;
+          staleTime:
+            5 * 60 * 1000,
+        });
       } catch (error) {
-        notify.error(getErrorMessage(error, "Failed to update platform user."));
+        console.error(
+          "Failed to load platform users:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load platform users.",
+          ),
+        );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const remove = useCallback(async (uuid: string) => {
+  const fetchUser = async (
+    uuid: string,
+  ): Promise<PlatformUser> => {
     try {
-      setLoading(true);
+      const data =
+        await queryClient.fetchQuery({
+          queryKey: [
+            "platform-user",
+            uuid,
+          ],
 
-      await deletePlatformUser(uuid);
+          queryFn: () =>
+            getPlatformUserByUuid(
+              uuid,
+            ),
 
-      setUsers((previous) => previous.filter((user) => user.uuid !== uuid));
+          staleTime:
+            5 * 60 * 1000,
+        });
 
-      notify.success("Platform user deleted successfully.");
+      setSelectedUserUuid(
+        uuid,
+      );
+
+      return data;
     } catch (error) {
-      notify.error(getErrorMessage(error, "Failed to delete platform user."));
+      console.error(
+        "Failed to load platform user:",
+        error,
+      );
+
+      notify.error(
+        getErrorMessage(
+          error,
+          "Failed to load platform user.",
+        ),
+      );
 
       throw error;
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  };
 
-  const clearSelectedUser = useCallback(() => {
-    setSelectedUser(null);
-  }, []);
+  const clearSelectedUser = () => {
+    setSelectedUserUuid(null);
+  };
 
   return {
-    users,
-    selectedUser,
-    loading,
+    users:
+      usersQuery.data ?? [],
+
+    selectedUser:
+      selectedUserQuery.data ??
+      null,
+
+    loading:
+      usersQuery.isLoading,
+
+    fetching:
+      usersQuery.isFetching,
+
+    detailsLoading:
+      selectedUserQuery.isLoading ||
+      selectedUserQuery.isFetching,
+
+    error:
+      usersQuery.error ??
+      selectedUserQuery.error,
+
+    refetch:
+      usersQuery.refetch,
 
     fetchUsers,
+
     fetchUser,
 
-    create,
-    update,
-    remove,
+    create:
+      createMutation.mutateAsync,
+
+    update: (
+      uuid: string,
+      payload: UpdatePlatformUserDto,
+    ) =>
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
+
+    remove:
+      deleteMutation.mutateAsync,
 
     clearSelectedUser,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };
