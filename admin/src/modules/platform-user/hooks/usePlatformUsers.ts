@@ -36,27 +36,29 @@ const PLATFORM_USERS_QUERY_KEY = [
 const getErrorMessage = (
   error: unknown,
   fallback: string,
-) => {
+): string => {
   if (
     axios.isAxiosError<ApiErrorResponse>(
       error,
     )
   ) {
+    const message =
+      error.response?.data?.message;
+
     const errors =
       error.response?.data?.errors;
 
-    if (
-      Array.isArray(errors) &&
-      errors.length > 0
-    ) {
+    if (message) {
+      return message;
+    }
+
+    if (Array.isArray(errors)) {
       return errors.join(", ");
     }
 
-    return (
-      error.response?.data?.message ??
-      errors ??
-      fallback
-    );
+    if (typeof errors === "string") {
+      return errors;
+    }
   }
 
   return fallback;
