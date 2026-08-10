@@ -6,6 +6,7 @@ import type {
   Permission,
   PermissionGroup,
   PermissionListResponse,
+  PermissionType,
   UpdatePermissionDto,
 } from "../types/permission.types";
 
@@ -57,16 +58,24 @@ export const getPermissions = async (
     filters:
       response.filters ?? {
         modules: [],
+        types: [],
       },
   };
 };
 
 export const getGroupedPermissions =
-  async (): Promise<
-    PermissionGroup[]
-  > => {
+  async (
+    type?: PermissionType,
+  ): Promise<PermissionGroup[]> => {
     const { data } = await api.get(
       "/permissions/grouped",
+      {
+        params: {
+          ...(type && {
+            type,
+          }),
+        },
+      },
     );
 
     return (

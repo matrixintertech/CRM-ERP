@@ -5,6 +5,10 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionType,
+} from "@prisma/client";
+
+import {
   PermissionRepository,
 } from "../repositories/permission.repository";
 
@@ -53,6 +57,9 @@ export class PermissionService {
         module:
           dto.module,
 
+        type:
+          dto.type,
+
         name:
           dto.name.trim(),
 
@@ -83,7 +90,9 @@ export class PermissionService {
         params,
       ),
 
-      this.permissionRepository.findModules(),
+      this.permissionRepository.findModules(
+        params.type,
+      ),
     ]);
 
     return {
@@ -98,6 +107,11 @@ export class PermissionService {
 
       filters: {
         modules,
+
+        types:
+          Object.values(
+            PermissionType,
+          ),
       },
     };
   }
@@ -175,6 +189,12 @@ export class PermissionService {
               dto.module,
           }),
 
+          ...(dto.type !==
+            undefined && {
+            type:
+              dto.type,
+          }),
+
           ...(dto.name !==
             undefined && {
             name:
@@ -236,9 +256,13 @@ export class PermissionService {
     };
   }
 
-  async findGrouped() {
+  async findGrouped(
+    type?: PermissionType,
+  ) {
     const permissions =
-      await this.permissionRepository.findGrouped();
+      await this.permissionRepository.findGrouped(
+        type,
+      );
 
     type PermissionItem =
       (typeof permissions)[number];
@@ -282,6 +306,9 @@ export class PermissionService {
     return {
       message:
         "Grouped permissions fetched successfully.",
+
+      type:
+        type ?? null,
 
       permissionGroups,
     };

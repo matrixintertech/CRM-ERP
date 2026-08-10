@@ -40,12 +40,15 @@ import type {
   PermissionModule,
   PermissionSortField,
   PermissionStatus,
+  PermissionType,
   SortOrder,
 } from "../types/permission.types";
 
 const createDefaultForm =
   (): PermissionFormData => ({
     module: "DASHBOARD",
+
+    type: "COMPANY",
 
     name: "",
 
@@ -55,6 +58,21 @@ const createDefaultForm =
 
     status: "ACTIVE",
   });
+
+const typeOptions = [
+  {
+    label: "All Types",
+    value: "",
+  },
+  {
+    label: "Company",
+    value: "COMPANY",
+  },
+  {
+    label: "Platform",
+    value: "PLATFORM",
+  },
+];
 
 const statusOptions = [
   {
@@ -139,6 +157,13 @@ const PermissionPage = () => {
   ] = useState("");
 
   const [
+    typeFilter,
+    setTypeFilter,
+  ] = useState<
+    PermissionType | ""
+  >("");
+
+  const [
     moduleFilter,
     setModuleFilter,
   ] = useState<
@@ -215,6 +240,10 @@ const PermissionPage = () => {
 
     search:
       debouncedSearch ||
+      undefined,
+
+    type:
+      typeFilter ||
       undefined,
 
     module:
@@ -303,6 +332,9 @@ const PermissionPage = () => {
             module:
               formData.module,
 
+            type:
+              formData.type,
+
             name:
               formData.name
                 .trim(),
@@ -360,6 +392,9 @@ const PermissionPage = () => {
           module:
             permission.module,
 
+          type:
+            permission.type,
+
           name:
             permission.name,
 
@@ -407,6 +442,24 @@ const PermissionPage = () => {
         );
       }
     };
+
+  const handleTypeChange = (
+    value: string,
+  ) => {
+    setTypeFilter(
+      value as
+        | PermissionType
+        | "",
+    );
+
+    /*
+     * Type change hone par old module filter
+     * invalid ho sakta hai.
+     */
+    setModuleFilter("");
+
+    setPage(1);
+  };
 
   const handleModuleChange = (
     value: string,
@@ -471,6 +524,17 @@ const PermissionPage = () => {
               (character) =>
                 character.toUpperCase(),
             ),
+      },
+
+      {
+        key: "type",
+        title: "Type",
+        align: "center",
+
+        render: (row) =>
+          row.type === "PLATFORM"
+            ? "Platform"
+            : "Company",
       },
 
       {
@@ -551,7 +615,7 @@ const PermissionPage = () => {
     <>
       <PageHeader
         title="Permissions"
-        subtitle="Manage global system permissions"
+        subtitle="Manage platform and company permissions"
         actions={
           <div
             style={{
@@ -584,7 +648,7 @@ const PermissionPage = () => {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "minmax(220px, 1fr) repeat(4, minmax(140px, 180px))",
+              "minmax(220px, 1fr) repeat(5, minmax(140px, 180px))",
             gap: 12,
             marginBottom: 20,
             alignItems: "center",
@@ -595,6 +659,23 @@ const PermissionPage = () => {
             value={search}
             onChange={(event) =>
               setSearch(
+                event.target.value,
+              )
+            }
+          />
+
+          <Select
+            value={
+              typeFilter
+            }
+            showPlaceholder={
+              false
+            }
+            options={
+              typeOptions
+            }
+            onChange={(event) =>
+              handleTypeChange(
                 event.target.value,
               )
             }
@@ -635,7 +716,9 @@ const PermissionPage = () => {
           />
 
           <Select
-            value={sortBy}
+            value={
+              sortBy
+            }
             showPlaceholder={
               false
             }

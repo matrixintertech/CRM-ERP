@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
+
 import {
   IsEnum,
   IsNotEmpty,
@@ -7,9 +11,14 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { Status } from "@prisma/client";
+import {
+  PermissionType,
+  Status,
+} from "@prisma/client";
 
-import { PermissionModule } from "../enums/permission-module.enum";
+import {
+  PermissionModule,
+} from "../enums/permission-module.enum";
 
 export class CreatePermissionDto {
   @ApiProperty({
@@ -18,6 +27,13 @@ export class CreatePermissionDto {
   })
   @IsEnum(PermissionModule)
   module: PermissionModule;
+
+  @ApiProperty({
+    enum: PermissionType,
+    example: PermissionType.COMPANY,
+  })
+  @IsEnum(PermissionType)
+  type: PermissionType;
 
   @ApiProperty({
     example: "Create Company",
@@ -36,7 +52,8 @@ export class CreatePermissionDto {
   code: string;
 
   @ApiPropertyOptional({
-    example: "Allow user to create company",
+    example:
+      "Allow user to create company",
   })
   @IsOptional()
   @IsString()

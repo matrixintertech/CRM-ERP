@@ -112,8 +112,32 @@ enum EmploymentType {
 enum ProjectTaskStatus {
   TODO
   IN_PROGRESS
+  COMPLETION_REQUESTED
   COMPLETED
   CANCELLED
+}
+
+enum ProjectTaskReportType {
+  PROGRESS
+  BLOCKER
+  NOTE
+  COMPLETION
+}
+
+enum ProjectTaskAttachmentType {
+  IMAGE
+  DOCUMENT
+}
+
+enum ProjectTaskWorkSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum ProjectTaskCompletionStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum TaskPriority {
@@ -121,6 +145,19 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum PermissionType {
+  PLATFORM
+  COMPANY
+}
+
+enum PermissionScope {
+  OWN
+  TEAM
+  ORGANIZATION_UNIT
+  PROJECT
+  COMPANY
 }
 
 // USER MODEL START
@@ -137,6 +174,9 @@ model User {
 
   roleId BigInt?
   role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  platformRoleId BigInt?
+  platformRole   PlatformRole? @relation(fields: [platformRoleId], references: [id], onDelete: SetNull)
 
   // Login
   email  String? @unique
@@ -167,14 +207,19 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  otps             Otp[]
-  refreshTokens    RefreshToken[]
-  loginHistory     LoginHistory[]
-  extraPermissions UserPermission[]
+  otps                     Otp[]
+  refreshTokens            RefreshToken[]
+  loginHistory             LoginHistory[]
+  extraPermissions         UserPermission[]
+  taskReports              ProjectTaskReport[]
+  taskWorkSessions         ProjectTaskWorkSession[]
+  requestedTaskCompletions ProjectTaskCompletionRequest[] @relation("TaskCompletionRequestedBy")
+  reviewedTaskCompletions  ProjectTaskCompletionRequest[] @relation("TaskCompletionReviewedBy")
 
   @@index([companyId])
   @@index([employeeId])
   @@index([roleId])
+  @@index([platformRoleId])
   @@index([status])
   @@map("users")
 }
@@ -311,19 +356,22 @@ model Company {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  users                User[]
-  companySubscriptions CompanySubscription[]
-  organizationUnits    OrganizationUnit[]
-  roles                Role[]
-  clients              Client[]
-  projects             Project[]
-  projectCategories    ProjectCategory[]
-  designations         Designation[]
-  departments          Department[]
-  employees            Employee[]
-  projectRoles         ProjectRole[]
-  projectMembers       ProjectMember[]
-  projectTasks         ProjectTask[]
+  users                         User[]
+  companySubscriptions          CompanySubscription[]
+  organizationUnits             OrganizationUnit[]
+  roles                         Role[]
+  clients                       Client[]
+  projects                      Project[]
+  projectCategories             ProjectCategory[]
+  designations                  Designation[]
+  departments                   Department[]
+  employees                     Employee[]
+  projectRoles                  ProjectRole[]
+  projectMembers                ProjectMember[]
+  projectTasks                  ProjectTask[]
+  projectTaskReports            ProjectTaskReport[]
+  projectTaskWorkSessions       ProjectTaskWorkSession[]
+  projectTaskCompletionRequests ProjectTaskCompletionRequest[]
 
   @@index([status])
   @@map("companies")
@@ -571,6 +619,8 @@ model Permission {
   code        String  @unique
   description String?
 
+  type PermissionType @default(COMPANY)
+
   status Status @default(ACTIVE)
 
   createdAt DateTime  @default(now())
@@ -580,7 +630,11 @@ model Permission {
   rolePermissions RolePermission[]
   userPermissions UserPermission[]
 
+  platformRolePermissions PlatformRolePermission[]
+
   @@index([module])
+  @@index([type])
+  @@index([type, module])
 }
 
 //Permission Schema End
@@ -593,10 +647,15 @@ model RolePermission {
   roleId       BigInt
   permissionId BigInt
 
+  scope PermissionScope @default(OWN)
+
   role       Role       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionId], references: [id])
 
   @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@index([scope])
 }
 
 //Role Permission Schema End
@@ -612,13 +671,61 @@ model UserPermission {
   permissionId BigInt
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
+  scope PermissionScope @default(OWN)
+
   assignedAt DateTime @default(now())
 
   @@unique([userId, permissionId])
   @@index([userId])
   @@index([permissionId])
+  @@index([scope])
   @@map("user_permissions")
 }
+
+//Platform Role Start
+
+model PlatformRole {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  name String
+  code String @unique
+
+  description String?
+
+  isSystem Boolean @default(false)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users User[]
+
+  permissions PlatformRolePermission[]
+
+  @@index([status])
+  @@map("platform_roles")
+}
+
+model PlatformRolePermission {
+  id BigInt @id @default(autoincrement())
+
+  platformRoleId BigInt
+  permissionId   BigInt
+
+  platformRole PlatformRole @relation(fields: [platformRoleId], references: [id], onDelete: Cascade)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([platformRoleId, permissionId])
+  @@index([platformRoleId])
+  @@index([permissionId])
+  @@map("platform_role_permissions")
+}
+
+//Platform Role End
 
 //Extra Permission Schema End
 
@@ -905,7 +1012,10 @@ model ProjectMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignedTasks ProjectTask[]
+  assignedTasks          ProjectTask[]
+  taskReports            ProjectTaskReport[]
+  taskWorkSessions       ProjectTaskWorkSession[]
+  taskCompletionRequests ProjectTaskCompletionRequest[]
 
   @@index([companyId])
   @@index([projectId])
@@ -957,6 +1067,10 @@ model ProjectTask {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  reports            ProjectTaskReport[]
+  workSessions       ProjectTaskWorkSession[]
+  completionRequests ProjectTaskCompletionRequest[]
+
   @@index([companyId])
   @@index([projectId])
   @@index([assignedProjectMemberId])
@@ -968,6 +1082,174 @@ model ProjectTask {
 }
 
 // End Project Task Schema
+
+// ProjectTaskReport Schema
+
+model ProjectTaskReport {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId       BigInt
+  taskId          BigInt
+  projectMemberId BigInt
+  userId          BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  projectMember ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Restrict)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  type ProjectTaskReportType @default(PROGRESS)
+
+  message String
+
+  taskStatusSnapshot ProjectTaskStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments ProjectTaskReportAttachment[]
+
+  completionRequest ProjectTaskCompletionRequest?
+
+  @@index([companyId])
+  @@index([taskId])
+  @@index([projectMemberId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("project_task_reports")
+}
+
+//End Project Task Report Schema
+
+//Report Attachment Schema Start
+model ProjectTaskReportAttachment {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  reportId BigInt
+
+  report ProjectTaskReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  type ProjectTaskAttachmentType
+
+  originalName String
+
+  mimeType String
+
+  sizeBytes BigInt
+
+  storageKey String
+
+  createdAt DateTime @default(now())
+
+  @@index([reportId])
+  @@map("project_task_report_attachments")
+}
+
+//Report Sttachment Schema End
+
+//Project Work Session Schema Start
+
+model ProjectTaskWorkSession {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId       BigInt
+  taskId          BigInt
+  projectMemberId BigInt
+  userId          BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  projectMember ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Restrict)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  status ProjectTaskWorkSessionStatus @default(OPEN)
+
+  punchInAt  DateTime  @default(now())
+  punchOutAt DateTime?
+
+  durationSeconds Int?
+
+  punchInLatitude  Decimal? @db.Decimal(10, 7)
+  punchInLongitude Decimal? @db.Decimal(10, 7)
+  punchInAccuracy  Decimal? @db.Decimal(10, 2)
+  punchInAddress   String?
+
+  punchOutLatitude  Decimal? @db.Decimal(10, 7)
+  punchOutLongitude Decimal? @db.Decimal(10, 7)
+  punchOutAccuracy  Decimal? @db.Decimal(10, 2)
+  punchOutAddress   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([taskId])
+  @@index([projectMemberId])
+  @@index([userId])
+  @@index([status])
+  @@index([punchInAt])
+  @@map("project_task_work_sessions")
+}
+
+//Project Work Session Schema End
+
+//Project Completion Request Schema Start
+
+model ProjectTaskCompletionRequest {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+  taskId    BigInt
+
+  requestedByProjectMemberId BigInt
+  requestedByUserId          BigInt
+
+  reportId BigInt? @unique
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  requestedByProjectMember ProjectMember @relation(fields: [requestedByProjectMemberId], references: [id], onDelete: Restrict)
+
+  requestedByUser User @relation("TaskCompletionRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+
+  report ProjectTaskReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  status ProjectTaskCompletionStatus @default(PENDING)
+
+  workedSeconds Int @default(0)
+
+  requestedAt DateTime @default(now())
+
+  reviewedByUserId BigInt?
+
+  reviewedByUser User? @relation("TaskCompletionReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  reviewedAt DateTime?
+
+  reviewNote String?
+
+  @@index([companyId])
+  @@index([taskId])
+  @@index([requestedByProjectMemberId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("project_task_completion_requests")
+}
+
+//Project Completion Request Schema End
 
 //Designation Schema Start
 

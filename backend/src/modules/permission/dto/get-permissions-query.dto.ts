@@ -17,6 +17,7 @@ import {
 } from "class-validator";
 
 import {
+  PermissionType,
   Status,
 } from "@prisma/client";
 
@@ -61,6 +62,14 @@ export class GetPermissionsQueryDto {
   @IsOptional()
   @IsEnum(PermissionModule)
   module?: PermissionModule;
+
+  @ApiPropertyOptional({
+    enum: PermissionType,
+    example: PermissionType.COMPANY,
+  })
+  @IsOptional()
+  @IsEnum(PermissionType)
+  type?: PermissionType;
 
   @ApiPropertyOptional({
     enum: Status,

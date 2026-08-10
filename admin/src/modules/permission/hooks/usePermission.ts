@@ -94,10 +94,13 @@ export const usePermission = (
     useQuery({
       queryKey: [
         "grouped-permissions",
+        params.type ?? "ALL",
       ],
 
       queryFn: () =>
-        getGroupedPermissions(),
+        getGroupedPermissions(
+          params.type,
+        ),
 
       staleTime:
         5 * 60 * 1000,
@@ -291,6 +294,11 @@ export const usePermission = (
     moduleOptions:
       permissionsQuery.data
         ?.filters?.modules ??
+      [],
+
+    typeOptions:
+      permissionsQuery.data
+        ?.filters?.types ??
       [],
 
     groupedPermissions:

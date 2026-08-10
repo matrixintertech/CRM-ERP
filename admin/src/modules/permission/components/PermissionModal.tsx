@@ -35,6 +35,7 @@ const PermissionModal = ({
   onSubmit,
 }: Props) => {
   const isSubmitDisabled =
+    !formData.type ||
     !formData.module ||
     !formData.name.trim() ||
     !formData.code.trim();
@@ -44,7 +45,6 @@ const PermissionModal = ({
       open={open}
       title={title}
       onClose={onClose}
-      size="lg"
     >
       <PermissionForm
         formData={formData}

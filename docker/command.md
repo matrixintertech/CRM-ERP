@@ -103,6 +103,8 @@ docker compose -f docker/docker-compose.yml exec backend npx prisma db seed
 //migration example
 docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev --name add-project-category
 
+docker compose -f docker/docker-compose.yml exec backend npx prisma generate
+
 //for install packages
 
 docker compose -f docker/docker-compose.yml exec admin npm install react-otp-input

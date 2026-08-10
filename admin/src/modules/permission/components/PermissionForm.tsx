@@ -6,6 +6,7 @@ import type {
   PermissionFormData,
   PermissionModule,
   PermissionStatus,
+  PermissionType,
 } from "../types/permission.types";
 
 import styles from "./PermissionForm.module.css";
@@ -17,6 +18,17 @@ interface Props {
     React.SetStateAction<PermissionFormData>
   >;
 }
+
+const typeOptions = [
+  {
+    label: "Company",
+    value: "COMPANY",
+  },
+  {
+    label: "Platform",
+    value: "PLATFORM",
+  },
+];
 
 const moduleOptions = [
   "DASHBOARD",
@@ -66,24 +78,50 @@ const PermissionForm = ({
   formData,
   setFormData,
 }: Props) => {
+  const handleTypeChange = (
+    type: PermissionType,
+  ) => {
+    setFormData(
+      (previous) => ({
+        ...previous,
+
+        type,
+      }),
+    );
+  };
+
   const handleModuleChange = (
     module: PermissionModule,
   ) => {
-    setFormData((previous) => ({
-      ...previous,
+    setFormData(
+      (previous) => ({
+        ...previous,
 
-      module,
+        module,
 
-      code:
-        previous.code ||
-        `${module
-          .toLowerCase()
-          .replaceAll("_", "_")}.`,
-    }));
+        code:
+          previous.code ||
+          `${module.toLowerCase()}.`,
+      }),
+    );
   };
 
   return (
     <div className={styles.form}>
+      <Select
+        label="Permission Type"
+        name="type"
+        showPlaceholder={false}
+        value={formData.type}
+        options={typeOptions}
+        onChange={(event) =>
+          handleTypeChange(
+            event.target
+              .value as PermissionType,
+          )
+        }
+      />
+
       <Select
         label="Module"
         name="module"

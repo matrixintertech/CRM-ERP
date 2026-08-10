@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -20,6 +21,10 @@ import {
 import {
   GetPermissionsQueryDto,
 } from "../dto/get-permissions-query.dto";
+
+import {
+  GetGroupedPermissionsQueryDto,
+} from "../dto/get-grouped-permissions-query.dto";
 
 import {
   UpdatePermissionDto,
@@ -53,17 +58,24 @@ export class PermissionController {
   }
 
   /*
-   * Is route ko @Get(":uuid") se pehle rakho.
-   * Warna "grouped" ko uuid treat kiya ja sakta hai.
+   * Static route ko :uuid se pehle rakho.
    */
   @Get("grouped")
-  findGrouped() {
-    return this.permissionService.findGrouped();
+  findGrouped(
+    @Query()
+    query: GetGroupedPermissionsQueryDto,
+  ) {
+    return this.permissionService.findGrouped(
+      query.type,
+    );
   }
 
   @Get(":uuid")
   findOne(
-    @Param("uuid")
+    @Param(
+      "uuid",
+      ParseUUIDPipe,
+    )
     uuid: string,
   ) {
     return this.permissionService.findOne(
@@ -73,7 +85,10 @@ export class PermissionController {
 
   @Patch(":uuid")
   update(
-    @Param("uuid")
+    @Param(
+      "uuid",
+      ParseUUIDPipe,
+    )
     uuid: string,
 
     @Body()
@@ -87,7 +102,10 @@ export class PermissionController {
 
   @Delete(":uuid")
   remove(
-    @Param("uuid")
+    @Param(
+      "uuid",
+      ParseUUIDPipe,
+    )
     uuid: string,
   ) {
     return this.permissionService.remove(

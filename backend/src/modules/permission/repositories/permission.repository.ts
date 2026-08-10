@@ -3,6 +3,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionType,
   Prisma,
   Status,
 } from "@prisma/client";
@@ -30,6 +31,9 @@ export interface FindPermissionsParams {
   search?: string;
 
   module?: PermissionModule;
+
+  type?: PermissionType;
+
   status?: Status;
 
   sortBy?:
@@ -59,6 +63,9 @@ export class PermissionRepository {
 
         module:
           data.module,
+
+        type:
+          data.type,
 
         name:
           data.name.trim(),
@@ -119,6 +126,12 @@ export class PermissionRepository {
           undefined && {
           module:
             params.module,
+        }),
+
+        ...(params.type !==
+          undefined && {
+          type:
+            params.type,
         }),
 
         ...(params.status !==
@@ -222,12 +235,19 @@ export class PermissionRepository {
     };
   }
 
-  async findModules() {
+  async findModules(
+    type?: PermissionType,
+  ) {
     const modules =
       await this.prisma.permission.findMany({
         where: {
           deletedAt:
             null,
+
+          ...(type !==
+            undefined && {
+            type,
+          }),
         },
 
         select: {
@@ -251,7 +271,9 @@ export class PermissionRepository {
     );
   }
 
-  findActive() {
+  findActive(
+    type?: PermissionType,
+  ) {
     return this.prisma.permission.findMany({
       where: {
         deletedAt:
@@ -259,6 +281,11 @@ export class PermissionRepository {
 
         status:
           Status.ACTIVE,
+
+        ...(type !==
+          undefined && {
+          type,
+        }),
       },
 
       orderBy: [
@@ -319,6 +346,7 @@ export class PermissionRepository {
 
   findByUuids(
     uuids: string[],
+    type?: PermissionType,
   ) {
     return this.prisma.permission.findMany({
       where: {
@@ -332,6 +360,11 @@ export class PermissionRepository {
 
         deletedAt:
           null,
+
+        ...(type !==
+          undefined && {
+          type,
+        }),
       },
     });
   }
@@ -346,6 +379,12 @@ export class PermissionRepository {
           undefined && {
           module:
             data.module,
+        }),
+
+        ...(data.type !==
+          undefined && {
+          type:
+            data.type,
         }),
 
         ...(data.name !==
@@ -405,7 +444,9 @@ export class PermissionRepository {
     });
   }
 
-  async findGrouped() {
+  async findGrouped(
+    type?: PermissionType,
+  ) {
     return this.prisma.permission.findMany({
       where: {
         deletedAt:
@@ -413,6 +454,11 @@ export class PermissionRepository {
 
         status:
           Status.ACTIVE,
+
+        ...(type !==
+          undefined && {
+          type,
+        }),
       },
 
       orderBy: [

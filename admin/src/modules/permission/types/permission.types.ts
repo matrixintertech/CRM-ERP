@@ -2,6 +2,10 @@ export type PermissionStatus =
   | "ACTIVE"
   | "INACTIVE";
 
+export type PermissionType =
+  | "PLATFORM"
+  | "COMPANY";
+
 export type PermissionModule =
   | "DASHBOARD"
   | "COMPANY"
@@ -39,6 +43,8 @@ export interface Permission {
 
   module: PermissionModule;
 
+  type: PermissionType;
+
   name: string;
   code: string;
 
@@ -52,6 +58,8 @@ export interface Permission {
 
 export interface CreatePermissionDto {
   module: PermissionModule;
+
+  type: PermissionType;
 
   name: string;
   code: string;
@@ -81,6 +89,8 @@ export interface GetPermissionsParams {
 
   module?: PermissionModule;
 
+  type?: PermissionType;
+
   status?: PermissionStatus;
 
   sortBy?: PermissionSortField;
@@ -98,6 +108,8 @@ export interface PermissionPagination {
 
 export interface PermissionFilters {
   modules: PermissionModule[];
+
+  types: PermissionType[];
 }
 
 export interface PermissionListResponse {
