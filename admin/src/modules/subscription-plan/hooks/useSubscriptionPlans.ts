@@ -1,11 +1,17 @@
-import { useCallback, useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { notify } from "@/shared/utils/notify";
 
 import {
   createSubscriptionPlan,
   deleteSubscriptionPlan,
+  getSubscriptionPlanById,
   getSubscriptionPlans,
   updateSubscriptionPlan,
-  getSubscriptionPlanById
 } from "../api/subscriptionPlan.api";
 
 import type {
@@ -13,136 +19,294 @@ import type {
   SubscriptionPlanFormData,
 } from "../types/subscription-plan.types";
 
-import { notify } from "@/shared/utils/notify";
+const SUBSCRIPTION_PLANS_QUERY_KEY = [
+  "subscription-plans",
+] as const;
+
+const getErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
+  };
+
+  const errors =
+    apiError.response?.data?.errors;
+
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join(", ");
+  }
+
+  return (
+    apiError.response?.data?.message ??
+    fallbackMessage
+  );
+};
 
 export const useSubscriptionPlans = () => {
-  const [loading, setLoading] =
-    useState(false);
+  const queryClient =
+    useQueryClient();
 
-  const [subscriptionPlans, setSubscriptionPlans] =
-    useState<SubscriptionPlan[]>([]);
+  const subscriptionPlansQuery =
+    useQuery({
+      queryKey:
+        SUBSCRIPTION_PLANS_QUERY_KEY,
 
-  const loadSubscriptionPlans =
-    useCallback(async () => {
-      setLoading(true);
+      queryFn:
+        getSubscriptionPlans,
 
-      try {
-        const data =
-          await getSubscriptionPlans();
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-        setSubscriptionPlans(data);
-      } catch {
-        notify.error(
-          "Failed to load subscription plans.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const addSubscriptionPlan =
-    async (
-      payload: SubscriptionPlanFormData,
-    ) => {
-      setLoading(true);
-
-      try {
-        await createSubscriptionPlan(
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload: SubscriptionPlanFormData,
+      ) =>
+        createSubscriptionPlan(
           payload,
-        );
+        ),
 
+      onSuccess: async () => {
         notify.success(
           "Subscription plan created successfully.",
         );
 
-        await loadSubscriptionPlans();
-      } catch {
-        notify.error(
-          "Failed to create subscription plan.",
+        await queryClient.invalidateQueries({
+          queryKey:
+            SUBSCRIPTION_PLANS_QUERY_KEY,
+        });
+      },
+
+      onError: (error) => {
+        console.error(
+          "Failed to create subscription plan:",
+          error,
         );
 
-        throw new Error();
-      } finally {
-        setLoading(false);
-      }
-    };
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create subscription plan.",
+          ),
+        );
+      },
+    });
 
-  const editSubscriptionPlan =
-    async (
-      id: string,
-      payload: SubscriptionPlanFormData,
-    ) => {
-      setLoading(true);
-
-      try {
-        await updateSubscriptionPlan(
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
+        id,
+        payload,
+      }: {
+        id: string;
+        payload: SubscriptionPlanFormData;
+      }) =>
+        updateSubscriptionPlan(
           id,
           payload,
-        );
+        ),
 
+      onSuccess: async (
+        _response,
+        variables,
+      ) => {
         notify.success(
           "Subscription plan updated successfully.",
         );
 
-        await loadSubscriptionPlans();
-      } catch {
-        notify.error(
-          "Failed to update subscription plan.",
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              SUBSCRIPTION_PLANS_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "subscription-plan",
+              variables.id,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        console.error(
+          "Failed to update subscription plan:",
+          error,
         );
 
-        throw new Error();
-      } finally {
-        setLoading(false);
-      }
-    };
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update subscription plan.",
+          ),
+        );
+      },
+    });
 
-  const removeSubscriptionPlan =
-    async (id: string) => {
-      setLoading(true);
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        id: string,
+      ) =>
+        deleteSubscriptionPlan(id),
 
-      try {
-        await deleteSubscriptionPlan(id);
-
+      onSuccess: async (
+        _response,
+        id,
+      ) => {
         notify.success(
           "Subscription plan deleted successfully.",
         );
 
-        await loadSubscriptionPlans();
-      } catch {
-        notify.error(
-          "Failed to delete subscription plan.",
+        queryClient.removeQueries({
+          queryKey: [
+            "subscription-plan",
+            id,
+          ],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            SUBSCRIPTION_PLANS_QUERY_KEY,
+        });
+      },
+
+      onError: (error) => {
+        console.error(
+          "Failed to delete subscription plan:",
+          error,
         );
 
-        throw new Error();
-      } finally {
-        setLoading(false);
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete subscription plan.",
+          ),
+        );
+      },
+    });
+
+  const loadSubscriptionPlans =
+    async (): Promise<
+      SubscriptionPlan[]
+    > => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey:
+            SUBSCRIPTION_PLANS_QUERY_KEY,
+
+          queryFn:
+            getSubscriptionPlans,
+
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load subscription plans:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load subscription plans.",
+          ),
+        );
+
+        throw error;
       }
     };
 
-    const fetchSubscriptionPlan =
-  async (id: string) => {
-    setLoading(true);
+  const fetchSubscriptionPlan =
+    async (
+      id: string,
+    ): Promise<SubscriptionPlan> => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "subscription-plan",
+            id,
+          ],
 
-    try {
-      return await getSubscriptionPlanById(id);
-    } finally {
-      setLoading(false);
-    }
-  };
+          queryFn: () =>
+            getSubscriptionPlanById(
+              id,
+            ),
+
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
+        console.error(
+          "Failed to load subscription plan:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load subscription plan.",
+          ),
+        );
+
+        throw error;
+      }
+    };
 
   return {
-    loading,
+    subscriptionPlans:
+      subscriptionPlansQuery.data ??
+      [],
 
-    subscriptionPlans,
+    loading:
+      subscriptionPlansQuery.isLoading,
+
+    fetching:
+      subscriptionPlansQuery.isFetching,
+
+    error:
+      subscriptionPlansQuery.error,
+
+    refetch:
+      subscriptionPlansQuery.refetch,
 
     loadSubscriptionPlans,
 
-    addSubscriptionPlan,
+    addSubscriptionPlan:
+      createMutation.mutateAsync,
 
-    editSubscriptionPlan,
+    editSubscriptionPlan: (
+      id: string,
+      payload: SubscriptionPlanFormData,
+    ) =>
+      updateMutation.mutateAsync({
+        id,
+        payload,
+      }),
 
-    removeSubscriptionPlan,
-    
-    fetchSubscriptionPlan
+    removeSubscriptionPlan:
+      deleteMutation.mutateAsync,
+
+    fetchSubscriptionPlan,
+
+    saving:
+      createMutation.isPending ||
+      updateMutation.isPending,
+
+    deleting:
+      deleteMutation.isPending,
   };
 };
