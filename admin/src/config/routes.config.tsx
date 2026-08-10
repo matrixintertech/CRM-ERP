@@ -25,6 +25,7 @@ import ProfilePage from "@/modules/profile/pages/ProfilePage";
 import UserListPage from "@/modules/users/pages/UserListPage";
 import PlatformUserPage from "@/modules/platform-user/pages/PlatformUserPage";
 import ProjectRoleListPage from "@/modules/project-role/pages/ProjectRoleListPage";
+import PlatformRolePage from "@/modules/platform-role/pages/PlatformRolePage";
 
 export interface AppRoute {
   path: string;
@@ -162,4 +163,9 @@ export const protectedRoutes: AppRoute[] = [
     path: "/settings/platform-users",
     element: <PlatformUserPage />,
   },
+
+  {
+  path: "/platform-roles",
+  element: <PlatformRolePage />,
+  }
 ];

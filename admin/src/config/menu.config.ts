@@ -47,6 +47,8 @@ export const menu: MenuItem[] = [
     icon: Building2,
   },
 
+
+
   {
     id: "modules",
     title: "Modules",
@@ -60,6 +62,13 @@ export const menu: MenuItem[] = [
     path: "/subscription-plans",
     icon: Landmark,
   },
+
+  {
+  id: "platform-roles",
+  title: "Platform Roles",
+  path: "/platform-roles",
+  icon: ShieldCheck,
+},
 
   {
     id: "master",

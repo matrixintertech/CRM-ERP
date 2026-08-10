@@ -80,6 +80,11 @@ import {
   ProjectTaskModule,
 } from "./modules/project-task/project-task.module";
 
+//Platform Role
+import {
+  PlatformRoleModule,
+} from "./modules/platform-roles/platform-role.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -112,6 +117,7 @@ import {
     ProjectRoleModule,
      ProjectMemberModule,
      ProjectTaskModule,
+     PlatformRoleModule
   ],
   controllers: [AppController],
   providers: [AppService],
