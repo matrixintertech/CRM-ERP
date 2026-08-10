@@ -23,6 +23,16 @@ export type PermissionModule =
   | "REPORT"
   | "SETTINGS";
 
+export type PermissionSortField =
+  | "name"
+  | "module"
+  | "code"
+  | "status";
+
+export type SortOrder =
+  | "asc"
+  | "desc";
+
 export interface Permission {
   id: string;
   uuid: string;
@@ -59,5 +69,41 @@ export type PermissionFormData =
 
 export interface PermissionGroup {
   module: PermissionModule;
+
   permissions: Permission[];
+}
+
+export interface GetPermissionsParams {
+  page?: number;
+  limit?: number;
+
+  search?: string;
+
+  module?: PermissionModule;
+
+  status?: PermissionStatus;
+
+  sortBy?: PermissionSortField;
+
+  sortOrder?: SortOrder;
+}
+
+export interface PermissionPagination {
+  page: number;
+  limit: number;
+
+  total: number;
+  totalPages: number;
+}
+
+export interface PermissionFilters {
+  modules: PermissionModule[];
+}
+
+export interface PermissionListResponse {
+  permissions: Permission[];
+
+  pagination: PermissionPagination;
+
+  filters: PermissionFilters;
 }

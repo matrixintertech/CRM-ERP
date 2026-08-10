@@ -4,15 +4,26 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from "@nestjs/common";
 
-import { PermissionService } from "../services/permission.service";
+import {
+  PermissionService,
+} from "../services/permission.service";
 
-import { CreatePermissionDto } from "../dto/create-permission.dto";
-import { UpdatePermissionDto } from "../dto/update-permission.dto";
+import {
+  CreatePermissionDto,
+} from "../dto/create-permission.dto";
+
+import {
+  GetPermissionsQueryDto,
+} from "../dto/get-permissions-query.dto";
+
+import {
+  UpdatePermissionDto,
+} from "../dto/update-permission.dto";
 
 @Controller("permissions")
 export class PermissionController {
@@ -32,59 +43,55 @@ export class PermissionController {
   }
 
   @Get()
-  findAll() {
-    return this.permissionService.findAll();
+  findAll(
+    @Query()
+    query: GetPermissionsQueryDto,
+  ) {
+    return this.permissionService.findAll(
+      query,
+    );
   }
 
   /*
-   * Is route ko @Get(":id") se pehle hi rakho.
-   * Warna "grouped" ko id treat kiya ja sakta hai.
+   * Is route ko @Get(":uuid") se pehle rakho.
+   * Warna "grouped" ko uuid treat kiya ja sakta hai.
    */
   @Get("grouped")
   findGrouped() {
     return this.permissionService.findGrouped();
   }
 
-  @Get(":id")
+  @Get(":uuid")
   findOne(
-    @Param(
-      "id",
-      ParseIntPipe,
-    )
-    id: number,
+    @Param("uuid")
+    uuid: string,
   ) {
     return this.permissionService.findOne(
-      BigInt(id),
+      uuid,
     );
   }
 
-  @Patch(":id")
+  @Patch(":uuid")
   update(
-    @Param(
-      "id",
-      ParseIntPipe,
-    )
-    id: number,
+    @Param("uuid")
+    uuid: string,
 
     @Body()
     dto: UpdatePermissionDto,
   ) {
     return this.permissionService.update(
-      BigInt(id),
+      uuid,
       dto,
     );
   }
 
-  @Delete(":id")
+  @Delete(":uuid")
   remove(
-    @Param(
-      "id",
-      ParseIntPipe,
-    )
-    id: number,
+    @Param("uuid")
+    uuid: string,
   ) {
     return this.permissionService.remove(
-      BigInt(id),
+      uuid,
     );
   }
 }

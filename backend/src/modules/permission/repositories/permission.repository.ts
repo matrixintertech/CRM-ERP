@@ -7,10 +7,41 @@ import {
   Status,
 } from "@prisma/client";
 
-import { PrismaService } from "src/database/prisma.service";
+import {
+  PrismaService,
+} from "src/database/prisma.service";
 
-import { CreatePermissionDto } from "../dto/create-permission.dto";
-import { UpdatePermissionDto } from "../dto/update-permission.dto";
+import {
+  CreatePermissionDto,
+} from "../dto/create-permission.dto";
+
+import {
+  UpdatePermissionDto,
+} from "../dto/update-permission.dto";
+
+import {
+  PermissionModule,
+} from "../enums/permission-module.enum";
+
+export interface FindPermissionsParams {
+  page?: number;
+  limit?: number;
+
+  search?: string;
+
+  module?: PermissionModule;
+  status?: Status;
+
+  sortBy?:
+    | "name"
+    | "module"
+    | "code"
+    | "status";
+
+  sortOrder?:
+    | "asc"
+    | "desc";
+}
 
 @Injectable()
 export class PermissionRepository {
@@ -26,53 +57,219 @@ export class PermissionRepository {
       data: {
         ...data,
 
+        module:
+          data.module,
+
+        name:
+          data.name.trim(),
+
         code:
           data.code
             .trim()
             .toLowerCase(),
 
-        module:
-          data.module.trim(),
-
-        name:
-          data.name.trim(),
-
         description:
-          data.description?.trim(),
+          data.description
+            ?.trim(),
       },
     });
   }
 
-  findAll() {
-    return this.prisma.permission.findMany({
-      where: {
-        deletedAt: null,
-      },
+  async findAll(
+    params: FindPermissionsParams = {},
+  ) {
+    const page =
+      Math.max(
+        1,
+        params.page ?? 1,
+      );
 
-      orderBy: [
+    const limit =
+      Math.min(
+        Math.max(
+          1,
+          params.limit ?? 10,
+        ),
+        100,
+      );
+
+    const skip =
+      (page - 1) *
+      limit;
+
+    const search =
+      params.search
+        ?.trim();
+
+    const sortBy =
+      params.sortBy ??
+      "name";
+
+    const sortOrder:
+      Prisma.SortOrder =
+        params.sortOrder ??
+        "asc";
+
+    const where:
+      Prisma.PermissionWhereInput = {
+        deletedAt:
+          null,
+
+        ...(params.module !==
+          undefined && {
+          module:
+            params.module,
+        }),
+
+        ...(params.status !==
+          undefined && {
+          status:
+            params.status,
+        }),
+
+        ...(search && {
+          OR: [
+            {
+              name: {
+                contains:
+                  search,
+
+                mode:
+                  "insensitive",
+              },
+            },
+
+            {
+              code: {
+                contains:
+                  search,
+
+                mode:
+                  "insensitive",
+              },
+            },
+
+            {
+              module: {
+                contains:
+                  search,
+
+                mode:
+                  "insensitive",
+              },
+            },
+
+            {
+              description: {
+                contains:
+                  search,
+
+                mode:
+                  "insensitive",
+              },
+            },
+          ],
+        }),
+      };
+
+    const orderBy:
+      Prisma.PermissionOrderByWithRelationInput =
         {
-          module: "asc",
+          [sortBy]:
+            sortOrder,
+        };
+
+    const [
+      permissions,
+      total,
+    ] =
+      await this.prisma.$transaction([
+        this.prisma.permission.findMany({
+          where,
+
+          skip,
+
+          take:
+            limit,
+
+          orderBy,
+        }),
+
+        this.prisma.permission.count({
+          where,
+        }),
+      ]);
+
+    return {
+      permissions,
+
+      pagination: {
+        page,
+
+        limit,
+
+        total,
+
+        totalPages:
+          Math.max(
+            1,
+            Math.ceil(
+              total /
+                limit,
+            ),
+          ),
+      },
+    };
+  }
+
+  async findModules() {
+    const modules =
+      await this.prisma.permission.findMany({
+        where: {
+          deletedAt:
+            null,
         },
-        {
-          name: "asc",
+
+        select: {
+          module:
+            true,
         },
-      ],
-    });
+
+        distinct: [
+          "module",
+        ],
+
+        orderBy: {
+          module:
+            "asc",
+        },
+      });
+
+    return modules.map(
+      (item) =>
+        item.module,
+    );
   }
 
   findActive() {
     return this.prisma.permission.findMany({
       where: {
-        deletedAt: null,
-        status: Status.ACTIVE,
+        deletedAt:
+          null,
+
+        status:
+          Status.ACTIVE,
       },
 
       orderBy: [
         {
-          module: "asc",
+          module:
+            "asc",
         },
+
         {
-          name: "asc",
+          name:
+            "asc",
         },
       ],
     });
@@ -84,7 +281,9 @@ export class PermissionRepository {
     return this.prisma.permission.findFirst({
       where: {
         id,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -95,7 +294,9 @@ export class PermissionRepository {
     return this.prisma.permission.findFirst({
       where: {
         uuid,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -106,9 +307,12 @@ export class PermissionRepository {
     return this.prisma.permission.findFirst({
       where: {
         code:
-          code.trim().toLowerCase(),
+          code
+            .trim()
+            .toLowerCase(),
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
     });
   }
@@ -119,66 +323,76 @@ export class PermissionRepository {
     return this.prisma.permission.findMany({
       where: {
         uuid: {
-          in: uuids,
+          in:
+            uuids,
         },
 
-        status: Status.ACTIVE,
-        deletedAt: null,
+        status:
+          Status.ACTIVE,
+
+        deletedAt:
+          null,
       },
     });
   }
 
   update(
-    id: bigint,
+    uuid: string,
     data: UpdatePermissionDto,
   ) {
     const payload:
       Prisma.PermissionUpdateInput = {
-      ...(data.module !== undefined && {
-        module:
-          data.module.trim(),
-      }),
+        ...(data.module !==
+          undefined && {
+          module:
+            data.module,
+        }),
 
-      ...(data.name !== undefined && {
-        name:
-          data.name.trim(),
-      }),
+        ...(data.name !==
+          undefined && {
+          name:
+            data.name.trim(),
+        }),
 
-      ...(data.code !== undefined && {
-        code:
-          data.code
-            .trim()
-            .toLowerCase(),
-      }),
+        ...(data.code !==
+          undefined && {
+          code:
+            data.code
+              .trim()
+              .toLowerCase(),
+        }),
 
-      ...(data.description !==
-        undefined && {
-        description:
-          data.description.trim() ||
-          null,
-      }),
+        ...(data.description !==
+          undefined && {
+          description:
+            data.description
+              .trim() ||
+            null,
+        }),
 
-      ...(data.status !== undefined && {
-        status:
-          data.status,
-      }),
-    };
+        ...(data.status !==
+          undefined && {
+          status:
+            data.status,
+        }),
+      };
 
     return this.prisma.permission.update({
       where: {
-        id,
+        uuid,
       },
 
-      data: payload,
+      data:
+        payload,
     });
   }
 
   softDelete(
-    id: bigint,
+    uuid: string,
   ) {
     return this.prisma.permission.update({
       where: {
-        id,
+        uuid,
       },
 
       data: {
@@ -191,21 +405,27 @@ export class PermissionRepository {
     });
   }
 
-async findGrouped() {
-  return this.prisma.permission.findMany({
-    where: {
-      deletedAt: null,
-      status: "ACTIVE",
-    },
+  async findGrouped() {
+    return this.prisma.permission.findMany({
+      where: {
+        deletedAt:
+          null,
 
-    orderBy: [
-      {
-        module: "asc",
+        status:
+          Status.ACTIVE,
       },
-      {
-        name: "asc",
-      },
-    ],
-  });
-}
+
+      orderBy: [
+        {
+          module:
+            "asc",
+        },
+
+        {
+          name:
+            "asc",
+        },
+      ],
+    });
+  }
 }

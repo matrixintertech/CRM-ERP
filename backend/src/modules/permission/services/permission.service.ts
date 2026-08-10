@@ -4,10 +4,21 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { PermissionRepository } from "../repositories/permission.repository";
+import {
+  PermissionRepository,
+} from "../repositories/permission.repository";
 
-import { CreatePermissionDto } from "../dto/create-permission.dto";
-import { UpdatePermissionDto } from "../dto/update-permission.dto";
+import type {
+  FindPermissionsParams,
+} from "../repositories/permission.repository";
+
+import {
+  CreatePermissionDto,
+} from "../dto/create-permission.dto";
+
+import {
+  UpdatePermissionDto,
+} from "../dto/update-permission.dto";
 
 @Injectable()
 export class PermissionService {
@@ -49,7 +60,8 @@ export class PermissionService {
           normalizedCode,
 
         description:
-          dto.description?.trim(),
+          dto.description
+            ?.trim(),
       });
 
     return {
@@ -60,24 +72,42 @@ export class PermissionService {
     };
   }
 
-  async findAll() {
-    const permissions =
-      await this.permissionRepository.findAll();
+  async findAll(
+    params: FindPermissionsParams = {},
+  ) {
+    const [
+      result,
+      modules,
+    ] = await Promise.all([
+      this.permissionRepository.findAll(
+        params,
+      ),
+
+      this.permissionRepository.findModules(),
+    ]);
 
     return {
       message:
         "Permissions fetched successfully.",
 
-      permissions,
+      permissions:
+        result.permissions,
+
+      pagination:
+        result.pagination,
+
+      filters: {
+        modules,
+      },
     };
   }
 
   async findOne(
-    id: bigint,
+    uuid: string,
   ) {
     const permission =
-      await this.permissionRepository.findById(
-        id,
+      await this.permissionRepository.findByUuid(
+        uuid,
       );
 
     if (!permission) {
@@ -95,12 +125,12 @@ export class PermissionService {
   }
 
   async update(
-    id: bigint,
+    uuid: string,
     dto: UpdatePermissionDto,
   ) {
     const existingPermission =
-      await this.permissionRepository.findById(
-        id,
+      await this.permissionRepository.findByUuid(
+        uuid,
       );
 
     if (!existingPermission) {
@@ -126,7 +156,8 @@ export class PermissionService {
 
       if (
         duplicatePermission &&
-        duplicatePermission.id !== id
+        duplicatePermission.uuid !==
+          uuid
       ) {
         throw new ConflictException(
           "Permission code already exists.",
@@ -136,19 +167,22 @@ export class PermissionService {
 
     const permission =
       await this.permissionRepository.update(
-        id,
+        uuid,
         {
-          ...(dto.module !== undefined && {
+          ...(dto.module !==
+            undefined && {
             module:
               dto.module,
           }),
 
-          ...(dto.name !== undefined && {
+          ...(dto.name !==
+            undefined && {
             name:
               dto.name.trim(),
           }),
 
-          ...(normalizedCode !== undefined && {
+          ...(normalizedCode !==
+            undefined && {
             code:
               normalizedCode,
           }),
@@ -159,7 +193,8 @@ export class PermissionService {
               dto.description.trim(),
           }),
 
-          ...(dto.status !== undefined && {
+          ...(dto.status !==
+            undefined && {
             status:
               dto.status,
           }),
@@ -174,75 +209,81 @@ export class PermissionService {
     };
   }
 
-async remove(
-  id: bigint,
-) {
-  const existingPermission =
-    await this.permissionRepository.findById(
-      id,
-    );
+  async remove(
+    uuid: string,
+  ) {
+    const existingPermission =
+      await this.permissionRepository.findByUuid(
+        uuid,
+      );
 
-  if (!existingPermission) {
-    throw new NotFoundException(
-      "Permission not found.",
-    );
-  }
-
-  const permission =
-    await this.permissionRepository.softDelete(
-      id,
-    );
-
-  return {
-    message:
-      "Permission deleted successfully.",
-
-    permission,
-  };
-}
-
-async findGrouped() {
-  const permissions =
-    await this.permissionRepository.findGrouped();
-
-  type PermissionItem =
-    (typeof permissions)[number];
-
-  const grouped: Record<
-    string,
-    PermissionItem[]
-  > = {};
-
-  for (const permission of permissions) {
-    const module =
-      permission.module;
-
-    if (!grouped[module]) {
-      grouped[module] = [];
+    if (!existingPermission) {
+      throw new NotFoundException(
+        "Permission not found.",
+      );
     }
 
-    grouped[module].push(
+    const permission =
+      await this.permissionRepository.softDelete(
+        uuid,
+      );
+
+    return {
+      message:
+        "Permission deleted successfully.",
+
       permission,
-    );
+    };
   }
 
-  const permissionGroups =
-    Object.entries(grouped).map(
-      ([
-        module,
-        modulePermissions,
-      ]) => ({
-        module,
-        permissions:
+  async findGrouped() {
+    const permissions =
+      await this.permissionRepository.findGrouped();
+
+    type PermissionItem =
+      (typeof permissions)[number];
+
+    const grouped: Record<
+      string,
+      PermissionItem[]
+    > = {};
+
+    for (
+      const permission
+      of permissions
+    ) {
+      const module =
+        permission.module;
+
+      if (!grouped[module]) {
+        grouped[module] = [];
+      }
+
+      grouped[module].push(
+        permission,
+      );
+    }
+
+    const permissionGroups =
+      Object.entries(
+        grouped,
+      ).map(
+        ([
+          module,
           modulePermissions,
-      }),
-    );
+        ]) => ({
+          module,
 
-  return {
-    message:
-      "Grouped permissions fetched successfully.",
+          permissions:
+            modulePermissions,
+        }),
+      );
 
-    permissionGroups,
-  };
-}
+    return {
+      message:
+        "Grouped permissions fetched successfully.",
+
+      permissionGroups,
+    };
+  }
 }

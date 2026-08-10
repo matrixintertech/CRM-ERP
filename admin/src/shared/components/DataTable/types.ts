@@ -31,4 +31,6 @@ export interface DataTableProps<T> {
   emptyMessage?: string;
 
   showSerialNumber?: boolean;
+
+  serialNumberStart?: number;
 }

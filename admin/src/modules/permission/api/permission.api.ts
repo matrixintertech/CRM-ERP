@@ -2,14 +2,16 @@ import api from "@/shared/services/axios";
 
 import type {
   CreatePermissionDto,
+  GetPermissionsParams,
   Permission,
   PermissionGroup,
+  PermissionListResponse,
   UpdatePermissionDto,
 } from "../types/permission.types";
 
 export const createPermission = async (
   payload: CreatePermissionDto,
-) => {
+): Promise<Permission> => {
   const { data } = await api.post(
     "/permissions",
     payload,
@@ -22,19 +24,42 @@ export const createPermission = async (
   );
 };
 
-export const getPermissions =
-  async (): Promise<Permission[]> => {
-    const { data } = await api.get(
-      "/permissions",
-    );
+export const getPermissions = async (
+  params: GetPermissionsParams = {},
+): Promise<PermissionListResponse> => {
+  const { data } = await api.get(
+    "/permissions",
+    {
+      params,
+    },
+  );
 
-    return (
-      data.data?.permissions ??
-      data.permissions ??
-      data.data ??
-      []
-    );
+  const response =
+    data.data ?? data;
+
+  return {
+    permissions:
+      response.permissions ?? [],
+
+    pagination:
+      response.pagination ?? {
+        page:
+          params.page ?? 1,
+
+        limit:
+          params.limit ?? 10,
+
+        total: 0,
+
+        totalPages: 1,
+      },
+
+    filters:
+      response.filters ?? {
+        modules: [],
+      },
   };
+};
 
 export const getGroupedPermissions =
   async (): Promise<
@@ -53,10 +78,10 @@ export const getGroupedPermissions =
   };
 
 export const getPermission = async (
-  id: string,
+  uuid: string,
 ): Promise<Permission> => {
   const { data } = await api.get(
-    `/permissions/${id}`,
+    `/permissions/${uuid}`,
   );
 
   return (
@@ -67,11 +92,11 @@ export const getPermission = async (
 };
 
 export const updatePermission = async (
-  id: string,
+  uuid: string,
   payload: UpdatePermissionDto,
-) => {
+): Promise<Permission> => {
   const { data } = await api.patch(
-    `/permissions/${id}`,
+    `/permissions/${uuid}`,
     payload,
   );
 
@@ -83,10 +108,10 @@ export const updatePermission = async (
 };
 
 export const deletePermission = async (
-  id: string,
+  uuid: string,
 ) => {
   const { data } = await api.delete(
-    `/permissions/${id}`,
+    `/permissions/${uuid}`,
   );
 
   return data;
