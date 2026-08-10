@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -52,7 +53,6 @@ import {
   AssignUserPermissionsDto,
 } from "../dto/assign-user-permissions.dto";
 
-
 interface AuthenticatedUser {
   sub: string;
 
@@ -65,13 +65,11 @@ interface AuthenticatedUser {
     UserType;
 }
 
-
 interface AuthenticatedRequest
   extends Request {
   user?:
     AuthenticatedUser;
 }
-
 
 @ApiTags("Users")
 @ApiBearerAuth("access-token")
@@ -84,8 +82,6 @@ export class UserController {
     private readonly userService:
       UserService,
   ) {}
-
-
 
   /*
    * Keep employee-specific routes
@@ -113,6 +109,7 @@ export class UserController {
 
     @Param(
       "employeeUuid",
+      ParseUUIDPipe,
     )
     employeeUuid:
       string,
@@ -132,8 +129,6 @@ export class UserController {
         dto,
       );
   }
-
-
 
   @Get(
     "employees/:employeeUuid",
@@ -156,6 +151,7 @@ export class UserController {
 
     @Param(
       "employeeUuid",
+      ParseUUIDPipe,
     )
     employeeUuid:
       string,
@@ -169,8 +165,6 @@ export class UserController {
         employeeUuid,
       );
   }
-
-
 
   @Patch(
     "employees/:employeeUuid",
@@ -193,6 +187,7 @@ export class UserController {
 
     @Param(
       "employeeUuid",
+      ParseUUIDPipe,
     )
     employeeUuid:
       string,
@@ -212,8 +207,6 @@ export class UserController {
         dto,
       );
   }
-
-
 
   @Delete(
     "employees/:employeeUuid",
@@ -236,6 +229,7 @@ export class UserController {
 
     @Param(
       "employeeUuid",
+      ParseUUIDPipe,
     )
     employeeUuid:
       string,
@@ -250,10 +244,17 @@ export class UserController {
       );
   }
 
-
-
   /*
-   * User listing
+   * Server-side user listing:
+   *
+   * page
+   * limit
+   * search
+   * status
+   * userType
+   * roleUuid
+   * sortBy
+   * sortOrder
    */
 
   @Get()
@@ -280,14 +281,11 @@ export class UserController {
       );
   }
 
-
-
   /*
-   * User additional permissions
+   * User additional permissions.
    *
-   * Is route ko :userUuid route se
-   * pehle ya specifically defined path
-   * ke saath rakhna safe hai.
+   * Nested routes ko :userUuid
+   * details route se pehle rakho.
    */
 
   @Get(
@@ -311,6 +309,7 @@ export class UserController {
 
     @Param(
       "userUuid",
+      ParseUUIDPipe,
     )
     userUuid:
       string,
@@ -324,8 +323,6 @@ export class UserController {
         userUuid,
       );
   }
-
-
 
   @Put(
     ":userUuid/permissions",
@@ -348,6 +345,7 @@ export class UserController {
 
     @Param(
       "userUuid",
+      ParseUUIDPipe,
     )
     userUuid:
       string,
@@ -368,13 +366,11 @@ export class UserController {
       );
   }
 
-
-
   /*
    * User details.
    *
-   * Dynamic route ko static and nested
-   * routes ke baad rakhna better hai.
+   * Dynamic route ko static/nested
+   * routes ke baad rakho.
    */
 
   @Get(
@@ -398,6 +394,7 @@ export class UserController {
 
     @Param(
       "userUuid",
+      ParseUUIDPipe,
     )
     userUuid:
       string,
@@ -411,8 +408,6 @@ export class UserController {
         userUuid,
       );
   }
-
-
 
   /*
    * Employee login account actions
@@ -441,15 +436,13 @@ export class UserController {
     );
   }
 
-
-
   /*
    * Company users:
-   *   returns their company ID.
+   * returns their company ID.
    *
    * Platform owner:
-   *   returns null so repository can
-   *   query across companies.
+   * returns null so repository can
+   * query across companies.
    */
   private getCompanyFilterId(
     req:

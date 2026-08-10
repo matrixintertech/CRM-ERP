@@ -188,15 +188,10 @@ async findAll(
       companyId,
       {
         ...filters,
+
         roleId,
       },
     );
-
-  const page =
-    query.page ?? 1;
-
-  const limit =
-    query.limit ?? 10;
 
   return {
     message:
@@ -205,18 +200,8 @@ async findAll(
     users:
       result.users,
 
-    total:
-      result.total,
-
-    page,
-
-    limit,
-
-    totalPages:
-      Math.ceil(
-        result.total /
-          limit,
-      ),
+    pagination:
+      result.pagination,
   };
 }
 

@@ -13,13 +13,27 @@ import {
   PrismaService,
 } from "src/database/prisma.service";
 
-interface UserListQuery {
+export interface UserListQuery {
   page?: number;
   limit?: number;
+
   search?: string;
+
   status?: UserStatus;
   userType?: UserType;
+
   roleId?: bigint;
+
+  sortBy?:
+    | "name"
+    | "email"
+    | "status"
+    | "userType"
+    | "createdAt";
+
+  sortOrder?:
+    | "asc"
+    | "desc";
 }
 
 @Injectable()
@@ -112,40 +126,67 @@ export class UserRepository {
     });
   }
 
-  async findAll(
-    companyId: bigint | null,
-    query: UserListQuery,
-  ) {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      status,
-      userType,
-      roleId,
-    } = query;
+async findAll(
+  companyId: bigint | null,
+  query: UserListQuery = {},
+) {
+  const page =
+    Math.max(
+      1,
+      query.page ?? 1,
+    );
 
-    const normalizedSearch =
-      search?.trim();
+  const limit =
+    Math.min(
+      Math.max(
+        1,
+        query.limit ?? 10,
+      ),
+      100,
+    );
 
-    const where:
-      Prisma.UserWhereInput = {
-      deletedAt: null,
+  const skip =
+    (page - 1) *
+    limit;
+
+  const normalizedSearch =
+    query.search
+      ?.trim();
+
+  const sortBy =
+    query.sortBy ??
+    "createdAt";
+
+  const sortOrder:
+    Prisma.SortOrder =
+      query.sortOrder ??
+      "desc";
+
+  const where:
+    Prisma.UserWhereInput = {
+      deletedAt:
+        null,
 
       ...(companyId !== null && {
         companyId,
       }),
 
-      ...(status !== undefined && {
-        status,
+      ...(query.status !==
+        undefined && {
+        status:
+          query.status,
       }),
 
-      ...(userType !== undefined && {
-        userType,
+      ...(query.userType !==
+        undefined && {
+        userType:
+          query.userType,
       }),
 
-      ...(roleId !== undefined && {
-        roleId,
+      ...(query.roleId !==
+        undefined && {
+        roleId:
+          query.roleId,
       }),
 
       ...(normalizedSearch && {
@@ -222,40 +263,92 @@ export class UserRepository {
       }),
     };
 
-    const [
-      users,
-      total,
-    ] =
-      await this.prisma.$transaction([
-        this.prisma.user.findMany({
-          where,
+  let orderBy:
+    Prisma.UserOrderByWithRelationInput;
 
-          include:
-            this.userInclude,
+  switch (sortBy) {
+    case "name":
+      orderBy = {
+        displayName:
+          sortOrder,
+      };
+      break;
 
-          skip:
-            (page - 1) *
-            limit,
+    case "email":
+      orderBy = {
+        email:
+          sortOrder,
+      };
+      break;
 
-          take:
-            limit,
+    case "status":
+      orderBy = {
+        status:
+          sortOrder,
+      };
+      break;
 
-          orderBy: {
-            createdAt:
-              "desc",
-          },
-        }),
+    case "userType":
+      orderBy = {
+        userType:
+          sortOrder,
+      };
+      break;
 
-        this.prisma.user.count({
-          where,
-        }),
-      ]);
-
-    return {
-      users,
-      total,
-    };
+    case "createdAt":
+    default:
+      orderBy = {
+        createdAt:
+          sortOrder,
+      };
+      break;
   }
+
+  const [
+    users,
+    total,
+  ] =
+    await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+
+        include:
+          this.userInclude,
+
+        skip,
+
+        take:
+          limit,
+
+        orderBy,
+      }),
+
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
+
+  return {
+    users,
+
+    pagination: {
+      page,
+
+      limit,
+
+      total,
+
+      totalPages:
+        Math.max(
+          1,
+          Math.ceil(
+            total /
+              limit,
+          ),
+        ),
+    },
+  };
+}
 
   async findById(
     id: bigint,

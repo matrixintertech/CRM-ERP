@@ -20,42 +20,58 @@ import type {
   UserQueryParams,
 } from "../types/user.types";
 
+interface ApiErrorResponse {
+  message?: string;
+
+  errors?:
+    | string
+    | string[];
+}
+
 const getErrorMessage = (
   error: unknown,
   fallbackMessage: string,
-) => {
+): string => {
   const apiError =
     error as {
       response?: {
-        data?: {
-          message?: string;
-          errors?: string[];
-        };
+        data?: ApiErrorResponse;
       };
     };
 
+  const message =
+    apiError.response
+      ?.data?.message;
+
   const errors =
-    apiError.response?.data
-      ?.errors;
+    apiError.response
+      ?.data?.errors;
+
+  if (message) {
+    return message;
+  }
 
   if (
-    Array.isArray(errors) &&
-    errors.length > 0
+    Array.isArray(errors)
   ) {
     return errors.join(
       ", ",
     );
   }
 
-  return (
-    apiError.response?.data
-      ?.message ??
-    fallbackMessage
-  );
+  if (
+    typeof errors ===
+    "string"
+  ) {
+    return errors;
+  }
+
+  return fallbackMessage;
 };
 
 export const useUsers = (
-  params: UserQueryParams = {},
+  params:
+    UserQueryParams = {},
 ) => {
   const queryClient =
     useQueryClient();
@@ -71,6 +87,9 @@ export const useUsers = (
         getUsers(
           params,
         ),
+
+      staleTime:
+        5 * 60 * 1000,
     });
 
   const fetchUser =
@@ -78,23 +97,22 @@ export const useUsers = (
       uuid: string,
     ) => {
       try {
-        return await queryClient.fetchQuery({
-          queryKey: [
-            "user",
-            uuid,
-          ],
-
-          queryFn: () =>
-            getUserByUuid(
+        return await queryClient
+          .fetchQuery({
+            queryKey: [
+              "user",
               uuid,
-            ),
-        });
-      } catch (error) {
-        console.error(
-          "Failed to load user:",
-          error,
-        );
+            ],
 
+            queryFn: () =>
+              getUserByUuid(
+                uuid,
+              ),
+
+            staleTime:
+              5 * 60 * 1000,
+          });
+      } catch (error) {
         notify.error(
           getErrorMessage(
             error,
@@ -111,23 +129,22 @@ export const useUsers = (
       uuid: string,
     ) => {
       try {
-        return await queryClient.fetchQuery({
-          queryKey: [
-            "user-permissions",
-            uuid,
-          ],
-
-          queryFn: () =>
-            getUserPermissions(
+        return await queryClient
+          .fetchQuery({
+            queryKey: [
+              "user-permissions",
               uuid,
-            ),
-        });
-      } catch (error) {
-        console.error(
-          "Failed to load user permissions:",
-          error,
-        );
+            ],
 
+            queryFn: () =>
+              getUserPermissions(
+                uuid,
+              ),
+
+            staleTime:
+              5 * 60 * 1000,
+          });
+      } catch (error) {
         notify.error(
           getErrorMessage(
             error,
@@ -163,20 +180,18 @@ export const useUsers = (
           "User permissions updated successfully.",
         );
 
-        await queryClient.invalidateQueries({
-          queryKey: [
-            "user-permissions",
-            variables.uuid,
-          ],
-        });
+        await queryClient
+          .invalidateQueries({
+            queryKey: [
+              "user-permissions",
+              variables.uuid,
+            ],
+          });
       },
 
-      onError: (error) => {
-        console.error(
-          "Failed to update user permissions:",
-          error,
-        );
-
+      onError: (
+        error,
+      ) => {
         notify.error(
           getErrorMessage(
             error,
@@ -189,21 +204,35 @@ export const useUsers = (
   const response =
     usersQuery.data;
 
+  const pagination =
+    response?.pagination;
+
   return {
     users:
-      response?.users ?? [],
+      response?.users ??
+      [],
+
+    pagination:
+      pagination ??
+      null,
 
     total:
-      response?.total ?? 0,
+      pagination?.total ??
+      0,
 
     page:
-      response?.page ?? 1,
+      pagination?.page ??
+      params.page ??
+      1,
 
     limit:
-      response?.limit ?? 10,
+      pagination?.limit ??
+      params.limit ??
+      10,
 
     totalPages:
-      response?.totalPages ?? 0,
+      pagination?.totalPages ??
+      1,
 
     loading:
       usersQuery.isLoading,
@@ -226,12 +255,14 @@ export const useUsers = (
       payload:
         UpdateUserPermissionsDto,
     ) =>
-      permissionsMutation.mutateAsync({
-        uuid,
-        payload,
-      }),
+      permissionsMutation
+        .mutateAsync({
+          uuid,
+          payload,
+        }),
 
     savingPermissions:
-      permissionsMutation.isPending,
+      permissionsMutation
+        .isPending,
   };
 };

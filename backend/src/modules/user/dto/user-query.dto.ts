@@ -1,32 +1,33 @@
 import {
   ApiPropertyOptional,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
 import {
   UserStatus,
   UserType,
-} from '@prisma/client';
+} from "@prisma/client";
 
 import {
   Type,
-} from 'class-transformer';
+} from "class-transformer";
 
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Max,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class UserQueryDto {
   @ApiPropertyOptional({
     example: 1,
     default: 1,
     description:
-      'Page number',
+      "Page number",
   })
   @IsOptional()
   @Type(() => Number)
@@ -38,7 +39,7 @@ export class UserQueryDto {
     example: 10,
     default: 10,
     description:
-      'Number of users per page',
+      "Number of users per page",
   })
   @IsOptional()
   @Type(() => Number)
@@ -48,9 +49,9 @@ export class UserQueryDto {
   limit?: number = 10;
 
   @ApiPropertyOptional({
-    example: 'rahul',
+    example: "rahul",
     description:
-      'Search by display name, email, mobile, employee code or role name',
+      "Search by display name, email, mobile, employee code or role name",
   })
   @IsOptional()
   @IsString()
@@ -74,11 +75,58 @@ export class UserQueryDto {
 
   @ApiPropertyOptional({
     example:
-      '2f4e1216-a8e9-48c7-a5ac-4cf352b44e0e',
+      "2f4e1216-a8e9-48c7-a5ac-4cf352b44e0e",
     description:
-      'Filter users by role UUID',
+      "Filter users by role UUID",
   })
   @IsOptional()
   @IsUUID()
   roleUuid?: string;
+
+  @ApiPropertyOptional({
+    enum: [
+      "name",
+      "email",
+      "status",
+      "userType",
+      "createdAt",
+    ],
+    default: "createdAt",
+    description:
+      "Field used to sort users",
+  })
+  @IsOptional()
+  @IsIn([
+    "name",
+    "email",
+    "status",
+    "userType",
+    "createdAt",
+  ])
+  sortBy?:
+    | "name"
+    | "email"
+    | "status"
+    | "userType"
+    | "createdAt" =
+    "createdAt";
+
+  @ApiPropertyOptional({
+    enum: [
+      "asc",
+      "desc",
+    ],
+    default: "desc",
+    description:
+      "Sort direction",
+  })
+  @IsOptional()
+  @IsIn([
+    "asc",
+    "desc",
+  ])
+  sortOrder?:
+    | "asc"
+    | "desc" =
+    "desc";
 }

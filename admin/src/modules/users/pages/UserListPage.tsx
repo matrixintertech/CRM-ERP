@@ -30,7 +30,7 @@ import {
 } from "../api/employee-user-account.api";
 
 import {
-  getPermissions,
+  getGroupedPermissions,
 } from "../../permission/api/permission.api";
 
 import UserTable from "../components/UserTable";
@@ -44,22 +44,38 @@ import UserPermissionsModal from "../components/UserPermissionsModal";
 
 import type {
   Permission,
+  SortOrder,
   User,
   UserPermissions,
   UserQueryParams,
+  UserSortField,
   UserStatus,
   UserType,
 } from "../types/user.types";
 
 const initialQuery:
   UserQueryParams = {
-  page: 1,
-  limit: 10,
-  search: "",
-  status: undefined,
-  userType: undefined,
-  roleUuid: undefined,
-};
+    page: 1,
+    limit: 10,
+
+    search:
+      undefined,
+
+    status:
+      undefined,
+
+    userType:
+      undefined,
+
+    roleUuid:
+      undefined,
+
+    sortBy:
+      "createdAt",
+
+    sortOrder:
+      "desc",
+  };
 
 const UserListPage = () => {
   useDocumentTitle(
@@ -149,8 +165,6 @@ const UserListPage = () => {
     setAccountUpdating,
   ] = useState(false);
 
-
-
   const roleOptions =
     useMemo(
       () =>
@@ -219,6 +233,40 @@ const UserListPage = () => {
           [field]:
             value ||
             undefined,
+        }),
+      );
+    };
+
+  const handleSortByChange =
+    (
+      value:
+        UserSortField,
+    ) => {
+      setQuery(
+        (previous) => ({
+          ...previous,
+
+          page: 1,
+
+          sortBy:
+            value,
+        }),
+      );
+    };
+
+  const handleSortOrderChange =
+    (
+      value:
+        SortOrder,
+    ) => {
+      setQuery(
+        (previous) => ({
+          ...previous,
+
+          page: 1,
+
+          sortOrder:
+            value,
         }),
       );
     };
@@ -318,19 +366,16 @@ const UserListPage = () => {
       );
 
       try {
-       const [
+        const [
           userPermissions,
-          globalPermissionsResponse,
+          permissionGroups,
         ] =
           await Promise.all([
             fetchPermissions(
               uuid,
             ),
 
-            getPermissions({
-              page: 1,
-              limit: 100,
-            }),
+            getGroupedPermissions(),
           ]);
 
         setPermissions(
@@ -338,7 +383,10 @@ const UserListPage = () => {
         );
 
         setAllPermissions(
-          globalPermissionsResponse.permissions,
+          permissionGroups.flatMap(
+            (group) =>
+              group.permissions,
+          ),
         );
       } catch {
         setOpenPermissions(
@@ -473,7 +521,9 @@ const UserListPage = () => {
         setAllPermissions(
           [],
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to save user permissions:",
           error,
@@ -502,7 +552,7 @@ const UserListPage = () => {
               "grid",
 
             gridTemplateColumns:
-              "minmax(220px, 1fr) repeat(3, minmax(160px, 220px)) auto auto",
+              "minmax(220px, 1.4fr) repeat(5, minmax(140px, 1fr)) auto auto",
 
             alignItems:
               "end",
@@ -550,12 +600,15 @@ const UserListPage = () => {
               {
                 label:
                   "All Statuses",
-                value: "",
+
+                value:
+                  "",
               },
 
               {
                 label:
                   "Active",
+
                 value:
                   "ACTIVE",
               },
@@ -563,6 +616,7 @@ const UserListPage = () => {
               {
                 label:
                   "Inactive",
+
                 value:
                   "INACTIVE",
               },
@@ -570,6 +624,7 @@ const UserListPage = () => {
               {
                 label:
                   "Pending",
+
                 value:
                   "PENDING",
               },
@@ -577,6 +632,7 @@ const UserListPage = () => {
               {
                 label:
                   "Suspended",
+
                 value:
                   "SUSPENDED",
               },
@@ -605,12 +661,15 @@ const UserListPage = () => {
               {
                 label:
                   "All User Types",
-                value: "",
+
+                value:
+                  "",
               },
 
               {
                 label:
                   "Platform Owner",
+
                 value:
                   "PLATFORM_OWNER",
               },
@@ -618,6 +677,7 @@ const UserListPage = () => {
               {
                 label:
                   "Company Admin",
+
                 value:
                   "COMPANY_ADMIN",
               },
@@ -625,6 +685,7 @@ const UserListPage = () => {
               {
                 label:
                   "Employee",
+
                 value:
                   "EMPLOYEE",
               },
@@ -632,6 +693,7 @@ const UserListPage = () => {
               {
                 label:
                   "Client",
+
                 value:
                   "CLIENT",
               },
@@ -639,6 +701,7 @@ const UserListPage = () => {
               {
                 label:
                   "Vendor",
+
                 value:
                   "VENDOR",
               },
@@ -667,7 +730,9 @@ const UserListPage = () => {
               {
                 label:
                   "All Roles",
-                value: "",
+
+                value:
+                  "",
               },
 
               ...roleOptions,
@@ -680,6 +745,98 @@ const UserListPage = () => {
 
                 event.target
                   .value,
+              )
+            }
+          />
+
+          <Select
+            label="Sort By"
+            value={
+              query.sortBy ??
+              "createdAt"
+            }
+            options={[
+              {
+                label:
+                  "Created Date",
+
+                value:
+                  "createdAt",
+              },
+
+              {
+                label:
+                  "Name",
+
+                value:
+                  "name",
+              },
+
+              {
+                label:
+                  "Email",
+
+                value:
+                  "email",
+              },
+
+              {
+                label:
+                  "Status",
+
+                value:
+                  "status",
+              },
+
+              {
+                label:
+                  "User Type",
+
+                value:
+                  "userType",
+              },
+            ]}
+            onChange={(
+              event,
+            ) =>
+              handleSortByChange(
+                event.target
+                  .value as
+                  UserSortField,
+              )
+            }
+          />
+
+          <Select
+            label="Order"
+            value={
+              query.sortOrder ??
+              "desc"
+            }
+            options={[
+              {
+                label:
+                  "Descending",
+
+                value:
+                  "desc",
+              },
+
+              {
+                label:
+                  "Ascending",
+
+                value:
+                  "asc",
+              },
+            ]}
+            onChange={(
+              event,
+            ) =>
+              handleSortOrderChange(
+                event.target
+                  .value as
+                  SortOrder,
               )
             }
           />
@@ -774,7 +931,9 @@ const UserListPage = () => {
           >
             Showing{" "}
             {users.length}{" "}
-            of {total} users
+            of{" "}
+            {total}{" "}
+            users
           </div>
 
           <div
@@ -815,7 +974,9 @@ const UserListPage = () => {
                   "#374151",
               }}
             >
-              Page {page} of{" "}
+              Page{" "}
+              {page}{" "}
+              of{" "}
               {totalPages ||
                 1}
             </span>

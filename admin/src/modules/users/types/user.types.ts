@@ -11,6 +11,17 @@ export type UserType =
   | "CLIENT"
   | "VENDOR";
 
+export type UserSortField =
+  | "name"
+  | "email"
+  | "status"
+  | "userType"
+  | "createdAt";
+
+export type SortOrder =
+  | "asc"
+  | "desc";
+
 export interface Company {
   uuid: string;
 
@@ -131,6 +142,20 @@ export interface UserQueryParams {
   userType?: UserType;
 
   roleUuid?: string;
+
+  sortBy?: UserSortField;
+
+  sortOrder?: SortOrder;
+}
+
+export interface UserPagination {
+  page: number;
+
+  limit: number;
+
+  total: number;
+
+  totalPages: number;
 }
 
 export interface UsersResponse {
@@ -138,13 +163,8 @@ export interface UsersResponse {
 
   users: User[];
 
-  total: number;
-
-  page: number;
-
-  limit: number;
-
-  totalPages: number;
+  pagination:
+    UserPagination;
 }
 
 export interface Permission {
@@ -164,7 +184,8 @@ export interface Permission {
 export interface UserPermissions {
   user: User;
 
-  role: Role | null;
+  role:
+    Role | null;
 
   rolePermissions:
     Permission[];
