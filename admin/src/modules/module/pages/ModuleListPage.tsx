@@ -148,99 +148,90 @@ const ModuleListPage = () => {
     }
   };
 
-  const columns: DataTableColumn[] = [
-    {
-      key: "name",
-      title: "Module",
-    },
-    {
-      key: "code",
-      title: "Code",
-    },
-    {
-      key: "parent",
-      title: "Parent",
-      render: (row) =>
-        row.parent?.name ?? "-",
-    },
-    {
-      key: "route",
-      title: "Route",
-      render: (row) =>
-        row.route || "-",
-    },
-    {
-      key: "isMenu",
-      title: "Menu",
-      align: "center",
-      render: (row) =>
-        row.isMenu ? "Yes" : "No",
-    },
-    {
-      key: "isVisible",
-      title: "Visible",
-      align: "center",
-      render: (row) =>
-        row.isVisible
-          ? "Yes"
-          : "No",
-    },
-    {
-      key: "isSystem",
-      title: "System",
-      align: "center",
-      render: (row) =>
-        row.isSystem
-          ? "Yes"
-          : "No",
-    },
-    {
-      key: "status",
-      title: "Status",
-      align: "center",
-    },
-    {
-      key: "actions",
-      title: "Actions",
-      align: "center",
-      render: (row) => (
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "center",
-            gap: 8,
-          }}
+const columns: DataTableColumn<Module>[] = [
+  {
+    key: "name",
+    title: "Module",
+  },
+  {
+    key: "code",
+    title: "Code",
+  },
+  {
+    key: "parent",
+    title: "Parent",
+    render: (row) =>
+      row.parent?.name ?? "-",
+  },
+  {
+    key: "route",
+    title: "Route",
+    render: (row) =>
+      row.route || "-",
+  },
+  {
+    key: "isMenu",
+    title: "Menu",
+    align: "center",
+    render: (row) =>
+      row.isMenu ? "Yes" : "No",
+  },
+  {
+    key: "isVisible",
+    title: "Visible",
+    align: "center",
+    render: (row) =>
+      row.isVisible ? "Yes" : "No",
+  },
+  {
+    key: "isSystem",
+    title: "System",
+    align: "center",
+    render: (row) =>
+      row.isSystem ? "Yes" : "No",
+  },
+  {
+    key: "status",
+    title: "Status",
+    align: "center",
+  },
+  {
+    key: "actions",
+    title: "Actions",
+    align: "center",
+    render: (row) => (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 8,
+        }}
+      >
+        <Button
+          size="sm"
+          aria-label={`Edit ${row.name}`}
+          onClick={() =>
+            handleOpenEdit(row)
+          }
         >
-          <Button
-            size="sm"
-            aria-label={`Edit ${row.name}`}
-            onClick={() =>
-              handleOpenEdit(row)
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
+          <SquarePen size={16} />
+        </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-            disabled={row.isSystem}
-            aria-label={`Delete ${row.name}`}
-            onClick={() =>
-              handleOpenDelete(row)
-            }
-          >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+        <Button
+          size="sm"
+          variant="danger"
+          disabled={row.isSystem}
+          aria-label={`Delete ${row.name}`}
+          onClick={() =>
+            handleOpenDelete(row)
+          }
+        >
+          <Trash2 size={16} />
+        </Button>
+      </div>
+    ),
+  },
+];
 
   const parentModules = useMemo(
     () =>
