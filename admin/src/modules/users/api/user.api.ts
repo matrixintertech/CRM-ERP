@@ -10,10 +10,15 @@ import type {
 
 interface ApiResponse<T> {
   success: boolean;
+
   statusCode: number;
+
   message: string;
+
   data: T;
+
   timestamp: string;
+
   path: string;
 }
 
@@ -22,7 +27,8 @@ interface ApiResponse<T> {
  * pagination, search, filters and sorting.
  */
 export const getUsers = async (
-  params: UserQueryParams = {},
+  params:
+    UserQueryParams = {},
 ): Promise<UsersResponse> => {
   const { data } =
     await api.get<
@@ -47,6 +53,7 @@ export const getUserByUuid = async (
     await api.get<
       ApiResponse<{
         message: string;
+
         user: User;
       }>
     >(
@@ -58,7 +65,8 @@ export const getUserByUuid = async (
 
 /**
  * Get user role, additional
- * and effective permissions.
+ * and effective permissions
+ * including their scopes.
  */
 export const getUserPermissions =
   async (
@@ -76,11 +84,13 @@ export const getUserPermissions =
 
 /**
  * Replace user-specific
- * additional permissions.
+ * additional permissions
+ * including their scopes.
  */
 export const updateUserPermissions =
   async (
     userUuid: string,
+
     payload:
       UpdateUserPermissionsDto,
   ): Promise<UserPermissions> => {
@@ -89,6 +99,7 @@ export const updateUserPermissions =
         ApiResponse<UserPermissions>
       >(
         `/users/${userUuid}/permissions`,
+
         payload,
       );
 

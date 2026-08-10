@@ -52,7 +52,9 @@ const getErrorMessage = (
   }
 
   if (
-    Array.isArray(errors)
+    Array.isArray(
+      errors,
+    )
   ) {
     return errors.join(
       ", ",
@@ -112,7 +114,9 @@ export const useUsers = (
             staleTime:
               5 * 60 * 1000,
           });
-      } catch (error) {
+      } catch (
+        error
+      ) {
         notify.error(
           getErrorMessage(
             error,
@@ -144,7 +148,9 @@ export const useUsers = (
             staleTime:
               5 * 60 * 1000,
           });
-      } catch (error) {
+      } catch (
+        error
+      ) {
         notify.error(
           getErrorMessage(
             error,
@@ -173,20 +179,24 @@ export const useUsers = (
         ),
 
       onSuccess: async (
-        _response,
+        response,
         variables,
       ) => {
+        /*
+         * Mutation response ko cache me
+         * immediately store karo.
+         */
+        queryClient.setQueryData(
+          [
+            "user-permissions",
+            variables.uuid,
+          ],
+          response,
+        );
+
         notify.success(
           "User permissions updated successfully.",
         );
-
-        await queryClient
-          .invalidateQueries({
-            queryKey: [
-              "user-permissions",
-              variables.uuid,
-            ],
-          });
       },
 
       onError: (

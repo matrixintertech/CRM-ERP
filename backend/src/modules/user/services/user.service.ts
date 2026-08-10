@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionScope,
   Prisma,
   UserStatus,
   UserType,
@@ -242,129 +243,186 @@ async findAll(
    * - additional user permissions
    * - effective permissions
    */
-  async findPermissions(
-    companyId: bigint | null,
-    userUuid: string,
-  ) {
-    const user =
-      await this.userRepository.findUserWithPermissions(
-        companyId,
-        userUuid,
-      );
+async findPermissions(
+  companyId: bigint | null,
+  userUuid: string,
+) {
+  const user =
+    await this.userRepository.findUserWithPermissions(
+      companyId,
+      userUuid,
+    );
 
-    if (!user) {
-      throw new NotFoundException(
-        "User not found.",
-      );
-    }
-
-    const rolePermissions =
-      user.role?.rolePermissions.map(
-        (item) =>
-          item.permission,
-      ) ?? [];
-
-    const additionalPermissions =
-      user.extraPermissions.map(
-        (item) =>
-          item.permission,
-      );
-
-    /*
-     * Role aur additional permissions ko
-     * permission UUID ke basis par merge karo.
-     */
-    const effectivePermissionMap =
-      new Map<
-        string,
-        (typeof additionalPermissions)[number]
-      >();
-
-    for (
-      const permission
-      of rolePermissions
-    ) {
-      effectivePermissionMap.set(
-        permission.uuid,
-        permission,
-      );
-    }
-
-    for (
-      const permission
-      of additionalPermissions
-    ) {
-      effectivePermissionMap.set(
-        permission.uuid,
-        permission,
-      );
-    }
-
-    return {
-      message:
-        "User permissions fetched successfully.",
-
-      user: {
-        uuid:
-          user.uuid,
-
-        displayName:
-          user.displayName,
-
-        email:
-          user.email,
-
-        mobile:
-          user.mobile,
-
-        status:
-          user.status,
-
-        userType:
-          user.userType,
-
-        employee:
-          user.employee
-            ? {
-                uuid:
-                  user.employee.uuid,
-
-                employeeCode:
-                  user.employee
-                    .employeeCode,
-
-                displayName:
-                  user.employee
-                    .displayName,
-              }
-            : null,
-      },
-
-      role:
-        user.role
-          ? {
-              uuid:
-                user.role.uuid,
-
-              name:
-                user.role.name,
-
-              code:
-                user.role.code,
-            }
-          : null,
-
-      rolePermissions,
-
-      additionalPermissions,
-
-      effectivePermissions:
-        Array.from(
-          effectivePermissionMap.values(),
-        ),
-    };
+  if (!user) {
+    throw new NotFoundException(
+      "User not found.",
+    );
   }
 
+  /*
+   * UserPermission company-level
+   * extra grants ke liye hai.
+   *
+   * PLATFORM_OWNER permissions
+   * PlatformRole se manage hongi.
+   */
+  if (
+    user.userType ===
+    UserType.PLATFORM_OWNER
+  ) {
+    throw new BadRequestException(
+      "Platform owner permissions must be managed through platform roles.",
+    );
+  }
+
+  const rolePermissions =
+    user.role
+      ?.rolePermissions
+      .map(
+        (item) => ({
+          ...item.permission,
+
+          scope:
+            item.scope,
+
+          source:
+            "ROLE" as const,
+        }),
+      ) ?? [];
+
+  const additionalPermissions =
+    user.extraPermissions.map(
+      (item) => ({
+        ...item.permission,
+
+        scope:
+          item.scope,
+
+        source:
+          "USER" as const,
+      }),
+    );
+
+  /*
+   * Same permission different scopes ke
+   * saath valid ho sakti hai.
+   *
+   * Example:
+   *
+   * Role:
+   * PROJECT_TASK_VIEW -> OWN
+   *
+   * Direct user grant:
+   * PROJECT_TASK_VIEW -> PROJECT
+   *
+   * Isliye sirf permission UUID ke basis
+   * par merge nahi karna.
+   */
+  type EffectivePermission =
+    | (typeof rolePermissions)[number]
+    | (typeof additionalPermissions)[number];
+
+  const effectivePermissionMap =
+    new Map<
+      string,
+      EffectivePermission
+    >();
+
+  for (
+    const permission
+    of rolePermissions
+  ) {
+    const key =
+      `${permission.uuid}:${permission.scope}`;
+
+    effectivePermissionMap.set(
+      key,
+      permission,
+    );
+  }
+
+  for (
+    const permission
+    of additionalPermissions
+  ) {
+    const key =
+      `${permission.uuid}:${permission.scope}`;
+
+    /*
+     * Same permission + same scope
+     * direct grant ho to USER source
+     * effective result me win karega.
+     */
+    effectivePermissionMap.set(
+      key,
+      permission,
+    );
+  }
+
+  return {
+    message:
+      "User permissions fetched successfully.",
+
+    user: {
+      uuid:
+        user.uuid,
+
+      displayName:
+        user.displayName,
+
+      email:
+        user.email,
+
+      mobile:
+        user.mobile,
+
+      status:
+        user.status,
+
+      userType:
+        user.userType,
+
+      employee:
+        user.employee
+          ? {
+              uuid:
+                user.employee.uuid,
+
+              employeeCode:
+                user.employee
+                  .employeeCode,
+
+              displayName:
+                user.employee
+                  .displayName,
+            }
+          : null,
+    },
+
+    role:
+      user.role
+        ? {
+            uuid:
+              user.role.uuid,
+
+            name:
+              user.role.name,
+
+            code:
+              user.role.code,
+          }
+        : null,
+
+    rolePermissions,
+
+    additionalPermissions,
+
+    effectivePermissions:
+      Array.from(
+        effectivePermissionMap.values(),
+      ),
+  };
+}
 
 
   /*
@@ -372,87 +430,135 @@ async findAll(
    *
    * Role permissions is method se change nahi hongi.
    */
-  async updatePermissions(
-    companyId: bigint | null,
-    userUuid: string,
-    dto: AssignUserPermissionsDto,
-  ) {
-    const user =
-      await this.userRepository.findUserWithPermissions(
-        companyId,
-        userUuid,
-      );
-
-    if (!user) {
-      throw new NotFoundException(
-        "User not found.",
-      );
-    }
-
-    const uniquePermissionUuids =
-      Array.from(
-        new Set(
-          dto.permissionUuids,
-        ),
-      );
-
-    const permissions =
-      uniquePermissionUuids.length > 0
-        ? await this.userRepository
-            .findActivePermissionsByUuids(
-              uniquePermissionUuids,
-            )
-        : [];
-
-    if (
-      permissions.length !==
-      uniquePermissionUuids.length
-    ) {
-      throw new BadRequestException(
-        "One or more permissions are invalid or inactive.",
-      );
-    }
-
-    /*
-     * Role se already inherited permissions ko
-     * UserPermission table me duplicate save nahi karna.
-     */
-    const rolePermissionIds =
-      new Set(
-        user.role?.rolePermissions.map(
-          (item) =>
-            item.permissionId,
-        ) ?? [],
-      );
-
-    const additionalPermissionIds =
-      permissions
-        .filter(
-          (permission) =>
-            !rolePermissionIds.has(
-              permission.id,
-            ),
-        )
-        .map(
-          (permission) =>
-            permission.id,
-        );
-
-    await this.userRepository.replaceUserPermissions(
-      user.id,
-      additionalPermissionIds,
-    );
-
-    /*
-     * Save hone ke baad fresh permission
-     * response return karo.
-     */
-    return this.findPermissions(
+async updatePermissions(
+  companyId: bigint | null,
+  userUuid: string,
+  dto: AssignUserPermissionsDto,
+) {
+  const user =
+    await this.userRepository.findUserWithPermissions(
       companyId,
       userUuid,
     );
+
+  if (!user) {
+    throw new NotFoundException(
+      "User not found.",
+    );
   }
 
+  /*
+   * PLATFORM_OWNER ke permissions
+   * UserPermission se manage nahi hongi.
+   */
+  if (
+    user.userType ===
+    UserType.PLATFORM_OWNER
+  ) {
+    throw new BadRequestException(
+      "Platform owner permissions must be managed through platform roles.",
+    );
+  }
+
+  const uniquePermissionUuids =
+    Array.from(
+      new Set(
+        dto.permissions.map(
+          (item) =>
+            item.permissionUuid,
+        ),
+      ),
+    );
+
+  const permissions =
+    uniquePermissionUuids.length >
+      0
+      ? await this.userRepository
+          .findActivePermissionsByUuids(
+            uniquePermissionUuids,
+          )
+      : [];
+
+  /*
+   * Repository already COMPANY type +
+   * ACTIVE + non-deleted permissions
+   * only return karta hai.
+   */
+  if (
+    permissions.length !==
+    uniquePermissionUuids.length
+  ) {
+    throw new BadRequestException(
+      "One or more permissions are invalid, inactive, or not valid for company users.",
+    );
+  }
+
+  const permissionByUuid =
+    new Map(
+      permissions.map(
+        (permission) => [
+          permission.uuid,
+          permission,
+        ],
+      ),
+    );
+
+  const assignments =
+    dto.permissions.map(
+      (item) => {
+        const permission =
+          permissionByUuid.get(
+            item.permissionUuid,
+          );
+
+        if (!permission) {
+          /*
+           * Count validation above ke baad
+           * normally ye branch execute nahi hogi.
+           */
+          throw new BadRequestException(
+            "Invalid permission.",
+          );
+        }
+
+        return {
+          permissionId:
+            permission.id,
+
+          scope:
+            item.scope,
+        };
+      },
+    );
+
+  /*
+   * IMPORTANT:
+   *
+   * Role me same permission already ho
+   * tab bhi direct grant save kar sakte hain.
+   *
+   * Example:
+   *
+   * Role -> VIEW_TASK OWN
+   * User -> VIEW_TASK PROJECT
+   *
+   * Direct grant role permission ko
+   * replace nahi karta; access extend karta hai.
+   */
+  await this.userRepository.replaceUserPermissions(
+    user.id,
+    assignments,
+  );
+
+  /*
+   * Fresh role + user + effective
+   * permissions return karo.
+   */
+  return this.findPermissions(
+    companyId,
+    userUuid,
+  );
+}
 
 
   async createEmployeeUserAccount(

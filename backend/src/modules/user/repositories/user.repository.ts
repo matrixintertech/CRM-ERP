@@ -3,6 +3,8 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionScope,
+  PermissionType,
   Prisma,
   Status,
   UserStatus,
@@ -34,6 +36,12 @@ export interface UserListQuery {
   sortOrder?:
     | "asc"
     | "desc";
+}
+
+export interface UserPermissionAssignment {
+  permissionId: bigint;
+
+  scope: PermissionScope;
 }
 
 @Injectable()
@@ -109,6 +117,7 @@ export class UserRepository {
     name: true,
     code: true,
     description: true,
+    type: true,
     status: true,
   } satisfies Prisma.PermissionSelect;
 
@@ -126,229 +135,232 @@ export class UserRepository {
     });
   }
 
-async findAll(
-  companyId: bigint | null,
-  query: UserListQuery = {},
-) {
-  const page =
-    Math.max(
-      1,
-      query.page ?? 1,
-    );
-
-  const limit =
-    Math.min(
+  async findAll(
+    companyId: bigint | null,
+    query: UserListQuery = {},
+  ) {
+    const page =
       Math.max(
         1,
-        query.limit ?? 10,
-      ),
-      100,
-    );
+        query.page ?? 1,
+      );
 
-  const skip =
-    (page - 1) *
-    limit;
-
-  const normalizedSearch =
-    query.search
-      ?.trim();
-
-  const sortBy =
-    query.sortBy ??
-    "createdAt";
-
-  const sortOrder:
-    Prisma.SortOrder =
-      query.sortOrder ??
-      "desc";
-
-  const where:
-    Prisma.UserWhereInput = {
-      deletedAt:
-        null,
-
-      ...(companyId !== null && {
-        companyId,
-      }),
-
-      ...(query.status !==
-        undefined && {
-        status:
-          query.status,
-      }),
-
-      ...(query.userType !==
-        undefined && {
-        userType:
-          query.userType,
-      }),
-
-      ...(query.roleId !==
-        undefined && {
-        roleId:
-          query.roleId,
-      }),
-
-      ...(normalizedSearch && {
-        OR: [
-          {
-            displayName: {
-              contains:
-                normalizedSearch,
-
-              mode:
-                "insensitive",
-            },
-          },
-
-          {
-            email: {
-              contains:
-                normalizedSearch,
-
-              mode:
-                "insensitive",
-            },
-          },
-
-          {
-            mobile: {
-              contains:
-                normalizedSearch,
-            },
-          },
-
-          {
-            employee: {
-              is: {
-                employeeCode: {
-                  contains:
-                    normalizedSearch,
-
-                  mode:
-                    "insensitive",
-                },
-              },
-            },
-          },
-
-          {
-            employee: {
-              is: {
-                displayName: {
-                  contains:
-                    normalizedSearch,
-
-                  mode:
-                    "insensitive",
-                },
-              },
-            },
-          },
-
-          {
-            role: {
-              is: {
-                name: {
-                  contains:
-                    normalizedSearch,
-
-                  mode:
-                    "insensitive",
-                },
-              },
-            },
-          },
-        ],
-      }),
-    };
-
-  let orderBy:
-    Prisma.UserOrderByWithRelationInput;
-
-  switch (sortBy) {
-    case "name":
-      orderBy = {
-        displayName:
-          sortOrder,
-      };
-      break;
-
-    case "email":
-      orderBy = {
-        email:
-          sortOrder,
-      };
-      break;
-
-    case "status":
-      orderBy = {
-        status:
-          sortOrder,
-      };
-      break;
-
-    case "userType":
-      orderBy = {
-        userType:
-          sortOrder,
-      };
-      break;
-
-    case "createdAt":
-    default:
-      orderBy = {
-        createdAt:
-          sortOrder,
-      };
-      break;
-  }
-
-  const [
-    users,
-    total,
-  ] =
-    await this.prisma.$transaction([
-      this.prisma.user.findMany({
-        where,
-
-        include:
-          this.userInclude,
-
-        skip,
-
-        take:
-          limit,
-
-        orderBy,
-      }),
-
-      this.prisma.user.count({
-        where,
-      }),
-    ]);
-
-  return {
-    users,
-
-    pagination: {
-      page,
-
-      limit,
-
-      total,
-
-      totalPages:
+    const limit =
+      Math.min(
         Math.max(
           1,
-          Math.ceil(
-            total /
-              limit,
-          ),
+          query.limit ?? 10,
         ),
-    },
-  };
-}
+        100,
+      );
+
+    const skip =
+      (page - 1) *
+      limit;
+
+    const normalizedSearch =
+      query.search
+        ?.trim();
+
+    const sortBy =
+      query.sortBy ??
+      "createdAt";
+
+    const sortOrder:
+      Prisma.SortOrder =
+        query.sortOrder ??
+        "desc";
+
+    const where:
+      Prisma.UserWhereInput = {
+        deletedAt:
+          null,
+
+        ...(companyId !==
+          null && {
+          companyId,
+        }),
+
+        ...(query.status !==
+          undefined && {
+          status:
+            query.status,
+        }),
+
+        ...(query.userType !==
+          undefined && {
+          userType:
+            query.userType,
+        }),
+
+        ...(query.roleId !==
+          undefined && {
+          roleId:
+            query.roleId,
+        }),
+
+        ...(normalizedSearch && {
+          OR: [
+            {
+              displayName: {
+                contains:
+                  normalizedSearch,
+
+                mode:
+                  "insensitive",
+              },
+            },
+
+            {
+              email: {
+                contains:
+                  normalizedSearch,
+
+                mode:
+                  "insensitive",
+              },
+            },
+
+            {
+              mobile: {
+                contains:
+                  normalizedSearch,
+              },
+            },
+
+            {
+              employee: {
+                is: {
+                  employeeCode: {
+                    contains:
+                      normalizedSearch,
+
+                    mode:
+                      "insensitive",
+                  },
+                },
+              },
+            },
+
+            {
+              employee: {
+                is: {
+                  displayName: {
+                    contains:
+                      normalizedSearch,
+
+                    mode:
+                      "insensitive",
+                  },
+                },
+              },
+            },
+
+            {
+              role: {
+                is: {
+                  name: {
+                    contains:
+                      normalizedSearch,
+
+                    mode:
+                      "insensitive",
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      };
+
+    let orderBy:
+      Prisma.UserOrderByWithRelationInput;
+
+    switch (
+      sortBy
+    ) {
+      case "name":
+        orderBy = {
+          displayName:
+            sortOrder,
+        };
+        break;
+
+      case "email":
+        orderBy = {
+          email:
+            sortOrder,
+        };
+        break;
+
+      case "status":
+        orderBy = {
+          status:
+            sortOrder,
+        };
+        break;
+
+      case "userType":
+        orderBy = {
+          userType:
+            sortOrder,
+        };
+        break;
+
+      case "createdAt":
+      default:
+        orderBy = {
+          createdAt:
+            sortOrder,
+        };
+        break;
+    }
+
+    const [
+      users,
+      total,
+    ] =
+      await this.prisma.$transaction([
+        this.prisma.user.findMany({
+          where,
+
+          include:
+            this.userInclude,
+
+          skip,
+
+          take:
+            limit,
+
+          orderBy,
+        }),
+
+        this.prisma.user.count({
+          where,
+        }),
+      ]);
+
+    return {
+      users,
+
+      pagination: {
+        page,
+
+        limit,
+
+        total,
+
+        totalPages:
+          Math.max(
+            1,
+            Math.ceil(
+              total /
+                limit,
+            ),
+          ),
+      },
+    };
+  }
 
   async findById(
     id: bigint,
@@ -356,7 +368,9 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         id,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
       include:
@@ -371,9 +385,12 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         uuid,
-        deletedAt: null,
 
-        ...(companyId !== null && {
+        deletedAt:
+          null,
+
+        ...(companyId !==
+          null && {
           companyId,
         }),
       },
@@ -389,7 +406,9 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         email,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -400,7 +419,9 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         mobile,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -412,8 +433,11 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         companyId,
+
         employeeId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
       include:
@@ -428,7 +452,9 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         companyId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
 
         employee: {
           is: {
@@ -453,9 +479,12 @@ async findAll(
     return this.prisma.user.findFirst({
       where: {
         uuid,
-        deletedAt: null,
 
-        ...(companyId !== null && {
+        deletedAt:
+          null,
+
+        ...(companyId !==
+          null && {
           companyId,
         }),
       },
@@ -509,6 +538,9 @@ async findAll(
             rolePermissions: {
               where: {
                 permission: {
+                  type:
+                    PermissionType.COMPANY,
+
                   status:
                     Status.ACTIVE,
 
@@ -530,6 +562,9 @@ async findAll(
         extraPermissions: {
           where: {
             permission: {
+              type:
+                PermissionType.COMPANY,
+
               status:
                 Status.ACTIVE,
 
@@ -553,7 +588,8 @@ async findAll(
     permissionUuids: string[],
   ) {
     if (
-      permissionUuids.length === 0
+      permissionUuids.length ===
+      0
     ) {
       return [];
     }
@@ -564,6 +600,9 @@ async findAll(
           in:
             permissionUuids,
         },
+
+        type:
+          PermissionType.COMPANY,
 
         status:
           Status.ACTIVE,
@@ -579,10 +618,13 @@ async findAll(
 
   async replaceUserPermissions(
     userId: bigint,
-    permissionIds: bigint[],
+    assignments:
+      UserPermissionAssignment[],
   ) {
     return this.prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         await tx.userPermission.deleteMany({
           where: {
             userId,
@@ -590,16 +632,22 @@ async findAll(
         });
 
         if (
-          permissionIds.length > 0
+          assignments.length >
+          0
         ) {
           await tx.userPermission.createMany({
             data:
-              permissionIds.map(
+              assignments.map(
                 (
-                  permissionId,
+                  assignment,
                 ) => ({
                   userId,
-                  permissionId,
+
+                  permissionId:
+                    assignment.permissionId,
+
+                  scope:
+                    assignment.scope,
                 }),
               ),
 
@@ -611,6 +659,17 @@ async findAll(
         return tx.userPermission.findMany({
           where: {
             userId,
+
+            permission: {
+              type:
+                PermissionType.COMPANY,
+
+              status:
+                Status.ACTIVE,
+
+              deletedAt:
+                null,
+            },
           },
 
           include: {
@@ -633,7 +692,8 @@ async findAll(
 
   async update(
     id: bigint,
-    data: Prisma.UserUpdateInput,
+    data:
+      Prisma.UserUpdateInput,
   ) {
     return this.prisma.user.update({
       where: {

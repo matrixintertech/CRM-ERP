@@ -293,7 +293,7 @@ export class UserController {
   )
   @ApiOperation({
     summary:
-      "Get User Permissions",
+      "Assign Additional Permissions With Scope To User",
   })
   @ApiParam({
     name:

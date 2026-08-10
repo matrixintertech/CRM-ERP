@@ -49,6 +49,7 @@ import UserPermissionsModal from "../components/UserPermissionsModal";
 import type {
   SortOrder,
   User,
+  UserPermissionAssignment,
   UserPermissions,
   UserQueryParams,
   UserSortField,
@@ -469,10 +470,6 @@ const groupedPermissionsQuery =
           },
         );
 
-        notify.success(
-          "User account updated successfully.",
-        );
-
         await refetch();
 
         setOpenEdit(
@@ -506,54 +503,69 @@ const groupedPermissionsQuery =
       }
     };
 
-  const handleSavePermissions =
-    async (
-      permissionUuids:
-        string[],
-    ) => {
-      if (
-        !permissionUserUuid
-      ) {
-        notify.error(
-          "User is not selected.",
+ const handleSavePermissions =
+  async (
+    selectedPermissions:
+      UserPermissionAssignment[],
+  ) => {
+    if (
+      !permissionUserUuid
+    ) {
+      notify.error(
+        "User is not selected.",
+      );
+
+      return;
+    }
+
+    try {
+      const updatedPermissions =
+        await savePermissions(
+          permissionUserUuid,
+          {
+            permissions:
+              selectedPermissions,
+          },
         );
 
-        return;
-      }
+      setPermissions(
+        updatedPermissions,
+      );
 
-      try {
-        const updatedPermissions =
-          await savePermissions(
-            permissionUserUuid,
-            {
-              permissionUuids,
-            },
-          );
+      notify.success(
+        "User permissions updated successfully.",
+      );
 
-        setPermissions(
-          updatedPermissions,
-        );
+      setOpenPermissions(
+        false,
+      );
 
-        setOpenPermissions(
-          false,
-        );
+      setPermissionUserUuid(
+        null,
+      );
 
-        setPermissionUserUuid(
-          null,
-        );
+      setPermissions(
+        null,
+      );
+    } catch (
+      error: unknown
+    ) {
+      const apiError =
+        error as {
+          response?: {
+            data?: {
+              message?: string;
+            };
+          };
+        };
 
-        setPermissions(
-          null,
-        );
-      } catch (
-        error
-      ) {
-        console.error(
-          "Failed to save user permissions:",
-          error,
-        );
-      }
-    };
+      notify.error(
+        apiError.response
+          ?.data?.message ??
+          "Failed to save user permissions.",
+      );
+    }
+  };
 
   const pageLoading =
     loading;

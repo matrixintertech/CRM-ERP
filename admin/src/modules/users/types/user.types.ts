@@ -22,6 +22,17 @@ export type SortOrder =
   | "asc"
   | "desc";
 
+export type PermissionScope =
+  | "OWN"
+  | "TEAM"
+  | "ORGANIZATION_UNIT"
+  | "PROJECT"
+  | "COMPANY";
+
+export type PermissionSource =
+  | "ROLE"
+  | "USER";
+
 export interface Company {
   uuid: string;
 
@@ -178,7 +189,18 @@ export interface Permission {
 
   description?: string | null;
 
+  type?: "COMPANY" | "PLATFORM";
+
   status: string;
+}
+
+export interface ScopedPermission
+  extends Permission {
+  scope:
+    PermissionScope;
+
+  source:
+    PermissionSource;
 }
 
 export interface UserPermissions {
@@ -188,15 +210,24 @@ export interface UserPermissions {
     Role | null;
 
   rolePermissions:
-    Permission[];
+    ScopedPermission[];
 
   additionalPermissions:
-    Permission[];
+    ScopedPermission[];
 
   effectivePermissions:
-    Permission[];
+    ScopedPermission[];
+}
+
+export interface UserPermissionAssignment {
+  permissionUuid:
+    string;
+
+  scope:
+    PermissionScope;
 }
 
 export interface UpdateUserPermissionsDto {
-  permissionUuids: string[];
+  permissions:
+    UserPermissionAssignment[];
 }

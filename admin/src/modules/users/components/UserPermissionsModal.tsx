@@ -9,6 +9,8 @@ import Modal from "@/shared/components/Modal";
 
 import type {
   Permission,
+  PermissionScope,
+  UserPermissionAssignment,
   UserPermissions,
 } from "../types/user.types";
 
@@ -27,15 +29,43 @@ interface Props {
   onClose: () => void;
 
   onSubmit: (
-    permissionUuids: string[],
+    permissions:
+      UserPermissionAssignment[],
   ) => Promise<void>;
 }
 
 interface PermissionGroup {
   module: string;
 
-  permissions: Permission[];
+  permissions:
+    Permission[];
 }
+
+const scopeOptions: Array<{
+  value: PermissionScope;
+  label: string;
+}> = [
+  {
+    value: "OWN",
+    label: "Own",
+  },
+  {
+    value: "TEAM",
+    label: "Team",
+  },
+  {
+    value: "ORGANIZATION_UNIT",
+    label: "Organization Unit",
+  },
+  {
+    value: "PROJECT",
+    label: "Project",
+  },
+  {
+    value: "COMPANY",
+    label: "Company",
+  },
+];
 
 const formatModuleName = (
   value: string,
@@ -50,6 +80,14 @@ const formatModuleName = (
     )
     .join(" ");
 
+const formatScope = (
+  scope: PermissionScope,
+) =>
+  scopeOptions.find(
+    (option) =>
+      option.value === scope,
+  )?.label ?? scope;
+
 const UserPermissionsModal = ({
   open,
   loading,
@@ -59,15 +97,20 @@ const UserPermissionsModal = ({
   onSubmit,
 }: Props) => {
   const [
-    selectedPermissionUuids,
-    setSelectedPermissionUuids,
-  ] = useState<string[]>([]);
+    selectedPermissions,
+    setSelectedPermissions,
+  ] = useState<
+    UserPermissionAssignment[]
+  >([]);
 
   const [
     search,
     setSearch,
   ] = useState("");
 
+  /*
+   * Existing direct user grants load karo.
+   */
   useEffect(() => {
     if (
       !open ||
@@ -76,10 +119,15 @@ const UserPermissionsModal = ({
       return;
     }
 
-    setSelectedPermissionUuids(
+    setSelectedPermissions(
       permissions.additionalPermissions.map(
-        (permission) =>
-          permission.uuid,
+        (permission) => ({
+          permissionUuid:
+            permission.uuid,
+
+          scope:
+            permission.scope,
+        }),
       ),
     );
 
@@ -89,22 +137,55 @@ const UserPermissionsModal = ({
     permissions,
   ]);
 
-  const rolePermissionUuids =
+  /*
+   * Role permission lookup.
+   *
+   * Role grant informational hai.
+   * Same permission direct user grant
+   * ke through bhi assign ho sakti hai.
+   */
+  const rolePermissionMap =
     useMemo(
       () =>
-        new Set(
-          permissions
-            ?.rolePermissions
-            .map(
-              (permission) =>
-                permission.uuid,
-            ) ?? [],
+        new Map(
+          (
+            permissions
+              ?.rolePermissions ??
+            []
+          ).map(
+            (permission) => [
+              permission.uuid,
+              permission,
+            ],
+          ),
         ),
       [
         permissions,
       ],
     );
 
+  const selectedPermissionMap =
+    useMemo(
+      () =>
+        new Map(
+          selectedPermissions.map(
+            (permission) => [
+              permission.permissionUuid,
+              permission,
+            ],
+          ),
+        ),
+      [
+        selectedPermissions,
+      ],
+    );
+
+  /*
+   * Only company permissions show karo.
+   *
+   * type optional hai backward
+   * compatibility ke liye.
+   */
   const groupedPermissions =
     useMemo<
       PermissionGroup[]
@@ -117,7 +198,17 @@ const UserPermissionsModal = ({
       const filteredPermissions =
         allPermissions.filter(
           (permission) => {
-            if (!normalizedSearch) {
+            if (
+              permission.type &&
+              permission.type !==
+                "COMPANY"
+            ) {
+              return false;
+            }
+
+            if (
+              !normalizedSearch
+            ) {
               return true;
             }
 
@@ -202,105 +293,139 @@ const UserPermissionsModal = ({
       search,
     ]);
 
+  /*
+   * Checkbox represents DIRECT user grant.
+   *
+   * Role permission checkbox ko block
+   * nahi karegi.
+   */
   const handlePermissionChange = (
     permissionUuid: string,
   ) => {
-    if (
-      rolePermissionUuids.has(
-        permissionUuid,
-      )
-    ) {
-      return;
-    }
-
-    setSelectedPermissionUuids(
-      (previous) =>
-        previous.includes(
-          permissionUuid,
-        )
-          ? previous.filter(
-              (uuid) =>
-                uuid !==
-                permissionUuid,
-            )
-          : [
-              ...previous,
+    setSelectedPermissions(
+      (previous) => {
+        const exists =
+          previous.some(
+            (permission) =>
+              permission.permissionUuid ===
               permissionUuid,
-            ],
+          );
+
+        if (exists) {
+          return previous.filter(
+            (permission) =>
+              permission.permissionUuid !==
+              permissionUuid,
+          );
+        }
+
+        return [
+          ...previous,
+          {
+            permissionUuid,
+
+            scope:
+              "OWN",
+          },
+        ];
+      },
     );
   };
 
+  const handleScopeChange = (
+    permissionUuid: string,
+    scope: PermissionScope,
+  ) => {
+    setSelectedPermissions(
+      (previous) =>
+        previous.map(
+          (permission) =>
+            permission.permissionUuid ===
+            permissionUuid
+              ? {
+                  ...permission,
+
+                  scope,
+                }
+              : permission,
+        ),
+    );
+  };
+
+  /*
+   * Select all = direct grants.
+   *
+   * Existing scopes preserve rahenge.
+   * New grants default OWN honge.
+   */
   const handleModuleSelectAll = (
     group: PermissionGroup,
   ) => {
-    const selectablePermissions =
-      group.permissions.filter(
-        (permission) =>
-          !rolePermissionUuids.has(
-            permission.uuid,
-          ),
-      );
-
-    if (
-      selectablePermissions.length ===
-      0
-    ) {
-      return;
-    }
-
     const allSelected =
-      selectablePermissions.every(
+      group.permissions.every(
         (permission) =>
-          selectedPermissionUuids.includes(
+          selectedPermissionMap.has(
             permission.uuid,
           ),
       );
 
-    setSelectedPermissionUuids(
+    setSelectedPermissions(
       (previous) => {
         if (allSelected) {
           const modulePermissionUuids =
             new Set(
-              selectablePermissions.map(
+              group.permissions.map(
                 (permission) =>
                   permission.uuid,
               ),
             );
 
           return previous.filter(
-            (uuid) =>
+            (permission) =>
               !modulePermissionUuids.has(
-                uuid,
+                permission.permissionUuid,
               ),
           );
         }
 
-        return Array.from(
-          new Set([
-            ...previous,
-
-            ...selectablePermissions.map(
+        const existingUuids =
+          new Set(
+            previous.map(
               (permission) =>
-                permission.uuid,
+                permission.permissionUuid,
             ),
-          ]),
-        );
+          );
+
+        const additions =
+          group.permissions
+            .filter(
+              (permission) =>
+                !existingUuids.has(
+                  permission.uuid,
+                ),
+            )
+            .map(
+              (permission) => ({
+                permissionUuid:
+                  permission.uuid,
+
+                scope:
+                  "OWN" as PermissionScope,
+              }),
+            );
+
+        return [
+          ...previous,
+          ...additions,
+        ];
       },
     );
   };
 
   const handleSave =
     async () => {
-      const additionalPermissions =
-        selectedPermissionUuids.filter(
-          (uuid) =>
-            !rolePermissionUuids.has(
-              uuid,
-            ),
-        );
-
       await onSubmit(
-        additionalPermissions,
+        selectedPermissions,
       );
     };
 
@@ -312,14 +437,46 @@ const UserPermissionsModal = ({
       ?.displayName ??
     "User";
 
+  /*
+   * Effective grants scope-wise count.
+   *
+   * Same permission:
+   * ROLE OWN + USER PROJECT
+   * = 2 effective grants.
+   */
   const effectivePermissionCount =
-    new Set([
-      ...Array.from(
-        rolePermissionUuids,
-      ),
+    useMemo(
+      () => {
+        const grants =
+          new Set<string>();
 
-      ...selectedPermissionUuids,
-    ]).size;
+        for (
+          const permission
+          of permissions
+            ?.rolePermissions ??
+          []
+        ) {
+          grants.add(
+            `${permission.uuid}:${permission.scope}`,
+          );
+        }
+
+        for (
+          const permission
+          of selectedPermissions
+        ) {
+          grants.add(
+            `${permission.permissionUuid}:${permission.scope}`,
+          );
+        }
+
+        return grants.size;
+      },
+      [
+        permissions,
+        selectedPermissions,
+      ],
+    );
 
   return (
     <Modal
@@ -380,8 +537,7 @@ const UserPermissionsModal = ({
                   color:
                     "#6b7280",
 
-                  fontSize:
-                    14,
+                  fontSize: 14,
 
                   overflowWrap:
                     "anywhere",
@@ -409,8 +565,7 @@ const UserPermissionsModal = ({
                 color:
                   "#1d4ed8",
 
-                fontSize:
-                  13,
+                fontSize: 13,
 
                 fontWeight:
                   600,
@@ -427,177 +582,36 @@ const UserPermissionsModal = ({
 
           <section
             style={{
-              display:
-                "grid",
+              display: "grid",
 
               gridTemplateColumns:
                 "repeat(3, minmax(0, 1fr))",
 
-              gap:
-                12,
+              gap: 12,
             }}
           >
-            <div
-              style={{
-                minWidth: 0,
+            <SummaryCard
+              label="Role Permissions"
+              value={
+                permissions
+                  .rolePermissions
+                  .length
+              }
+            />
 
-                padding:
-                  14,
+            <SummaryCard
+              label="Additional Permissions"
+              value={
+                selectedPermissions.length
+              }
+            />
 
-                background:
-                  "#f8fafc",
-
-                border:
-                  "1px solid #e5e7eb",
-
-                borderRadius:
-                  10,
-              }}
-            >
-              <div
-                style={{
-                  color:
-                    "#6b7280",
-
-                  fontSize:
-                    12,
-
-                  lineHeight:
-                    1.4,
-                }}
-              >
-                Role Permissions
-              </div>
-
-              <strong
-                style={{
-                  display:
-                    "block",
-
-                  marginTop:
-                    4,
-
-                  color:
-                    "#111827",
-
-                  fontSize:
-                    20,
-                }}
-              >
-                {
-                  permissions
-                    .rolePermissions
-                    .length
-                }
-              </strong>
-            </div>
-
-            <div
-              style={{
-                minWidth: 0,
-
-                padding:
-                  14,
-
-                background:
-                  "#f8fafc",
-
-                border:
-                  "1px solid #e5e7eb",
-
-                borderRadius:
-                  10,
-              }}
-            >
-              <div
-                style={{
-                  color:
-                    "#6b7280",
-
-                  fontSize:
-                    12,
-
-                  lineHeight:
-                    1.4,
-                }}
-              >
-                Additional Permissions
-              </div>
-
-              <strong
-                style={{
-                  display:
-                    "block",
-
-                  marginTop:
-                    4,
-
-                  color:
-                    "#111827",
-
-                  fontSize:
-                    20,
-                }}
-              >
-                {
-                  selectedPermissionUuids
-                    .length
-                }
-              </strong>
-            </div>
-
-            <div
-              style={{
-                minWidth: 0,
-
-                padding:
-                  14,
-
-                background:
-                  "#f8fafc",
-
-                border:
-                  "1px solid #e5e7eb",
-
-                borderRadius:
-                  10,
-              }}
-            >
-              <div
-                style={{
-                  color:
-                    "#6b7280",
-
-                  fontSize:
-                    12,
-
-                  lineHeight:
-                    1.4,
-                }}
-              >
-                Effective Permissions
-              </div>
-
-              <strong
-                style={{
-                  display:
-                    "block",
-
-                  marginTop:
-                    4,
-
-                  color:
-                    "#111827",
-
-                  fontSize:
-                    20,
-                }}
-              >
-                {
-                  effectivePermissionCount
-                }
-              </strong>
-            </div>
+            <SummaryCard
+              label="Effective Grants"
+              value={
+                effectivePermissionCount
+              }
+            />
           </section>
 
           {/* Search */}
@@ -606,15 +620,15 @@ const UserPermissionsModal = ({
             type="search"
             placeholder="Search by permission name, code or module..."
             value={search}
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               setSearch(
                 event.target.value,
               )
             }
             style={{
-              width:
-                "100%",
-
+              width: "100%",
               boxSizing:
                 "border-box",
 
@@ -630,11 +644,9 @@ const UserPermissionsModal = ({
               color:
                 "#111827",
 
-              fontSize:
-                14,
+              fontSize: 14,
 
-              outline:
-                "none",
+              outline: "none",
             }}
           />
 
@@ -642,11 +654,8 @@ const UserPermissionsModal = ({
 
           <div
             style={{
-              display:
-                "grid",
-
-              gap:
-                16,
+              display: "grid",
+              gap: 16,
 
               maxHeight:
                 "55vh",
@@ -657,19 +666,16 @@ const UserPermissionsModal = ({
               overflowX:
                 "hidden",
 
-              paddingRight:
-                8,
+              paddingRight: 8,
 
-              paddingBottom:
-                4,
+              paddingBottom: 4,
             }}
           >
             {groupedPermissions.length ===
             0 ? (
               <div
                 style={{
-                  padding:
-                    32,
+                  padding: 32,
 
                   border:
                     "1px dashed #d1d5db",
@@ -689,24 +695,15 @@ const UserPermissionsModal = ({
             ) : (
               groupedPermissions.map(
                 (group) => {
-                  const selectable =
-                    group.permissions.filter(
-                      (
-                        permission,
-                      ) =>
-                        !rolePermissionUuids.has(
-                          permission.uuid,
-                        ),
-                    );
-
                   const moduleSelected =
-                    selectable.length >
+                    group.permissions
+                      .length >
                       0 &&
-                    selectable.every(
+                    group.permissions.every(
                       (
                         permission,
                       ) =>
-                        selectedPermissionUuids.includes(
+                        selectedPermissionMap.has(
                           permission.uuid,
                         ),
                     );
@@ -743,8 +740,7 @@ const UserPermissionsModal = ({
                           flexWrap:
                             "wrap",
 
-                          gap:
-                            12,
+                          gap: 12,
 
                           padding:
                             "14px 16px",
@@ -754,27 +750,10 @@ const UserPermissionsModal = ({
 
                           borderBottom:
                             "1px solid #e5e7eb",
-
-                          borderTopLeftRadius:
-                            12,
-
-                          borderTopRightRadius:
-                            12,
                         }}
                       >
                         <div>
-                          <strong
-                            style={{
-                              display:
-                                "block",
-
-                              color:
-                                "#111827",
-
-                              fontSize:
-                                15,
-                            }}
-                          >
+                          <strong>
                             {formatModuleName(
                               group.module,
                             )}
@@ -785,8 +764,7 @@ const UserPermissionsModal = ({
                               display:
                                 "block",
 
-                              marginTop:
-                                3,
+                              marginTop: 3,
 
                               color:
                                 "#6b7280",
@@ -801,7 +779,8 @@ const UserPermissionsModal = ({
                                 .length
                             }{" "}
                             permission
-                            {group.permissions
+                            {group
+                              .permissions
                               .length !==
                             1
                               ? "s"
@@ -809,64 +788,39 @@ const UserPermissionsModal = ({
                           </span>
                         </div>
 
-                        {selectable.length >
-                          0 && (
-                          <label
-                            style={{
-                              display:
-                                "flex",
+                        <label
+                          style={{
+                            display:
+                              "flex",
 
-                              alignItems:
-                                "center",
+                            alignItems:
+                              "center",
 
-                              gap:
-                                8,
+                            gap: 8,
 
-                              padding:
-                                "7px 10px",
+                            cursor:
+                              loading
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={
+                              moduleSelected
+                            }
+                            disabled={
+                              loading
+                            }
+                            onChange={() =>
+                              handleModuleSelectAll(
+                                group,
+                              )
+                            }
+                          />
 
-                              border:
-                                "1px solid #d1d5db",
-
-                              borderRadius:
-                                8,
-
-                              background:
-                                "#ffffff",
-
-                              color:
-                                "#374151",
-
-                              fontSize:
-                                13,
-
-                              fontWeight:
-                                500,
-
-                              cursor:
-                                loading
-                                  ? "not-allowed"
-                                  : "pointer",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={
-                                moduleSelected
-                              }
-                              disabled={
-                                loading
-                              }
-                              onChange={() =>
-                                handleModuleSelectAll(
-                                  group,
-                                )
-                              }
-                            />
-
-                            Select all
-                          </label>
-                        )}
+                          Direct grant all
+                        </label>
                       </div>
 
                       {/* Permission Rows */}
@@ -876,36 +830,32 @@ const UserPermissionsModal = ({
                           display:
                             "grid",
 
-                          gridTemplateColumns:
-                            "minmax(0, 1fr)",
+                          gap: 10,
 
-                          gap:
-                            10,
-
-                          padding:
-                            14,
+                          padding: 14,
                         }}
                       >
                         {group.permissions.map(
                           (
                             permission,
                           ) => {
-                            const inherited =
-                              rolePermissionUuids.has(
+                            const rolePermission =
+                              rolePermissionMap.get(
+                                permission.uuid,
+                              );
+
+                            const additionalPermission =
+                              selectedPermissionMap.get(
                                 permission.uuid,
                               );
 
                             const additional =
-                              selectedPermissionUuids.includes(
-                                permission.uuid,
+                              Boolean(
+                                additionalPermission,
                               );
 
-                            const checked =
-                              inherited ||
-                              additional;
-
                             return (
-                              <label
+                              <div
                                 key={
                                   permission.uuid
                                 }
@@ -914,13 +864,12 @@ const UserPermissionsModal = ({
                                     "grid",
 
                                   gridTemplateColumns:
-                                    "auto minmax(0, 1fr) auto",
+                                    "auto minmax(0, 1fr) minmax(150px, 190px)",
 
                                   alignItems:
                                     "center",
 
-                                  gap:
-                                    12,
+                                  gap: 12,
 
                                   width:
                                     "100%",
@@ -932,44 +881,29 @@ const UserPermissionsModal = ({
                                     "12px 14px",
 
                                   border:
-                                    inherited
-                                      ? "1px solid #bfdbfe"
-                                      : additional
-                                        ? "1px solid #86efac"
+                                    additional
+                                      ? "1px solid #86efac"
+                                      : rolePermission
+                                        ? "1px solid #bfdbfe"
                                         : "1px solid #e5e7eb",
 
                                   borderRadius:
                                     10,
 
                                   background:
-                                    inherited
-                                      ? "#eff6ff"
-                                      : additional
-                                        ? "#f0fdf4"
+                                    additional
+                                      ? "#f0fdf4"
+                                      : rolePermission
+                                        ? "#eff6ff"
                                         : "#ffffff",
-
-                                  cursor:
-                                    inherited ||
-                                    loading
-                                      ? "not-allowed"
-                                      : "pointer",
-
-                                  opacity:
-                                    inherited
-                                      ? 0.88
-                                      : 1,
-
-                                  transition:
-                                    "border-color 0.2s ease, background-color 0.2s ease",
                                 }}
                               >
                                 <input
                                   type="checkbox"
                                   checked={
-                                    checked
+                                    additional
                                   }
                                   disabled={
-                                    inherited ||
                                     loading
                                   }
                                   onChange={() =>
@@ -977,6 +911,7 @@ const UserPermissionsModal = ({
                                       permission.uuid,
                                     )
                                   }
+                                  title="Assign direct user permission"
                                   style={{
                                     width:
                                       17,
@@ -988,7 +923,6 @@ const UserPermissionsModal = ({
                                       0,
 
                                     cursor:
-                                      inherited ||
                                       loading
                                         ? "not-allowed"
                                         : "pointer",
@@ -1012,12 +946,6 @@ const UserPermissionsModal = ({
                                       fontWeight:
                                         600,
 
-                                      lineHeight:
-                                        1.4,
-
-                                      whiteSpace:
-                                        "normal",
-
                                       overflowWrap:
                                         "anywhere",
                                     }}
@@ -1037,12 +965,6 @@ const UserPermissionsModal = ({
 
                                       fontSize:
                                         12,
-
-                                      lineHeight:
-                                        1.4,
-
-                                      whiteSpace:
-                                        "normal",
 
                                       overflowWrap:
                                         "anywhere",
@@ -1064,15 +986,6 @@ const UserPermissionsModal = ({
 
                                         fontSize:
                                           12,
-
-                                        lineHeight:
-                                          1.4,
-
-                                        whiteSpace:
-                                          "normal",
-
-                                        overflowWrap:
-                                          "anywhere",
                                       }}
                                     >
                                       {
@@ -1080,47 +993,143 @@ const UserPermissionsModal = ({
                                       }
                                     </div>
                                   )}
+
+                                  <div
+                                    style={{
+                                      display:
+                                        "flex",
+
+                                      flexWrap:
+                                        "wrap",
+
+                                      gap: 6,
+
+                                      marginTop:
+                                        8,
+                                    }}
+                                  >
+                                    {rolePermission && (
+                                      <span
+                                        style={{
+                                          padding:
+                                            "4px 8px",
+
+                                          borderRadius:
+                                            999,
+
+                                          background:
+                                            "#dbeafe",
+
+                                          color:
+                                            "#1d4ed8",
+
+                                          fontSize:
+                                            11,
+
+                                          fontWeight:
+                                            600,
+                                        }}
+                                      >
+                                        Role:{" "}
+                                        {formatScope(
+                                          rolePermission.scope,
+                                        )}
+                                      </span>
+                                    )}
+
+                                    {additionalPermission && (
+                                      <span
+                                        style={{
+                                          padding:
+                                            "4px 8px",
+
+                                          borderRadius:
+                                            999,
+
+                                          background:
+                                            "#dcfce7",
+
+                                          color:
+                                            "#15803d",
+
+                                          fontSize:
+                                            11,
+
+                                          fontWeight:
+                                            600,
+                                        }}
+                                      >
+                                        Direct grant
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
-                                <span
+                                <select
+                                  value={
+                                    additionalPermission
+                                      ?.scope ??
+                                    "OWN"
+                                  }
+                                  disabled={
+                                    !additional ||
+                                    loading
+                                  }
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    handleScopeChange(
+                                      permission.uuid,
+
+                                      event.target
+                                        .value as PermissionScope,
+                                    )
+                                  }
                                   style={{
+                                    width:
+                                      "100%",
+
+                                    boxSizing:
+                                      "border-box",
+
                                     padding:
-                                      "5px 9px",
+                                      "9px 10px",
+
+                                    border:
+                                      "1px solid #d1d5db",
 
                                     borderRadius:
-                                      999,
+                                      8,
 
                                     background:
-                                      inherited
-                                        ? "#dbeafe"
-                                        : additional
-                                          ? "#dcfce7"
-                                          : "#f3f4f6",
+                                      additional
+                                        ? "#ffffff"
+                                        : "#f3f4f6",
 
                                     color:
-                                      inherited
-                                        ? "#1d4ed8"
-                                        : additional
-                                          ? "#15803d"
-                                          : "#6b7280",
-
-                                    fontSize:
-                                      11,
-
-                                    fontWeight:
-                                      600,
-
-                                    whiteSpace:
-                                      "nowrap",
+                                      "#374151",
                                   }}
                                 >
-                                  {inherited
-                                    ? "Role permission"
-                                    : additional
-                                      ? "Additional"
-                                      : "Available"}
-                                </span>
-                              </label>
+                                  {scopeOptions.map(
+                                    (
+                                      option,
+                                    ) => (
+                                      <option
+                                        key={
+                                          option.value
+                                        }
+                                        value={
+                                          option.value
+                                        }
+                                      >
+                                        {
+                                          option.label
+                                        }
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                              </div>
                             );
                           },
                         )}
@@ -1132,12 +1141,11 @@ const UserPermissionsModal = ({
             )}
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer */}
 
           <div
             style={{
-              display:
-                "flex",
+              display: "flex",
 
               justifyContent:
                 "flex-end",
@@ -1145,11 +1153,9 @@ const UserPermissionsModal = ({
               flexWrap:
                 "wrap",
 
-              gap:
-                12,
+              gap: 12,
 
-              paddingTop:
-                8,
+              paddingTop: 8,
 
               borderTop:
                 "1px solid #e5e7eb",
@@ -1179,5 +1185,58 @@ const UserPermissionsModal = ({
     </Modal>
   );
 };
+
+interface SummaryCardProps {
+  label: string;
+
+  value: number;
+}
+
+const SummaryCard = ({
+  label,
+  value,
+}: SummaryCardProps) => (
+  <div
+    style={{
+      minWidth: 0,
+
+      padding: 14,
+
+      background:
+        "#f8fafc",
+
+      border:
+        "1px solid #e5e7eb",
+
+      borderRadius: 10,
+    }}
+  >
+    <div
+      style={{
+        color:
+          "#6b7280",
+
+        fontSize: 12,
+      }}
+    >
+      {label}
+    </div>
+
+    <strong
+      style={{
+        display: "block",
+
+        marginTop: 4,
+
+        color:
+          "#111827",
+
+        fontSize: 20,
+      }}
+    >
+      {value}
+    </strong>
+  </div>
+);
 
 export default UserPermissionsModal;
