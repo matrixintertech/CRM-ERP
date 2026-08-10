@@ -2,6 +2,13 @@ export type RoleStatus =
   | "ACTIVE"
   | "INACTIVE";
 
+export type PermissionScope =
+  | "OWN"
+  | "TEAM"
+  | "ORGANIZATION_UNIT"
+  | "PROJECT"
+  | "COMPANY";
+
 export interface Permission {
   uuid: string;
 
@@ -14,6 +21,8 @@ export interface Permission {
   description?: string | null;
 
   status: RoleStatus;
+
+  scope?: PermissionScope;
 }
 
 export interface Role {
@@ -30,6 +39,8 @@ export interface Role {
   status: RoleStatus;
 
   rolePermissions?: Array<{
+    scope: PermissionScope;
+
     permission: Permission;
   }>;
 
@@ -71,8 +82,20 @@ export interface RoleFormData {
   status: RoleStatus;
 }
 
+export interface RolePermissionAssignment {
+  permissionUuid: string;
+
+  scope: PermissionScope;
+}
+
 export interface AssignRolePermissionsDto {
-  permissionUuids: string[];
+  permissions:
+    RolePermissionAssignment[];
+}
+
+export interface RolePermissionItem
+  extends Permission {
+  scope: PermissionScope;
 }
 
 export interface RolePermissionResponse {
@@ -82,7 +105,6 @@ export interface RolePermissionResponse {
     code: string;
   };
 
-  permissionUuids: string[];
-
-  permissions: Permission[];
+  permissions:
+    RolePermissionItem[];
 }
