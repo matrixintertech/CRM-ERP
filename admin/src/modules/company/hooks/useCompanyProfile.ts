@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
 import { notify } from "@/shared/utils/notify";
 
 import {
@@ -11,89 +16,145 @@ import type {
   UpdateCompanyProfile,
 } from "../types/company-profile.types";
 
+const COMPANY_PROFILE_QUERY_KEY = [
+  "company-profile",
+] as const;
+
+const getErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
+  };
+
+  const errors =
+    apiError.response?.data?.errors;
+
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join(", ");
+  }
+
+  return (
+    apiError.response?.data?.message ??
+    fallbackMessage
+  );
+};
+
 export const useCompanyProfile = () => {
-  const [company, setCompany] =
-    useState<CompanyProfile | null>(null);
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] =
-    useState(false);
+  const companyQuery = useQuery({
+    queryKey: COMPANY_PROFILE_QUERY_KEY,
 
-  const [saving, setSaving] =
-    useState(false);
+    queryFn: getCompanyProfile,
+
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (
+      payload: UpdateCompanyProfile,
+    ) =>
+      updateCompanyProfile(
+        payload,
+      ),
+
+    onSuccess: (
+      response: CompanyProfile,
+    ) => {
+      queryClient.setQueryData(
+        COMPANY_PROFILE_QUERY_KEY,
+        response,
+      );
+
+      notify.success(
+        "Company profile updated successfully.",
+      );
+    },
+
+    onError: (error) => {
+      console.error(
+        "Failed to update company profile",
+        error,
+      );
+
+      notify.error(
+        getErrorMessage(
+          error,
+          "Failed to update company profile.",
+        ),
+      );
+    },
+  });
 
   const fetchCompanyProfile =
     async () => {
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey:
+            COMPANY_PROFILE_QUERY_KEY,
 
-        const response =
-          await getCompanyProfile();
+          queryFn:
+            getCompanyProfile,
 
-        setCompany(response);
-
-        return response;
-      } catch (error: any) {
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
         console.error(
           "Failed to fetch company profile",
           error,
         );
 
         notify.error(
-          error?.response?.data?.message ||
-            "Failed to load company profile."
+          getErrorMessage(
+            error,
+            "Failed to load company profile.",
+          ),
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
     };
 
-  const saveCompanyProfile =
-    async (
-      payload: UpdateCompanyProfile,
-    ) => {
-      try {
-        setSaving(true);
-
-        const response =
-          await updateCompanyProfile(
-            payload,
-          );
-
-        setCompany(response);
-
-        notify.success(
-          "Company profile updated successfully."
-        );
-
-        return response;
-      } catch (error: any) {
-        console.error(
-          "Failed to update company profile",
-          error,
-        );
-
-        notify.error(
-          error?.response?.data?.message ||
-            "Failed to update company profile."
-        );
-
-        throw error;
-      } finally {
-        setSaving(false);
-      }
-    };
-
-  useEffect(() => {
-    fetchCompanyProfile();
-  }, []);
+  const saveCompanyProfile = (
+    payload: UpdateCompanyProfile,
+  ) =>
+    updateMutation.mutateAsync(
+      payload,
+    );
 
   return {
-    company,
-    loading,
-    saving,
+    company:
+      companyQuery.data ?? null,
+
+    loading:
+      companyQuery.isLoading,
+
+    fetching:
+      companyQuery.isFetching,
+
+    saving:
+      updateMutation.isPending,
+
+    error:
+      companyQuery.error ??
+      updateMutation.error,
+
+    refetch:
+      companyQuery.refetch,
+
     fetchCompanyProfile,
+
     saveCompanyProfile,
   };
 };
