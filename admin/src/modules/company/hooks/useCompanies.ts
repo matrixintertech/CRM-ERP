@@ -1,8 +1,7 @@
 import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { notify } from "@/shared/utils/notify";
 
@@ -24,119 +23,203 @@ interface FetchCompaniesParams {
   type?: string;
 }
 
-export const useCompanies = () => {
-  const [companies, setCompanies] =
-    useState<Company[]>([]);
+interface CompaniesResponse {
+  companies: Company[];
+  pagination: CompanyPagination | null;
+}
 
-  const [pagination, setPagination] =
-    useState<CompanyPagination | null>(
-      null,
-    );
+const getErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+) => {
+  const apiError = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: string[];
+      };
+    };
+  };
 
-  const [loading, setLoading] =
-    useState(false);
+  const errors =
+    apiError.response?.data?.errors;
 
-  const [
-    selectedCompany,
-    setSelectedCompany,
-  ] = useState<Company | null>(null);
+  if (
+    Array.isArray(errors) &&
+    errors.length > 0
+  ) {
+    return errors.join(", ");
+  }
 
-  const [
-    detailsLoading,
-    setDetailsLoading,
-  ] = useState(false);
+  return (
+    apiError.response?.data?.message ??
+    fallbackMessage
+  );
+};
 
-  const fetchCompanies = useCallback(
+export const useCompanies = (
+  params: FetchCompaniesParams = {},
+) => {
+  const queryClient =
+    useQueryClient();
+
+  const queryParams = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 10,
+    search: params.search,
+    status: params.status,
+    type: params.type,
+  };
+
+  const companiesQuery =
+    useQuery({
+      queryKey: [
+        "companies",
+        queryParams,
+      ],
+
+      queryFn: () =>
+        getCompanies(
+          queryParams,
+        ),
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
+  const fetchCompanies =
     async (
-      params: FetchCompaniesParams = {},
-    ) => {
+      fetchParams: FetchCompaniesParams = {},
+    ): Promise<CompaniesResponse> => {
+      const resolvedParams = {
+        page:
+          fetchParams.page ?? 1,
+
+        limit:
+          fetchParams.limit ?? 10,
+
+        search:
+          fetchParams.search,
+
+        status:
+          fetchParams.status,
+
+        type:
+          fetchParams.type,
+      };
+
       try {
-        setLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "companies",
+            resolvedParams,
+          ],
 
-        const response =
-          await getCompanies({
-            page: params.page ?? 1,
-            limit: params.limit ?? 10,
-            search: params.search,
-            status: params.status,
-            type: params.type,
-          });
+          queryFn: () =>
+            getCompanies(
+              resolvedParams,
+            ),
 
-        setCompanies(
-          response.companies ?? [],
-        );
-
-        setPagination(
-          response.pagination ?? null,
-        );
-
-        return response;
-      } catch (error: unknown) {
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
         console.error(
           "Failed to load companies:",
           error,
         );
 
         notify.error(
-          "Failed to load companies.",
+          getErrorMessage(
+            error,
+            "Failed to load companies.",
+          ),
         );
 
         throw error;
-      } finally {
-        setLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const fetchCompany = useCallback(
-    async (id: string) => {
+  const fetchCompany =
+    async (
+      id: string,
+    ): Promise<Company> => {
       try {
-        setDetailsLoading(true);
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "company",
+            id,
+          ],
 
-        const company =
-          await getCompany(id);
+          queryFn: () =>
+            getCompany(id),
 
-        setSelectedCompany(company);
-
-        return company;
-      } catch (error: unknown) {
+          staleTime:
+            5 * 60 * 1000,
+        });
+      } catch (error) {
         console.error(
           "Failed to load company details:",
           error,
         );
 
         notify.error(
-          "Failed to load company details.",
+          getErrorMessage(
+            error,
+            "Failed to load company details.",
+          ),
         );
 
         throw error;
-      } finally {
-        setDetailsLoading(false);
       }
-    },
-    [],
-  );
+    };
 
-  const clearSelectedCompany =
-    useCallback(() => {
-      setSelectedCompany(null);
-    }, []);
+  const clearSelectedCompany = (
+    id?: string,
+  ) => {
+    if (id) {
+      queryClient.removeQueries({
+        queryKey: [
+          "company",
+          id,
+        ],
+      });
 
-  useEffect(() => {
-    void fetchCompanies();
-  }, [fetchCompanies]);
+      return;
+    }
+
+    queryClient.removeQueries({
+      queryKey: [
+        "company",
+      ],
+    });
+  };
 
   return {
-    companies,
-    pagination,
-    loading,
+    companies:
+      companiesQuery.data
+        ?.companies ?? [],
 
-    selectedCompany,
-    detailsLoading,
+    pagination:
+      companiesQuery.data
+        ?.pagination ?? null,
+
+    loading:
+      companiesQuery.isLoading,
+
+    fetching:
+      companiesQuery.isFetching,
+
+    error:
+      companiesQuery.error,
+
+    refetch:
+      companiesQuery.refetch,
 
     fetchCompanies,
+
     fetchCompany,
+
     clearSelectedCompany,
   };
 };

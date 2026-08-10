@@ -18,9 +18,7 @@ export interface CompanyAdminFormData {
 
 export interface CreateOnboardingDto {
   company: CompanyFormData;
-
   subscription: SubscriptionFormData;
-
   admin: CompanyAdminFormData;
 }
 
@@ -28,6 +26,10 @@ export type CompanyStatus =
   | "ACTIVE"
   | "INACTIVE"
   | "SUSPENDED";
+
+export type CompanyType =
+  | "INTERIOR"
+  | "CONSTRUCTION";
 
 export interface Company {
   id: string;
@@ -40,7 +42,7 @@ export interface Company {
   mobile?: string | null;
   logo?: string | null;
 
-  type?: string | null;
+  type?: CompanyType | null;
   status: CompanyStatus;
 
   createdAt: string;
@@ -63,6 +65,6 @@ export interface GetCompaniesParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: string;
-  type?: string;
+  status?: CompanyStatus;
+  type?: CompanyType;
 }

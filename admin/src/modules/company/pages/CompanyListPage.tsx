@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { useNavigate } from "react-router-dom";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  Building2,
+  Eye,
+  Plus,
+  Shield,
+} from "lucide-react";
 
-import { Building2, Eye, Plus, Shield } from "lucide-react";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -20,7 +28,11 @@ import CompanyDetailsModal from "../components/CompanyDetailsModal";
 
 import { useCompanies } from "../hooks/useCompanies";
 
-import type { Company } from "../types/company.types";
+import type {
+  Company,
+  CompanyStatus,
+  CompanyType,
+} from "../types/company.types";
 
 import styles from "./CompanyListPage.module.css";
 
@@ -36,6 +48,10 @@ const statusOptions = [
   {
     label: "Inactive",
     value: "INACTIVE",
+  },
+  {
+    label: "Suspended",
+    value: "SUSPENDED",
   },
 ];
 
@@ -59,89 +75,164 @@ const CompanyListPage = () => {
 
   useDocumentTitle("Companies");
 
-  const {
-    companies,
-    pagination,
-    loading,
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
+
+  const [
     selectedCompany,
+    setSelectedCompany,
+  ] = useState<Company | null>(null);
+
+  const [
     detailsLoading,
-    fetchCompanies,
-    fetchCompany,
-    clearSelectedCompany,
-  } = useCompanies();
+    setDetailsLoading,
+  ] = useState(false);
 
-  const [openDetails, setOpenDetails] = useState(false);
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] = useState("");
 
-  const [status, setStatus] = useState("");
+  const [
+    status,
+    setStatus,
+  ] = useState<CompanyStatus | "">("");
 
-  const [companyType, setCompanyType] = useState("");
+  const [
+    companyType,
+    setCompanyType,
+  ] = useState<CompanyType | "">("");
 
-  const [page, setPage] = useState(1);
+  const [
+    page,
+    setPage,
+  ] = useState(1);
 
   const pageSize = 10;
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void fetchCompanies({
-        page,
-        limit: pageSize,
-
-        search: search.trim() || undefined,
-
-        status: status || undefined,
-
-        type: companyType || undefined,
-      });
-    }, 300);
+    const timeout =
+      window.setTimeout(() => {
+        setDebouncedSearch(
+          search.trim(),
+        );
+      }, 300);
 
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [page, search, status, companyType, fetchCompanies]);
+  }, [search]);
 
-  const handleView = async (id: string) => {
+  const {
+    companies,
+    pagination,
+    loading,
+    fetchCompany,
+  } = useCompanies({
+    page,
+
+    limit: pageSize,
+
+    search:
+      debouncedSearch ||
+      undefined,
+
+    status:
+      status ||
+      undefined,
+
+    type:
+      companyType ||
+      undefined,
+  });
+
+  const handleView = async (
+    id: string,
+  ) => {
     try {
-      await fetchCompany(id);
+      setSelectedCompany(null);
+
+      setDetailsLoading(true);
 
       setOpenDetails(true);
+
+      const company =
+        await fetchCompany(id);
+
+      setSelectedCompany(
+        company,
+      );
     } catch (error) {
-      console.error("Failed to load company details:", error);
+      console.error(
+        "Failed to load company details:",
+        error,
+      );
+
+      setOpenDetails(false);
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
   const handleCloseDetails = () => {
     setOpenDetails(false);
 
-    clearSelectedCompany();
+    setSelectedCompany(null);
   };
 
-  const handleOrganization = (id: string) => {
-    navigate(`/companies/${id}/organization`);
+  const handleOrganization = (
+    id: string,
+  ) => {
+    navigate(
+      `/companies/${id}/organization`,
+    );
   };
 
-  const handleRoles = (id: string) => {
-    navigate(`/companies/${id}/roles`);
+  const handleRoles = (
+    id: string,
+  ) => {
+    navigate(
+      `/companies/${id}/roles`,
+    );
   };
 
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = (
+    value: string,
+  ) => {
     setSearch(value);
+
     setPage(1);
   };
 
-  const handleStatusChange = (value: string) => {
-    setStatus(value);
+  const handleStatusChange = (
+    value: string,
+  ) => {
+    setStatus(
+      value as CompanyStatus | "",
+    );
+
     setPage(1);
   };
 
-  const handleTypeChange = (value: string) => {
-    setCompanyType(value);
+  const handleTypeChange = (
+    value: string,
+  ) => {
+    setCompanyType(
+      value as CompanyType | "",
+    );
+
     setPage(1);
   };
 
-  const columns = useMemo<DataTableColumn<Company>[]>(
-    () => [
+  const columns:
+    DataTableColumn<Company>[] = [
       {
         key: "name",
         title: "Company",
@@ -156,14 +247,32 @@ const CompanyListPage = () => {
         key: "email",
         title: "Email",
 
-        render: (row) => row.email ?? "-",
+        render: (row) =>
+          row.email ?? "-",
       },
 
       {
         key: "mobile",
         title: "Mobile",
 
-        render: (row) => row.mobile ?? "-",
+        render: (row) =>
+          row.mobile ?? "-",
+      },
+
+      {
+        key: "type",
+        title: "Type",
+
+        render: (row) =>
+          row.type
+            ? row.type
+                .toLowerCase()
+                .replace(
+                  /\b\w/g,
+                  (character) =>
+                    character.toUpperCase(),
+                )
+            : "-",
       },
 
       {
@@ -190,12 +299,20 @@ const CompanyListPage = () => {
         align: "center",
 
         render: (row) => (
-          <div className={styles.actions}>
+          <div
+            className={
+              styles.actions
+            }
+          >
             <Button
               size="sm"
               aria-label={`View ${row.name}`}
               title="View company"
-              onClick={() => void handleView(row.id)}
+              onClick={() =>
+                void handleView(
+                  row.id,
+                )
+              }
             >
               <Eye size={16} />
             </Button>
@@ -204,25 +321,33 @@ const CompanyListPage = () => {
               size="sm"
               aria-label={`Open ${row.name} organization`}
               title="Organization"
-              onClick={() => handleOrganization(row.id)}
+              onClick={() =>
+                handleOrganization(
+                  row.id,
+                )
+              }
             >
-              <Building2 size={16} />
+              <Building2
+                size={16}
+              />
             </Button>
 
             <Button
               size="sm"
               aria-label={`Manage ${row.name} roles`}
               title="Roles"
-              onClick={() => handleRoles(row.id)}
+              onClick={() =>
+                handleRoles(
+                  row.id,
+                )
+              }
             >
               <Shield size={16} />
             </Button>
           </div>
         ),
       },
-    ],
-    [],
-  );
+    ];
 
   return (
     <>
@@ -230,31 +355,54 @@ const CompanyListPage = () => {
         title="Companies"
         subtitle="Manage all companies"
         actions={
-          <Button onClick={() => navigate("/companies/create")}>
+          <Button
+            onClick={() =>
+              navigate(
+                "/companies/create",
+              )
+            }
+          >
             <Plus size={18} />
+
             Create Company
           </Button>
         }
       />
 
       <Card>
-        <div className={styles.filters}>
+        <div
+          className={
+            styles.filters
+          }
+        >
           <SearchInput
             placeholder="Search company..."
             value={search}
-            onChange={(event) => handleSearchChange(event.target.value)}
+            onChange={(event) =>
+              handleSearchChange(
+                event.target.value,
+              )
+            }
           />
 
           <Select
             value={status}
-            onChange={(event) => handleStatusChange(event.target.value)}
+            onChange={(event) =>
+              handleStatusChange(
+                event.target.value,
+              )
+            }
             showPlaceholder={false}
             options={statusOptions}
           />
 
           <Select
             value={companyType}
-            onChange={(event) => handleTypeChange(event.target.value)}
+            onChange={(event) =>
+              handleTypeChange(
+                event.target.value,
+              )
+            }
             showPlaceholder={false}
             options={typeOptions}
           />
@@ -270,19 +418,39 @@ const CompanyListPage = () => {
         />
 
         <Pagination
-          page={pagination?.page ?? page}
-          totalPages={pagination?.totalPages ?? 1}
-          totalRecords={pagination?.total ?? 0}
-          pageSize={pagination?.limit ?? pageSize}
-          onPageChange={setPage}
+          page={
+            pagination?.page ??
+            page
+          }
+          totalPages={
+            pagination?.totalPages ??
+            1
+          }
+          totalRecords={
+            pagination?.total ??
+            0
+          }
+          pageSize={
+            pagination?.limit ??
+            pageSize
+          }
+          onPageChange={
+            setPage
+          }
         />
       </Card>
 
       <CompanyDetailsModal
         open={openDetails}
-        loading={detailsLoading}
-        company={selectedCompany}
-        onClose={handleCloseDetails}
+        loading={
+          detailsLoading
+        }
+        company={
+          selectedCompany
+        }
+        onClose={
+          handleCloseDetails
+        }
       />
     </>
   );
