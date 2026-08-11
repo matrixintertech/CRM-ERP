@@ -1,18 +1,17 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import {
-  UserType,
-} from '@prisma/client';
+  CompanyBoundaryService,
+} from 'src/modules/authorization/services/company-boundary.service';
 
 import { CityRepository } from 'src/modules/master/city/repositories/city.repository';
 import { StateRepository } from 'src/modules/master/state/repositories/state.repository';
 import { ClientRepository } from 'src/modules/client/repositories/client.repository';
-import { CompanyRepository } from 'src/modules/company/repositories/company.repository';
+
 
 import {
   ProjectCategoryRepository,
@@ -21,6 +20,11 @@ import {
 import {
   OrganizationUnitRepository,
 } from 'src/modules/organization-unit/repositories/organization-unit.repository';
+
+
+import {
+  ProjectPolicy,
+} from 'src/modules/authorization/policies/project.policy';
 
 import {
   CreateProjectDto,
@@ -35,8 +39,6 @@ import {
 
 interface AuthUser {
   id: bigint;
-  companyId: bigint | null;
-  userType: UserType;
 }
 
 
@@ -56,76 +58,23 @@ export class ProjectService {
     private readonly cityRepository:
       CityRepository,
 
-    private readonly companyRepository:
-      CompanyRepository,
 
     private readonly projectCategoryRepository:
       ProjectCategoryRepository,
 
     private readonly organizationUnitRepository:
       OrganizationUnitRepository,
+
+    
+  private readonly companyBoundaryService:
+    CompanyBoundaryService,
+
+     private readonly projectPolicy:
+    ProjectPolicy,
   ) {}
 
 
 
-  private isPlatformOwner(
-    user: AuthUser,
-  ) {
-    return (
-      user.userType ===
-      UserType.PLATFORM_OWNER
-    );
-  }
-
-
-
-  private getUserCompanyId(
-    user: AuthUser,
-  ) {
-
-    if (!user.companyId) {
-      throw new ForbiddenException(
-        'Company context is missing.',
-      );
-    }
-
-    return user.companyId;
-  }
-
-
-
-  private async resolveCompanyId(
-    user: AuthUser,
-    companyUuid?: string,
-  ) {
-
-    if (!this.isPlatformOwner(user)) {
-      return this.getUserCompanyId(user);
-    }
-
-
-    if (!companyUuid) {
-      throw new BadRequestException(
-        'Company is required for platform owner.',
-      );
-    }
-
-
-    const company =
-      await this.companyRepository.findByUuid(
-        companyUuid,
-      );
-
-
-    if (!company) {
-      throw new NotFoundException(
-        'Company not found.',
-      );
-    }
-
-
-    return company.id;
-  }
 
 
 
@@ -233,24 +182,30 @@ export class ProjectService {
     dto: CreateProjectDto,
   ) {
 
-    const {
-      companyUuid,
-      clientUuid,
-      categoryUuid,
-      organizationUnitUuid,
-      stateUuid,
-      cityUuid,
-      ...projectData
-    } = dto;
+  const {
+  clientUuid,
+  categoryUuid,
+  organizationUnitUuid,
+  stateUuid,
+  cityUuid,
+  ...projectData
+} = dto;
+
+/*
+ * Company-side project API me
+ * authenticated user's company hi
+ * source of truth hai.
+ *
+ * DTO companyUuid authorization
+ * decide nahi karega.
+ */
 
 
-
-    const companyId =
-      await this.resolveCompanyId(
-        user,
-        companyUuid,
-      );
-
+const companyId =
+  await this.companyBoundaryService
+    .getCompanyId(
+      user.id,
+    );
 
 
     const client =
@@ -385,92 +340,54 @@ export class ProjectService {
 
 
 
-  async findAll(
-    user: AuthUser,
-    query: ProjectQueryDto,
-  ) {
-
-    const companyId =
-      this.isPlatformOwner(user)
-        ? null
-        : this.getUserCompanyId(user);
-
-
-    return this.projectRepository.findAll(
-      companyId,
-      query,
-    );
-  }
-
-
-
-
-
-  async findOne(
-    user: AuthUser,
-    uuid: string,
-  ) {
-
-    const companyId =
-      this.isPlatformOwner(user)
-        ? null
-        : this.getUserCompanyId(user);
-
-
-
-    const project =
-      await this.projectRepository.findByUuid(
-        companyId,
-        uuid,
+async findAll(
+  user: AuthUser,
+  query: ProjectQueryDto,
+) {
+  const companyId =
+    await this.companyBoundaryService
+      .getCompanyId(
+        user.id,
       );
 
-
-    if (!project) {
-      throw new NotFoundException(
-        'Project not found.',
+  const scopeWhere =
+    await this.projectPolicy
+      .buildWhere(
+        user.id,
+        'company.project.view',
       );
-    }
+
+  return this.projectRepository.findAll(
+    companyId,
+    query,
+    scopeWhere,
+  );
+}
 
 
-    return {
-      project,
-    };
-  }
-
-
-
-
-
-  async findByUuid(
-    user: AuthUser,
-    uuid: string,
-  ) {
-    return this.findOne(
-      user,
-      uuid,
-    );
-  }
-
-
-  async update(
+async findOne(
   user: AuthUser,
   uuid: string,
-  dto: UpdateProjectDto,
 ) {
-
   const companyId =
-    this.isPlatformOwner(user)
-      ? null
-      : this.getUserCompanyId(user);
+    await this.companyBoundaryService
+      .getCompanyId(
+        user.id,
+      );
 
-
+  const scopeWhere =
+    await this.projectPolicy
+      .buildWhere(
+        user.id,
+        'company.project.view',
+      );
 
   const project =
     await this.projectRepository.findByUuid(
       companyId,
       uuid,
+      scopeWhere,
     );
-
 
   if (!project) {
     throw new NotFoundException(
@@ -478,7 +395,55 @@ export class ProjectService {
     );
   }
 
+  return {
+    project,
+  };
+}
 
+
+
+async findByUuid(
+  user: AuthUser,
+  uuid: string,
+) {
+  return this.findOne(
+    user,
+    uuid,
+  );
+}
+
+
+async update(
+  user: AuthUser,
+  uuid: string,
+  dto: UpdateProjectDto,
+) {
+  const companyId =
+    await this.companyBoundaryService
+      .getCompanyId(
+        user.id,
+      );
+
+  const scopeWhere =
+    await this.projectPolicy
+      .buildWhere(
+        user.id,
+        'company.project.update',
+      );
+
+  const project =
+    await this.projectRepository
+      .findByUuid(
+        companyId,
+        uuid,
+        scopeWhere,
+      );
+
+  if (!project) {
+    throw new NotFoundException(
+      'Project not found.',
+    );
+  }
 
   const {
     clientUuid,
@@ -489,21 +454,16 @@ export class ProjectService {
     ...projectData
   } = dto;
 
-
-
   let clientId:
     bigint | undefined;
 
-
-
   if (clientUuid) {
-
     const client =
-      await this.clientRepository.findByUuid(
-        project.companyId,
-        clientUuid,
-      );
-
+      await this.clientRepository
+        .findByUuid(
+          project.companyId,
+          clientUuid,
+        );
 
     if (!client) {
       throw new NotFoundException(
@@ -511,27 +471,20 @@ export class ProjectService {
       );
     }
 
-
     clientId =
       client.id;
   }
 
-
-
-
   let categoryId:
     bigint | undefined;
 
-
-
   if (categoryUuid) {
-
     const category =
-      await this.projectCategoryRepository.findByUuid(
-        project.companyId,
-        categoryUuid,
-      );
-
+      await this.projectCategoryRepository
+        .findByUuid(
+          project.companyId,
+          categoryUuid,
+        );
 
     if (!category) {
       throw new NotFoundException(
@@ -539,27 +492,20 @@ export class ProjectService {
       );
     }
 
-
     categoryId =
       category.id;
   }
 
-
-
-
   let organizationUnitId:
     bigint | undefined;
 
-
-
   if (organizationUnitUuid) {
-
     const organizationUnit =
-      await this.organizationUnitRepository.findByUuid(
-        project.companyId,
-        organizationUnitUuid,
-      );
-
+      await this.organizationUnitRepository
+        .findByUuid(
+          project.companyId,
+          organizationUnitUuid,
+        );
 
     if (!organizationUnit) {
       throw new NotFoundException(
@@ -567,13 +513,9 @@ export class ProjectService {
       );
     }
 
-
     organizationUnitId =
       organizationUnit.id;
   }
-
-
-
 
   const {
     stateId,
@@ -584,69 +526,50 @@ export class ProjectService {
       cityUuid,
     );
 
-
-
-
   const updatedProject =
-    await this.projectRepository.update(
-      companyId,
-      uuid,
-      {
+    await this.projectRepository
+      .update(
+        companyId,
+        uuid,
+        {
+          ...projectData,
 
+          startDate:
+            projectData.startDate
+              ? new Date(
+                  projectData.startDate,
+                )
+              : undefined,
 
-        ...projectData,
+          expectedEndDate:
+            projectData.expectedEndDate
+              ? new Date(
+                  projectData.expectedEndDate,
+                )
+              : undefined,
 
+          ...(clientId !== undefined && {
+            clientId,
+          }),
 
-        startDate:
-          projectData.startDate
-            ? new Date(
-                projectData.startDate,
-              )
-            : undefined,
+          ...(categoryId !== undefined && {
+            categoryId,
+          }),
 
+          ...(organizationUnitId !==
+            undefined && {
+            organizationUnitId,
+          }),
 
+          ...(stateId !== undefined && {
+            stateId,
+          }),
 
-        expectedEndDate:
-          projectData.expectedEndDate
-            ? new Date(
-                projectData.expectedEndDate,
-              )
-            : undefined,
-
-
-
-        ...(clientId !== undefined && {
-          clientId,
-        }),
-
-
-
-        ...(categoryId !== undefined && {
-          categoryId,
-        }),
-
-
-
-        ...(organizationUnitId !== undefined && {
-          organizationUnitId,
-        }),
-
-
-
-        ...(stateId !== undefined && {
-          stateId,
-        }),
-
-
-
-        ...(cityId !== undefined && {
-          cityId,
-        }),
-
-      },
-    );
-
-
+          ...(cityId !== undefined && {
+            cityId,
+          }),
+        },
+      );
 
   return {
     message:
@@ -660,29 +583,46 @@ export class ProjectService {
 
 
 
+async remove(
+  user: AuthUser,
+  uuid: string,
+) {
+  const companyId =
+    await this.companyBoundaryService
+      .getCompanyId(
+        user.id,
+      );
 
-  async remove(
-    user: AuthUser,
-    uuid: string,
-  ) {
+  const scopeWhere =
+    await this.projectPolicy
+      .buildWhere(
+        user.id,
+        'company.project.delete',
+      );
 
-    const companyId =
-      this.isPlatformOwner(user)
-        ? null
-        : this.getUserCompanyId(user);
+  const project =
+    await this.projectRepository
+      .findByUuid(
+        companyId,
+        uuid,
+        scopeWhere,
+      );
 
-
-
-    await this.projectRepository.delete(
-      companyId,
-      uuid,
+  if (!project) {
+    throw new NotFoundException(
+      'Project not found.',
     );
-
-
-    return {
-      message:
-        'Project deleted successfully.',
-    };
   }
+
+  await this.projectRepository.delete(
+    companyId,
+    uuid,
+  );
+
+  return {
+    message:
+      'Project deleted successfully.',
+  };
+}
 
 }

@@ -23,20 +23,16 @@ import type {
   IProjectRepository,
 } from './project.repository.interface';
 
-
 @Injectable()
 export class ProjectRepository
   implements IProjectRepository
 {
-
   constructor(
     private readonly prisma:
       PrismaService,
   ) {}
 
-
   private readonly include = {
-
     client: {
       select: {
         id: true,
@@ -48,7 +44,6 @@ export class ProjectRepository
       },
     },
 
-
     category: {
       select: {
         id: true,
@@ -57,7 +52,6 @@ export class ProjectRepository
         code: true,
       },
     },
-
 
     organizationUnit: {
       select: {
@@ -69,7 +63,6 @@ export class ProjectRepository
       },
     },
 
-
     state: {
       select: {
         id: true,
@@ -78,7 +71,6 @@ export class ProjectRepository
       },
     },
 
-
     city: {
       select: {
         id: true,
@@ -86,148 +78,96 @@ export class ProjectRepository
         name: true,
       },
     },
-
   } satisfies Prisma.ProjectInclude;
-
-
-
 
   async create(
     data:
       Prisma.ProjectUncheckedCreateInput,
   ): Promise<ProjectWithRelations> {
-
     return this.prisma.project.create({
-
       data,
 
       include:
         this.include,
-
     });
-
   }
 
-
-
-
-
-
   async findAll(
-    companyId: bigint | null,
+    companyId: bigint,
 
     query: ProjectQueryDto,
 
+    scopeWhere?:
+      Prisma.ProjectWhereInput,
   ): Promise<{
     projects:
       ProjectWithRelations[];
 
-    total:number;
+    total: number;
   }> {
-
-
     const {
       page = 1,
-
       limit = 10,
-
       search,
-
       categoryUuid,
-
       organizationUnitUuid,
-
       stateUuid,
-
       cityUuid,
-
       status,
-
     } = query;
-
-
 
     const normalizedSearch =
       search?.trim();
 
-
-
-
     const where:
       Prisma.ProjectWhereInput = {
+      /*
+       * Hard tenant boundary.
+       *
+       * Ye authorization scope ke
+       * through kabhi override nahi hoga.
+       */
+      companyId,
 
-
-      deletedAt:null,
-
-
-
-      ...(companyId !== null && {
-        companyId,
-      }),
-
-
+      deletedAt:
+        null,
 
       ...(status && {
         status,
       }),
 
-
-
-
       ...(categoryUuid && {
-
-        category:{
+        category: {
           uuid:
             categoryUuid,
         },
-
       }),
 
-
-
-
       ...(organizationUnitUuid && {
-
-        organizationUnit:{
+        organizationUnit: {
           uuid:
             organizationUnitUuid,
         },
-
       }),
 
-
-
-
       ...(stateUuid && {
-
-        state:{
+        state: {
           uuid:
             stateUuid,
         },
-
       }),
 
-
-
-
       ...(cityUuid && {
-
-        city:{
+        city: {
           uuid:
             cityUuid,
         },
-
       }),
 
-
-
-
-
       ...(normalizedSearch && {
-
-        OR:[
+        OR: [
           {
-            name:{
+            name: {
               contains:
                 normalizedSearch,
 
@@ -236,9 +176,8 @@ export class ProjectRepository
             },
           },
 
-
           {
-            srn:{
+            srn: {
               contains:
                 normalizedSearch,
 
@@ -247,10 +186,9 @@ export class ProjectRepository
             },
           },
 
-
           {
-            client:{
-              name:{
+            client: {
+              name: {
                 contains:
                   normalizedSearch,
 
@@ -259,281 +197,194 @@ export class ProjectRepository
               },
             },
           },
-
         ],
-
       }),
 
+      /*
+       * Permission scope filter.
+       *
+       * Existing query filters ke
+       * saath AND hoga.
+       */
+      ...(scopeWhere && {
+        AND: [
+          scopeWhere,
+        ],
+      }),
     };
-
-
-
 
     const [
       projects,
       total,
     ] =
-    await this.prisma.$transaction([
+      await this.prisma.$transaction([
+        this.prisma.project.findMany({
+          where,
 
+          include:
+            this.include,
 
-      this.prisma.project.findMany({
+          skip:
+            (page - 1) * limit,
 
-        where,
+          take:
+            limit,
 
+          orderBy: {
+            createdAt:
+              'desc',
+          },
+        }),
 
-        include:
-          this.include,
-
-
-        skip:
-          (page - 1) * limit,
-
-
-        take:
-          limit,
-
-
-        orderBy:{
-          createdAt:
-            'desc',
-        },
-
-      }),
-
-
-
-      this.prisma.project.count({
-        where,
-      }),
-
-    ]);
-
-
+        this.prisma.project.count({
+          where,
+        }),
+      ]);
 
     return {
       projects,
-
       total,
     };
-
   }
-
-
-
-
-
-
 
   async count(
-    companyId: bigint | null,
+    companyId: bigint,
   ): Promise<number> {
-
     return this.prisma.project.count({
+      where: {
+        companyId,
 
-      where:{
-
-        deletedAt:null,
-
-
-        ...(companyId !== null && {
-          companyId,
-        }),
-
+        deletedAt:
+          null,
       },
-
     });
-
   }
 
-
-
-
-
-
-
   async findByUuid(
-    companyId: bigint | null,
+    companyId: bigint,
 
-    uuid:string,
+    uuid: string,
 
+    scopeWhere?:
+      Prisma.ProjectWhereInput,
   ): Promise<ProjectWithRelations | null> {
-
-
     return this.prisma.project.findFirst({
-
-      where:{
-
+      where: {
         uuid,
 
-        deletedAt:null,
+        companyId,
 
+        deletedAt:
+          null,
 
-        ...(companyId !== null && {
-          companyId,
+        /*
+         * Detail endpoint par bhi
+         * scope enforce hoga.
+         */
+        ...(scopeWhere && {
+          AND: [
+            scopeWhere,
+          ],
         }),
-
       },
-
 
       include:
         this.include,
-
     });
-
   }
-
-
-
-
-
-
 
   async findBySRN(
     companyId: bigint,
 
-    srn:string,
-
+    srn: string,
   ): Promise<ProjectWithRelations | null> {
-
-
     return this.prisma.project.findFirst({
-
-      where:{
-
+      where: {
         companyId,
 
         srn,
 
-        deletedAt:null,
-
+        deletedAt:
+          null,
       },
-
 
       include:
         this.include,
-
     });
-
   }
 
-
-
-
-
-
-
   async update(
-    companyId: bigint | null,
+    companyId: bigint,
 
-    uuid:string,
+    uuid: string,
 
     data:
       Prisma.ProjectUncheckedUpdateInput,
-
   ): Promise<ProjectWithRelations> {
-
-
     const project =
       await this.prisma.project.findFirst({
-
-        where:{
-
+        where: {
           uuid,
 
-          deletedAt:null,
+          companyId,
 
-
-          ...(companyId !== null && {
-            companyId,
-          }),
-
+          deletedAt:
+            null,
         },
 
-
-        select:{
-          id:true,
+        select: {
+          id: true,
         },
-
       });
 
-
-
-    if(!project){
-
+    if (!project) {
       throw new NotFoundException(
         'Project not found.',
       );
-
     }
 
-
-
     return this.prisma.project.update({
-
-      where:{
+      where: {
         id:
           project.id,
       },
 
-
       data,
-
 
       include:
         this.include,
-
     });
-
   }
 
-
-
-
-
-
-
   async delete(
-    companyId: bigint | null,
+    companyId: bigint,
 
-    uuid:string,
-
+    uuid: string,
   ): Promise<void> {
-
-
     const result =
       await this.prisma.project.updateMany({
-
-        where:{
-
+        where: {
           uuid,
 
-          deletedAt:null,
+          companyId,
 
-
-          ...(companyId !== null && {
-            companyId,
-          }),
-
+          deletedAt:
+            null,
         },
 
-
-        data:{
+        data: {
           deletedAt:
             new Date(),
         },
-
       });
 
-
-
-    if(result.count === 0){
-
+    if (
+      result.count ===
+      0
+    ) {
       throw new NotFoundException(
         'Project not found.',
       );
-
     }
-
   }
-
 }

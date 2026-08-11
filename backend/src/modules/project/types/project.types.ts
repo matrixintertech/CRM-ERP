@@ -1,6 +1,6 @@
-// src/modules/project/types/project.types.ts
-
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+} from '@prisma/client';
 
 export type ProjectWithRelations =
   Prisma.ProjectGetPayload<{
@@ -13,6 +13,25 @@ export type ProjectWithRelations =
           code: true;
           contactName: true;
           mobile: true;
+        };
+      };
+
+      category: {
+        select: {
+          id: true;
+          uuid: true;
+          name: true;
+          code: true;
+        };
+      };
+
+      organizationUnit: {
+        select: {
+          id: true;
+          uuid: true;
+          name: true;
+          code: true;
+          type: true;
         };
       };
 

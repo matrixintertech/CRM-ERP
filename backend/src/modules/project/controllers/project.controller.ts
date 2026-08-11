@@ -27,12 +27,22 @@ import type {
 } from '@prisma/client';
 
 import {
+  RequirePermission,
+} from 'src/modules/authorization/decorators/require-permission.decorator';
+
+import {
+  PermissionGuard,
+} from 'src/modules/authorization/guards/permission.guard';
+
+import {
   CreateProjectDto,
   ProjectQueryDto,
   UpdateProjectDto,
 } from '../dto';
 
-import { ProjectService } from '../services/project.service';
+import {
+  ProjectService,
+} from '../services/project.service';
 
 interface AuthenticatedRequest
   extends Request {
@@ -41,7 +51,10 @@ interface AuthenticatedRequest
 
 @ApiTags('Projects')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+  PermissionGuard,
+)
 @Controller('projects')
 export class ProjectController {
   constructor(
@@ -50,12 +63,18 @@ export class ProjectController {
   ) {}
 
   @Post()
+  @RequirePermission(
+    'company.project.create',
+  )
   @ApiOperation({
     summary: 'Create Project',
   })
   create(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: CreateProjectDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Body()
+    dto: CreateProjectDto,
   ) {
     return this.projectService.create(
       req.user,
@@ -64,12 +83,18 @@ export class ProjectController {
   }
 
   @Get()
+  @RequirePermission(
+    'company.project.view',
+  )
   @ApiOperation({
     summary: 'Get All Projects',
   })
   findAll(
-    @Req() req: AuthenticatedRequest,
-    @Query() query: ProjectQueryDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Query()
+    query: ProjectQueryDto,
   ) {
     return this.projectService.findAll(
       req.user,
@@ -78,6 +103,9 @@ export class ProjectController {
   }
 
   @Get(':uuid')
+  @RequirePermission(
+    'company.project.view',
+  )
   @ApiOperation({
     summary: 'Get Project By UUID',
   })
@@ -86,8 +114,11 @@ export class ProjectController {
     type: String,
   })
   findByUuid(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
   ) {
     return this.projectService.findByUuid(
       req.user,
@@ -96,6 +127,9 @@ export class ProjectController {
   }
 
   @Patch(':uuid')
+  @RequirePermission(
+    'company.project.update',
+  )
   @ApiOperation({
     summary: 'Update Project',
   })
@@ -104,9 +138,14 @@ export class ProjectController {
     type: String,
   })
   update(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
-    @Body() dto: UpdateProjectDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+
+    @Body()
+    dto: UpdateProjectDto,
   ) {
     return this.projectService.update(
       req.user,
@@ -116,6 +155,9 @@ export class ProjectController {
   }
 
   @Delete(':uuid')
+  @RequirePermission(
+    'company.project.delete',
+  )
   @ApiOperation({
     summary: 'Delete Project',
   })
@@ -124,8 +166,11 @@ export class ProjectController {
     type: String,
   })
   remove(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
   ) {
     return this.projectService.remove(
       req.user,

@@ -17,6 +17,10 @@ import {
   OrganizationUnitModule,
 } from 'src/modules/organization-unit/organization-unit.module';
 
+import {
+  AuthorizationModule,
+} from 'src/modules/authorization/authorization.module';
+
 import { ProjectController } from './controllers/project.controller';
 import { ProjectRepository } from './repositories/project.repository';
 import { ProjectService } from './services/project.service';
@@ -24,7 +28,7 @@ import { ProjectService } from './services/project.service';
 @Module({
   imports: [PrismaModule, CompanyModule, ProjectCategoryModule,
 
-    OrganizationUnitModule],
+    OrganizationUnitModule, AuthorizationModule],
 
   controllers: [ProjectController],
 

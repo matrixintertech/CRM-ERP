@@ -15,6 +15,18 @@ import {
 } from "./services/effective-permission.service";
 
 import {
+  PermissionScopeService,
+} from "./services/permission-scope.service";
+
+import {
+  CompanyBoundaryService,
+} from "./services/company-boundary.service";
+
+import {
+  ProjectPolicy,
+} from './policies/project.policy';
+
+import {
   PermissionGuard,
 } from "./guards/permission.guard";
 
@@ -26,13 +38,19 @@ import {
   providers: [
     AuthorizationRepository,
     EffectivePermissionService,
+    PermissionScopeService,
+    CompanyBoundaryService,
     PermissionGuard,
+     ProjectPolicy,
   ],
 
   exports: [
     AuthorizationRepository,
     EffectivePermissionService,
+     PermissionScopeService,
+     CompanyBoundaryService,
     PermissionGuard,
+     ProjectPolicy,
   ],
 })
 export class AuthorizationModule {}
