@@ -3,7 +3,9 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 
-import { PassportStrategy } from "@nestjs/passport";
+import {
+  PassportStrategy,
+} from "@nestjs/passport";
 
 import {
   ExtractJwt,
@@ -11,12 +13,17 @@ import {
 } from "passport-jwt";
 
 import {
+  UserStatus,
   UserType,
 } from "@prisma/client";
 
-import { jwtConfig } from "src/config/jwt.config";
+import {
+  jwtConfig,
+} from "src/config/jwt.config";
 
-import { PrismaService } from "src/database/prisma.service";
+import {
+  PrismaService,
+} from "src/database/prisma.service";
 
 import type {
   JwtPayload,
@@ -27,13 +34,15 @@ export class JwtStrategy extends PassportStrategy(
   Strategy,
 ) {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {
     super({
       jwtFromRequest:
         ExtractJwt.fromAuthHeaderAsBearerToken(),
 
-      ignoreExpiration: false,
+      ignoreExpiration:
+        false,
 
       secretOrKey:
         jwtConfig.accessSecret,
@@ -41,12 +50,19 @@ export class JwtStrategy extends PassportStrategy(
   }
 
   async validate(
-    payload: JwtPayload,
+    payload:
+      JwtPayload,
   ) {
     const user =
-      await this.prisma.user.findUnique({
+      await this.prisma.user.findFirst({
         where: {
-          id: BigInt(payload.sub),
+          id:
+            BigInt(
+              payload.sub,
+            ),
+
+          deletedAt:
+            null,
         },
       });
 
@@ -56,24 +72,32 @@ export class JwtStrategy extends PassportStrategy(
       );
     }
 
-    if (user.status !== "ACTIVE") {
+    if (
+      user.status !==
+      UserStatus.ACTIVE
+    ) {
       throw new UnauthorizedException(
         "User is inactive.",
       );
     }
 
-    const companyUserTypes: UserType[] = [
-      UserType.COMPANY_ADMIN,
-      UserType.EMPLOYEE,
-    ];
-
+    /*
+     * PLATFORM_OWNER:
+     * company context required nahi.
+     *
+     * All other user types:
+     * company context required.
+     */
     const requiresCompany =
-      companyUserTypes.includes(
-        user.userType,
-      );
+      user.userType !==
+      UserType.PLATFORM_OWNER;
 
-    if (requiresCompany) {
-      if (!user.companyId) {
+    if (
+      requiresCompany
+    ) {
+      if (
+        !user.companyId
+      ) {
         throw new UnauthorizedException(
           "Company context is missing.",
         );
@@ -82,18 +106,26 @@ export class JwtStrategy extends PassportStrategy(
       const company =
         await this.prisma.company.findFirst({
           where: {
-            id: user.companyId,
-            deletedAt: null,
+            id:
+              user.companyId,
+
+            deletedAt:
+              null,
           },
         });
 
-      if (!company) {
+      if (
+        !company
+      ) {
         throw new UnauthorizedException(
           "Company not found.",
         );
       }
 
-      if (company.status !== "ACTIVE") {
+      if (
+        company.status !==
+        UserStatus.ACTIVE
+      ) {
         throw new UnauthorizedException(
           "Company is inactive.",
         );
@@ -102,19 +134,32 @@ export class JwtStrategy extends PassportStrategy(
       const subscription =
         await this.prisma.companySubscription.findFirst({
           where: {
-            companyId: company.id,
-            status: "ACTIVE",
-            isCurrent: true,
+            companyId:
+              company.id,
+
+            status:
+              "ACTIVE",
+
+            isCurrent:
+              true,
           },
         });
 
-      if (!subscription) {
+      if (
+        !subscription
+      ) {
         throw new UnauthorizedException(
           "Company subscription is inactive.",
         );
       }
     }
 
+    /*
+     * Fresh DB user becomes req.user.
+     *
+     * PermissionGuard later isi
+     * current user object ko use karega.
+     */
     return user;
   }
 }
