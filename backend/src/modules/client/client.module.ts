@@ -10,6 +10,10 @@ import { CityModule } from '../master/city/city.module';
 import { AuthModule } from '../auth/auth.module';
 import { CompanyModule } from '../company/company.module';
 
+import {
+  AuthorizationModule,
+} from 'src/modules/authorization/authorization.module';
+
 @Module({
   imports: [
     PassportModule,
@@ -17,6 +21,7 @@ import { CompanyModule } from '../company/company.module';
     StateModule,
     CityModule,
     CompanyModule,
+    AuthorizationModule,
   ],
 
   controllers: [

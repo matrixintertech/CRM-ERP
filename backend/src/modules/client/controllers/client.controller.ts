@@ -11,7 +11,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { AuthGuard } from '@nestjs/passport';
+import {
+  AuthGuard,
+} from '@nestjs/passport';
 
 import {
   ApiBearerAuth,
@@ -20,7 +22,21 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import type { Request } from 'express';
+import type {
+  Request,
+} from 'express';
+
+import type {
+  User,
+} from '@prisma/client';
+
+import {
+  RequirePermission,
+} from 'src/modules/authorization/decorators/require-permission.decorator';
+
+import {
+  PermissionGuard,
+} from 'src/modules/authorization/guards/permission.guard';
 
 import {
   ClientDropdownDto,
@@ -29,11 +45,9 @@ import {
   UpdateClientDto,
 } from '../dto';
 
-import { ClientService } from '../services/client.service';
-
-import type {
-  User,
-} from '@prisma/client';
+import {
+  ClientService,
+} from '../services/client.service';
 
 interface AuthenticatedRequest
   extends Request {
@@ -42,7 +56,10 @@ interface AuthenticatedRequest
 
 @ApiTags('Clients')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+  PermissionGuard,
+)
 @Controller('clients')
 export class ClientController {
   constructor(
@@ -51,12 +68,18 @@ export class ClientController {
   ) {}
 
   @Post()
+  @RequirePermission(
+    'company.client.create',
+  )
   @ApiOperation({
     summary: 'Create Client',
   })
   create(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: CreateClientDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Body()
+    dto: CreateClientDto,
   ) {
     return this.clientService.create(
       req.user,
@@ -65,12 +88,18 @@ export class ClientController {
   }
 
   @Get()
+  @RequirePermission(
+    'company.client.view',
+  )
   @ApiOperation({
     summary: 'Get All Clients',
   })
   findAll(
-    @Req() req: AuthenticatedRequest,
-    @Query() query: ClientQueryDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Query()
+    query: ClientQueryDto,
   ) {
     return this.clientService.findAll(
       req.user,
@@ -79,12 +108,18 @@ export class ClientController {
   }
 
   @Get('dropdown')
+  @RequirePermission(
+    'company.client.view',
+  )
   @ApiOperation({
     summary: 'Client Dropdown',
   })
   findDropdown(
-    @Req() req: AuthenticatedRequest,
-    @Query() query: ClientDropdownDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Query()
+    query: ClientDropdownDto,
   ) {
     return this.clientService.findDropdown(
       req.user,
@@ -93,6 +128,9 @@ export class ClientController {
   }
 
   @Get(':uuid')
+  @RequirePermission(
+    'company.client.view',
+  )
   @ApiOperation({
     summary: 'Get Client By UUID',
   })
@@ -101,8 +139,11 @@ export class ClientController {
     type: String,
   })
   findByUuid(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
   ) {
     return this.clientService.findByUuid(
       req.user,
@@ -111,6 +152,9 @@ export class ClientController {
   }
 
   @Patch(':uuid')
+  @RequirePermission(
+    'company.client.update',
+  )
   @ApiOperation({
     summary: 'Update Client',
   })
@@ -119,9 +163,14 @@ export class ClientController {
     type: String,
   })
   update(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
-    @Body() dto: UpdateClientDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+
+    @Body()
+    dto: UpdateClientDto,
   ) {
     return this.clientService.update(
       req.user,
@@ -131,6 +180,9 @@ export class ClientController {
   }
 
   @Delete(':uuid')
+  @RequirePermission(
+    'company.client.delete',
+  )
   @ApiOperation({
     summary: 'Delete Client',
   })
@@ -139,8 +191,11 @@ export class ClientController {
     type: String,
   })
   remove(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
   ) {
     return this.clientService.remove(
       req.user,
