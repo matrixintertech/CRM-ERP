@@ -353,121 +353,104 @@ export class PlatformRoleRepository {
    *
    * Only PLATFORM permissions are valid.
    */
-  async assignPermissions(
-    platformRoleUuid:
-      string,
+async assignPermissions(
+  platformRoleUuid:
+    string,
 
-    permissionUuids:
-      string[],
-  ) {
-    const role =
-      await this.prisma.platformRole.findFirst({
-        where: {
-          uuid:
-            platformRoleUuid,
+  permissionUuids:
+    string[],
+) {
+  const role =
+    await this.prisma.platformRole.findFirst({
+      where: {
+        uuid:
+          platformRoleUuid,
 
-          deletedAt:
-            null,
-        },
-
-        select: {
-          id: true,
-
-          uuid: true,
-
-          name: true,
-
-          code: true,
-        },
-      });
-
-    if (!role) {
-      return null;
-    }
-
-    const uniquePermissionUuids =
-      Array.from(
-        new Set(
-          permissionUuids,
-        ),
-      );
-
-    const permissions =
-      uniquePermissionUuids.length >
-        0
-        ? await this.prisma.permission.findMany({
-            where: {
-              uuid: {
-                in:
-                  uniquePermissionUuids,
-              },
-
-              type:
-                PermissionType.PLATFORM,
-
-              status:
-                Status.ACTIVE,
-
-              deletedAt:
-                null,
-            },
-
-            select: {
-              id: true,
-
-              uuid: true,
-
-              module: true,
-
-              name: true,
-
-              code: true,
-
-              description: true,
-
-              type: true,
-
-              status: true,
-            },
-          })
-        : [];
-
-    await this.prisma.$transaction(
-      async (
-        tx,
-      ) => {
-        await tx.platformRolePermission.deleteMany({
-          where: {
-            platformRoleId:
-              role.id,
-          },
-        });
-
-        if (
-          permissions.length >
-          0
-        ) {
-          await tx.platformRolePermission.createMany({
-            data:
-              permissions.map(
-                (
-                  permission,
-                ) => ({
-                  platformRoleId:
-                    role.id,
-
-                  permissionId:
-                    permission.id,
-                }),
-              ),
-
-            skipDuplicates:
-              true,
-          });
-        }
+        deletedAt:
+          null,
       },
+
+      select: {
+        id: true,
+
+        uuid: true,
+
+        name: true,
+
+        code: true,
+      },
+    });
+
+  if (!role) {
+    return null;
+  }
+
+  const uniquePermissionUuids =
+    Array.from(
+      new Set(
+        permissionUuids,
+      ),
     );
 
+  const permissions =
+    uniquePermissionUuids.length >
+    0
+      ? await this.prisma.permission.findMany({
+          where: {
+            uuid: {
+              in:
+                uniquePermissionUuids,
+            },
+
+            type:
+              PermissionType.PLATFORM,
+
+            status:
+              Status.ACTIVE,
+
+            deletedAt:
+              null,
+          },
+
+          select: {
+            id: true,
+
+            uuid: true,
+
+            module: true,
+
+            name: true,
+
+            code: true,
+
+            description: true,
+
+            type: true,
+
+            status: true,
+          },
+        })
+      : [];
+
+  /*
+   * IMPORTANT:
+   *
+   * Mutation se pehle validate karo.
+   *
+   * Agar requested UUID me koi:
+   *
+   * - missing permission
+   * - inactive permission
+   * - deleted permission
+   * - COMPANY permission
+   *
+   * hai, to existing role permissions
+   * bilkul change nahi honge.
+   */
+  if (
+    permissions.length !==
+    uniquePermissionUuids.length
+  ) {
     return {
       role,
 
@@ -478,35 +461,86 @@ export class PlatformRoleRepository {
         permissions.length,
 
       permissions:
-        permissions.map(
-          (
-            permission,
-          ) => ({
-            uuid:
-              permission.uuid,
-
-            module:
-              permission.module,
-
-            name:
-              permission.name,
-
-            code:
-              permission.code,
-
-            description:
-              permission.description,
-
-            type:
-              permission.type,
-
-            status:
-              permission.status,
-          }),
-        ),
+        [],
     };
   }
 
+  /*
+   * Validation successful hone ke
+   * baad hi existing permissions
+   * replace karo.
+   */
+  await this.prisma.$transaction(
+    async (
+      tx,
+    ) => {
+      await tx.platformRolePermission.deleteMany({
+        where: {
+          platformRoleId:
+            role.id,
+        },
+      });
+
+      if (
+        permissions.length >
+        0
+      ) {
+        await tx.platformRolePermission.createMany({
+          data:
+            permissions.map(
+              (
+                permission,
+              ) => ({
+                platformRoleId:
+                  role.id,
+
+                permissionId:
+                  permission.id,
+              }),
+            ),
+        });
+      }
+    },
+  );
+
+  return {
+    role,
+
+    requestedPermissionCount:
+      uniquePermissionUuids.length,
+
+    assignedPermissionCount:
+      permissions.length,
+
+    permissions:
+      permissions.map(
+        (
+          permission,
+        ) => ({
+          uuid:
+            permission.uuid,
+
+          module:
+            permission.module,
+
+          name:
+            permission.name,
+
+          code:
+            permission.code,
+
+          description:
+            permission.description,
+
+          type:
+            permission.type,
+
+          status:
+            permission.status,
+        }),
+      ),
+  };
+}
   /*
    * User assignment validation ke liye.
    */

@@ -207,76 +207,77 @@ async create(
   /*
    * Update role.
    */
-  async update(
-    uuid: string,
-    dto: UpdatePlatformRoleDto,
+ async update(
+  uuid: string,
+  dto: UpdatePlatformRoleDto,
+) {
+  const role =
+    await this.platformRoleRepository
+      .findByUuid(
+        uuid,
+      );
+
+  if (!role) {
+    throw new NotFoundException(
+      "Platform role not found.",
+    );
+  }
+
+  const name =
+    dto.name !== undefined
+      ? dto.name.trim()
+      : undefined;
+
+  const code =
+    dto.code !== undefined
+      ? dto.code
+          .trim()
+          .toUpperCase()
+      : undefined;
+
+  if (
+    code !== undefined &&
+    code !== role.code
   ) {
-    const role =
+    const existingCode =
       await this.platformRoleRepository
-        .findByUuid(
-          uuid,
+        .findByCode(
+          code,
         );
 
-    if (!role) {
-      throw new NotFoundException(
-        "Platform role not found.",
+    if (
+      existingCode &&
+      existingCode.id !==
+        role.id
+    ) {
+      throw new ConflictException(
+        "Platform role code already exists.",
       );
     }
+  }
 
-    const name =
-      dto.name !== undefined
-        ? dto.name.trim()
-        : undefined;
-
-    const code =
-      dto.code !== undefined
-        ? dto.code
-            .trim()
-            .toUpperCase()
-        : undefined;
+  if (
+    name !== undefined &&
+    name !== role.name
+  ) {
+    const existingName =
+      await this.platformRoleRepository
+        .findByName(
+          name,
+        );
 
     if (
-      code !== undefined &&
-      code !== role.code
+      existingName &&
+      existingName.id !==
+        role.id
     ) {
-      const existingCode =
-        await this.platformRoleRepository
-          .findByCode(
-            code,
-          );
-
-      if (
-        existingCode &&
-        existingCode.id !==
-          role.id
-      ) {
-        throw new ConflictException(
-          "Platform role code already exists.",
-        );
-      }
+      throw new ConflictException(
+        "Platform role name already exists.",
+      );
     }
+  }
 
-    if (
-      name !== undefined &&
-      name !== role.name
-    ) {
-      const existingName =
-        await this.platformRoleRepository
-          .findByName(
-            name,
-          );
-
-      if (
-        existingName &&
-        existingName.id !==
-          role.id
-      ) {
-        throw new ConflictException(
-          "Platform role name already exists.",
-        );
-      }
-    }
-
+  try {
     const updatedRole =
       await this.platformRoleRepository
         .update(
@@ -315,7 +316,46 @@ async create(
       role:
         updatedRole,
     };
+  } catch (error) {
+    if (
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code ===
+        "P2002"
+    ) {
+      const target =
+        error.meta?.target;
+
+      if (
+        Array.isArray(target) &&
+        target.includes(
+          "code",
+        )
+      ) {
+        throw new ConflictException(
+          "Platform role code already exists.",
+        );
+      }
+
+      if (
+        Array.isArray(target) &&
+        target.includes(
+          "name",
+        )
+      ) {
+        throw new ConflictException(
+          "Platform role name already exists.",
+        );
+      }
+
+      throw new ConflictException(
+        "Platform role already exists.",
+      );
+    }
+
+    throw error;
   }
+}
 
   /*
    * Soft delete.
