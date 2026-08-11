@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  Prisma,
   Status,
 } from "@prisma/client";
 
@@ -35,59 +36,61 @@ export class PlatformRoleService {
   /*
    * Create platform role.
    */
-  async create(
-    dto: CreatePlatformRoleDto,
-  ) {
-    const name =
-      dto.name.trim();
+async create(
+  dto: CreatePlatformRoleDto,
+) {
+  const name =
+    dto.name.trim();
 
-    const code =
-      dto.code
-        .trim()
-        .toUpperCase();
+  const code =
+    dto.code
+      .trim()
+      .toUpperCase();
 
-    const existingCode =
-      await this.platformRoleRepository
-        .findByCode(
-          code,
-        );
-
-    if (existingCode) {
-      throw new ConflictException(
-        "Platform role code already exists.",
-      );
-    }
-
-    const existingName =
-      await this.platformRoleRepository
-        .findByName(
-          name,
-        );
-
-    if (existingName) {
-      throw new ConflictException(
-        "Platform role name already exists.",
-      );
-    }
-
-    const role =
-      await this.platformRoleRepository.create({
-        name,
-
+  const existingCode =
+    await this.platformRoleRepository
+      .findByCode(
         code,
+      );
 
-        description:
-          dto.description
-            ?.trim() ||
-          null,
+  if (existingCode) {
+    throw new ConflictException(
+      "Platform role code already exists.",
+    );
+  }
 
-        isSystem:
-          dto.isSystem ??
-          false,
+  const existingName =
+    await this.platformRoleRepository
+      .findByName(
+        name,
+      );
 
-        status:
-          Status.ACTIVE,
-      });
+  if (existingName) {
+    throw new ConflictException(
+      "Platform role name already exists.",
+    );
+  }
+
+  try {
+    const role =
+      await this.platformRoleRepository
+        .create({
+          name,
+
+          code,
+
+          description:
+            dto.description
+              ?.trim() ||
+            null,
+
+          isSystem:
+            dto.isSystem ??
+            false,
+
+          status:
+            Status.ACTIVE,
+        });
 
     return {
       message:
@@ -95,7 +98,46 @@ export class PlatformRoleService {
 
       role,
     };
+  } catch (error) {
+    if (
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code ===
+        "P2002"
+    ) {
+      const target =
+        error.meta?.target;
+
+      if (
+        Array.isArray(target) &&
+        target.includes(
+          "code",
+        )
+      ) {
+        throw new ConflictException(
+          "Platform role code already exists.",
+        );
+      }
+
+      if (
+        Array.isArray(target) &&
+        target.includes(
+          "name",
+        )
+      ) {
+        throw new ConflictException(
+          "Platform role name already exists.",
+        );
+      }
+
+      throw new ConflictException(
+        "Platform role already exists.",
+      );
+    }
+
+    throw error;
   }
+}
 
   /*
    * Get all platform roles.
