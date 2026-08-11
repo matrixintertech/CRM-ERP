@@ -32,6 +32,20 @@ export interface IProjectRepository {
     companyId: bigint,
   ): Promise<number>;
 
+  /*
+   * Current company + year ka
+   * latest generated SRN.
+   *
+   * Soft deleted project bhi consider
+   * hoga, taaki SRN reuse na ho.
+   */
+  findLatestSRN(
+    companyId: bigint,
+    year: number,
+  ): Promise<{
+    srn: string;
+  } | null>;
+
   findByUuid(
     companyId: bigint,
     uuid: string,

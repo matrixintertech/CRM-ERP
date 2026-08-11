@@ -387,4 +387,40 @@ export class ProjectRepository
       );
     }
   }
+
+  async findLatestSRN(
+  companyId: bigint,
+  year: number,
+): Promise<{
+  srn: string;
+} | null> {
+  return this.prisma.project.findFirst({
+    where: {
+      companyId,
+
+      srn: {
+        startsWith:
+          `SRN-${year}-`,
+      },
+
+      /*
+       * deletedAt filter intentionally
+       * nahi lagana.
+       *
+       * Soft deleted project ka SRN
+       * bhi permanently consumed rahe.
+       */
+    },
+
+    select: {
+      srn:
+        true,
+    },
+
+    orderBy: {
+      id:
+        'desc',
+    },
+  });
+}
 }
