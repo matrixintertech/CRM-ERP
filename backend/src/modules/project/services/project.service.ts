@@ -153,24 +153,40 @@ export class ProjectService {
 
 
 
-  private async generateSRN(
-    companyId: bigint,
-  ) {
+private async generateSRN(
+  companyId: bigint,
+): Promise<string> {
+  const year =
+    new Date().getFullYear();
 
-    const year =
-      new Date().getFullYear();
-
-
-    const total =
-      await this.projectRepository.count(
+  const latest =
+    await this.projectRepository
+      .findLatestSRN(
         companyId,
+        year,
       );
 
+  let nextNumber =
+    1;
 
-    return `SRN-${year}-${String(
-      total + 1,
-    ).padStart(4, '0')}`;
+  if (latest) {
+    const match =
+      latest.srn.match(
+        /^SRN-\d{4}-(\d+)$/,
+      );
+
+    if (match) {
+      nextNumber =
+        Number(
+          match[1],
+        ) + 1;
+    }
   }
+
+  return `SRN-${year}-${String(
+    nextNumber,
+  ).padStart(4, '0')}`;
+}
 
 
 
