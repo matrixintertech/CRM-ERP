@@ -26,7 +26,7 @@ export class ProjectPolicy {
   ) {}
 
   /*
-   * Aisa where condition jo kabhi
+   * Aisa filter jo kabhi
    * kisi project ko match na kare.
    */
   private denyWhere():
@@ -39,18 +39,18 @@ export class ProjectPolicy {
   }
 
   /*
-   * Existing projects ke liye
-   * permission scopes ko Prisma
-   * ProjectWhereInput me convert karta hai.
+   * Project resource ke supported scopes:
    *
-   * Example:
+   * COMPANY
+   * → current company ke saare projects
    *
-   * company.project.view + COMPANY
-   * → {}
+   * PROJECT
+   * → sirf wahi projects jahan current
+   *   employee active ProjectMember hai
    *
-   * company.project.view + PROJECT
-   * → only projects jahan current
-   *   employee ProjectMember hai.
+   * OWN / TEAM / ORGANIZATION_UNIT
+   * → Project resource ke liye currently
+   *   applicable nahi hain.
    */
   async buildWhere(
     userId: bigint,
@@ -68,15 +68,20 @@ export class ProjectPolicy {
     } = authorization;
 
     /*
-     * Project is COMPANY-side resource.
-     *
-     * Company context ke bina koi
-     * project access nahi milega.
+     * Project company-side resource hai.
      */
     if (!user.companyId) {
       return this.denyWhere();
     }
 
+    /*
+     * Same permission multiple sources /
+     * scopes se aa sakti hai.
+     *
+     * Example:
+     * ROLE → PROJECT
+     * USER → COMPANY
+     */
     const scopes =
       Array.from(
         new Set(
@@ -94,12 +99,11 @@ export class ProjectPolicy {
       );
 
     /*
-     * PermissionGuard normally
-     * permission existence already
-     * validate karega.
+     * Permission nahi mili to deny.
      *
-     * Policy ko standalone use karne par
-     * bhi safe rehna chahiye.
+     * PermissionGuard normally isko
+     * pehle hi block karega, but policy
+     * standalone bhi safe rehni chahiye.
      */
     if (
       scopes.length ===
@@ -109,17 +113,12 @@ export class ProjectPolicy {
     }
 
     /*
-     * COMPANY is strongest project
-     * scope.
+     * COMPANY scope:
      *
-     * Repository already:
+     * Repository already current
+     * companyId enforce karta hai.
      *
-     * companyId = current company
-     *
-     * enforce karta hai.
-     *
-     * Isliye additional filter ki
-     * zarurat nahi.
+     * Isliye additional filter nahi.
      */
     if (
       scopes.includes(
@@ -129,45 +128,53 @@ export class ProjectPolicy {
       return {};
     }
 
-    const OR:
-      Prisma.ProjectWhereInput[] =
-      [];
-
     /*
-     * PROJECT scope
+     * PROJECT scope:
      *
-     * User employee hona chahiye aur
-     * jis project ka ProjectMember hai
-     * sirf wahi project accessible hoga.
+     * Company user employee bhi hona
+     * chahiye, kyunki ProjectMember
+     * Employee se linked hai.
      */
     if (
       scopes.includes(
         PermissionScope.PROJECT,
-      ) &&
-      user.employeeId
+      )
     ) {
-    const memberships =
-  await this.prisma
-    .projectMember
-    .findMany({
-      where: {
-        employeeId:
-          user.employeeId,
+      if (!user.employeeId) {
+        return this.denyWhere();
+      }
 
-        project: {
-          companyId:
-            user.companyId,
+      const memberships =
+        await this.prisma
+          .projectMember
+          .findMany({
+            where: {
+              companyId:
+                user.companyId,
 
-          deletedAt:
-            null,
-        },
-      },
+              employeeId:
+                user.employeeId,
 
-      select: {
-        projectId:
-          true,
-      },
-    });
+              isActive:
+                true,
+
+              removedAt:
+                null,
+
+              project: {
+                companyId:
+                  user.companyId,
+
+                deletedAt:
+                  null,
+              },
+            },
+
+            select: {
+              projectId:
+                true,
+            },
+          });
 
       const projectIds =
         Array.from(
@@ -180,66 +187,33 @@ export class ProjectPolicy {
         );
 
       if (
-        projectIds.length >
+        projectIds.length ===
         0
       ) {
-        OR.push({
-          id: {
-            in:
-              projectIds,
-          },
-        });
+        return this.denyWhere();
       }
+
+      return {
+        id: {
+          in:
+            projectIds,
+        },
+      };
     }
 
     /*
+     * Project resource par currently:
+     *
      * OWN
-     *
-     * Project ke context me OWN ka
-     * exact meaning pehle define karna
-     * hoga:
-     *
-     * - createdBy?
-     * - project manager?
-     * - project lead?
-     *
-     * Isliye abhi automatic access nahi.
-     */
-
-    /*
+     * TEAM
      * ORGANIZATION_UNIT
      *
-     * Employee ↔ OrganizationUnit
-     * exact schema relation confirm karke
-     * next add karenge.
-     */
-
-    /*
-     * TEAM
+     * supported nahi hain.
      *
-     * Team membership model ke according
-     * baad me implement hoga.
+     * Agar permission galti se in scopes
+     * ke saath assign ho gayi to broad
+     * access dene ke bajay deny karo.
      */
-
-    /*
-     * Agar available scopes me se koi
-     * supported scope match nahi hua,
-     * deny.
-     */
-    if (
-      OR.length ===
-      0
-    ) {
-      return this.denyWhere();
-    }
-
-    /*
-     * Multiple scopes future me:
-     *
-     * PROJECT OR OU OR TEAM etc.
-     */
-    return {
-      OR,
-    };
+    return this.denyWhere();
   }
 }
