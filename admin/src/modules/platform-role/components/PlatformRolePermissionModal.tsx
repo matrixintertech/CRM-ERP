@@ -379,40 +379,235 @@ const PlatformRolePermissionModal = ({
       ?.role.name ??
     "Platform Role";
 
-  return (
-    <Modal
-      open={
-        open
-      }
-      title="Platform Role Permissions"
-      onClose={
-        onClose
-      }
-      size="lg"
-    >
-      {loading &&
-      !rolePermissions ? (
-        <p>
-          Loading permissions...
-        </p>
-      ) : !rolePermissions ? (
-        <p>
-          Platform role permission
-          information not found.
-        </p>
-      ) : (
+return (
+  <Modal
+    open={open}
+    title="Platform Role Permissions"
+    onClose={onClose}
+    size="lg"
+  >
+    {loading &&
+    !rolePermissions ? (
+      <p>
+        Loading permissions...
+      </p>
+    ) : !rolePermissions ? (
+      <p>
+        Platform role permission
+        information not found.
+      </p>
+    ) : (
+      <div
+        style={{
+          display:
+            "flex",
+
+          flexDirection:
+            "column",
+
+          gap:
+            20,
+
+          /*
+           * Modal ke andar definite
+           * available height create karo.
+           *
+           * Isse middle permission area
+           * proper scrollable banega.
+           */
+          height:
+            "min(720px, calc(100vh - 180px))",
+
+          minHeight:
+            0,
+
+          overflow:
+            "hidden",
+        }}
+      >
+        {/* Header */}
+
+        <section
+          style={{
+            display:
+              "flex",
+
+            alignItems:
+              "center",
+
+            justifyContent:
+              "space-between",
+
+            flexWrap:
+              "wrap",
+
+            gap:
+              12,
+
+            paddingBottom:
+              16,
+
+            borderBottom:
+              "1px solid #e5e7eb",
+
+            /*
+             * Header scroll-area me
+             * shrink nahi hoga.
+             */
+            flexShrink:
+              0,
+          }}
+        >
+          <div>
+            <h3
+              style={{
+                margin:
+                  "0 0 5px",
+
+                color:
+                  "#111827",
+              }}
+            >
+              {roleName}
+            </h3>
+
+            <div
+              style={{
+                color:
+                  "#6b7280",
+
+                fontSize:
+                  13,
+              }}
+            >
+              {
+                rolePermissions
+                  .role.code
+              }
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding:
+                "7px 11px",
+
+              border:
+                "1px solid #ddd6fe",
+
+              borderRadius:
+                999,
+
+              background:
+                "#f5f3ff",
+
+              color:
+                "#6d28d9",
+
+              fontSize:
+                12,
+
+              fontWeight:
+                600,
+            }}
+          >
+            PLATFORM
+          </div>
+        </section>
+
+        {/* Summary */}
+
+        <section
+          style={{
+            display:
+              "grid",
+
+            gridTemplateColumns:
+              "repeat(2, minmax(0, 1fr))",
+
+            gap:
+              12,
+
+            flexShrink:
+              0,
+          }}
+        >
+          <SummaryCard
+            label="Available Permissions"
+            value={
+              allPermissions.length
+            }
+          />
+
+          <SummaryCard
+            label="Assigned Permissions"
+            value={
+              selectedPermissionUuids
+                .length
+            }
+          />
+        </section>
+
+        {/* Search + Select All */}
+
         <div
           style={{
             display:
               "grid",
 
+            gridTemplateColumns:
+              "minmax(0, 1fr) auto",
+
+            alignItems:
+              "center",
+
             gap:
-              20,
+              12,
+
+            flexShrink:
+              0,
           }}
         >
-          {/* Header */}
+          <input
+            type="search"
+            placeholder="Search by permission name, code or module..."
+            value={search}
+            onChange={(
+              event,
+            ) =>
+              setSearch(
+                event.target
+                  .value,
+              )
+            }
+            style={{
+              width:
+                "100%",
 
-          <section
+              boxSizing:
+                "border-box",
+
+              padding:
+                "11px 13px",
+
+              border:
+                "1px solid #d1d5db",
+
+              borderRadius:
+                8,
+
+              color:
+                "#111827",
+
+              fontSize:
+                14,
+
+              outline:
+                "none",
+            }}
+          />
+
+          <label
             style={{
               display:
                 "flex",
@@ -420,317 +615,255 @@ const PlatformRolePermissionModal = ({
               alignItems:
                 "center",
 
-              justifyContent:
-                "space-between",
-
-              flexWrap:
-                "wrap",
-
               gap:
-                12,
+                8,
 
-              paddingBottom:
-                16,
+              padding:
+                "9px 11px",
 
-              borderBottom:
-                "1px solid #e5e7eb",
-            }}
-          >
-            <div>
-              <h3
-                style={{
-                  margin:
-                    "0 0 5px",
+              border:
+                "1px solid #d1d5db",
 
-                  color:
-                    "#111827",
-                }}
-              >
-                {
-                  roleName
-                }
-              </h3>
+              borderRadius:
+                8,
 
-              <div
-                style={{
-                  color:
-                    "#6b7280",
+              color:
+                "#374151",
 
-                  fontSize:
-                    13,
-                }}
-              >
-                {
-                  rolePermissions
-                    .role.code
-                }
-              </div>
-            </div>
+              fontSize:
+                13,
 
-            <div
-              style={{
-                padding:
-                  "7px 11px",
+              whiteSpace:
+                "nowrap",
 
-                border:
-                  "1px solid #ddd6fe",
-
-                borderRadius:
-                  999,
-
-                background:
-                  "#f5f3ff",
-
-                color:
-                  "#6d28d9",
-
-                fontSize:
-                  12,
-
-                fontWeight:
-                  600,
-              }}
-            >
-              PLATFORM
-            </div>
-          </section>
-
-          {/* Summary */}
-
-          <section
-            style={{
-              display:
-                "grid",
-
-              gridTemplateColumns:
-                "repeat(2, minmax(0, 1fr))",
-
-              gap:
-                12,
-            }}
-          >
-            <SummaryCard
-              label="Available Permissions"
-              value={
-                allPermissions.length
-              }
-            />
-
-            <SummaryCard
-              label="Assigned Permissions"
-              value={
-                selectedPermissionUuids
-                  .length
-              }
-            />
-          </section>
-
-          {/* Search + Select All */}
-
-          <div
-            style={{
-              display:
-                "grid",
-
-              gridTemplateColumns:
-                "minmax(0, 1fr) auto",
-
-              alignItems:
-                "center",
-
-              gap:
-                12,
+              cursor:
+                loading
+                  ? "not-allowed"
+                  : "pointer",
             }}
           >
             <input
-              type="search"
-              placeholder="Search by permission name, code or module..."
-              value={
-                search
+              type="checkbox"
+              checked={
+                allVisibleSelected
               }
-              onChange={(
-                event,
-              ) =>
-                setSearch(
-                  event.target
-                    .value,
-                )
+              disabled={
+                loading ||
+                visiblePermissions.length ===
+                  0
               }
-              style={{
-                width:
-                  "100%",
-
-                boxSizing:
-                  "border-box",
-
-                padding:
-                  "11px 13px",
-
-                border:
-                  "1px solid #d1d5db",
-
-                borderRadius:
-                  8,
-
-                color:
-                  "#111827",
-
-                fontSize:
-                  14,
-
-                outline:
-                  "none",
-              }}
+              onChange={
+                handleSelectAllVisible
+              }
             />
 
-            <label
+            Select visible
+          </label>
+        </div>
+
+        {/* Permission Groups */}
+
+        <div
+          style={{
+            /*
+             * Ye main scrollable area hai.
+             */
+            flex:
+              "1 1 auto",
+
+            minHeight:
+              0,
+
+            overflowY:
+              "auto",
+
+            overflowX:
+              "hidden",
+
+            paddingRight:
+              8,
+
+            paddingBottom:
+              8,
+
+            overscrollBehavior:
+              "contain",
+
+            /*
+             * Groups ko vertical stack
+             * me maintain karo.
+             */
+            display:
+              "flex",
+
+            flexDirection:
+              "column",
+
+            gap:
+              16,
+
+            scrollbarGutter:
+              "stable",
+          }}
+        >
+          {groupedPermissions.length ===
+          0 ? (
+            <div
               style={{
-                display:
-                  "flex",
-
-                alignItems:
-                  "center",
-
-                gap:
-                  8,
-
                 padding:
-                  "9px 11px",
+                  30,
 
                 border:
-                  "1px solid #d1d5db",
+                  "1px dashed #d1d5db",
 
                 borderRadius:
-                  8,
+                  10,
 
                 color:
-                  "#374151",
+                  "#6b7280",
 
-                fontSize:
-                  13,
+                textAlign:
+                  "center",
 
-                whiteSpace:
-                  "nowrap",
-
-                cursor:
-                  loading
-                    ? "not-allowed"
-                    : "pointer",
+                flexShrink:
+                  0,
               }}
             >
-              <input
-                type="checkbox"
-                checked={
-                  allVisibleSelected
-                }
-                disabled={
-                  loading ||
-                  visiblePermissions.length ===
-                    0
-                }
-                onChange={
-                  handleSelectAllVisible
-                }
-              />
+              No platform permissions
+              found.
+            </div>
+          ) : (
+            groupedPermissions.map(
+              (group) => {
+                const moduleSelected =
+                  group.permissions
+                    .length >
+                    0 &&
+                  group.permissions.every(
+                    (
+                      permission,
+                    ) =>
+                      selectedPermissionSet.has(
+                        permission.uuid,
+                      ),
+                  );
 
-              Select visible
-            </label>
-          </div>
+                const selectedCount =
+                  group.permissions.filter(
+                    (
+                      permission,
+                    ) =>
+                      selectedPermissionSet.has(
+                        permission.uuid,
+                      ),
+                  ).length;
 
-          {/* Permission Groups */}
+                return (
+                  <section
+                    key={
+                      group.module
+                    }
+                    style={{
+                      border:
+                        "1px solid #e5e7eb",
 
-          <div
-            style={{
-              display:
-                "grid",
+                      borderRadius:
+                        11,
 
-              gap:
-                16,
+                      background:
+                        "#ffffff",
 
-              maxHeight:
-                "55vh",
+                      overflow:
+                        "hidden",
 
-              overflowY:
-                "auto",
+                      /*
+                       * Important:
+                       * group shrink nahi hoga.
+                       *
+                       * Pehle flex/grid layout
+                       * available height me
+                       * cards compress kar sakta tha.
+                       */
+                      flexShrink:
+                        0,
+                    }}
+                  >
+                    {/* Module Header */}
 
-              overflowX:
-                "hidden",
-
-              paddingRight:
-                6,
-            }}
-          >
-            {groupedPermissions.length ===
-            0 ? (
-              <div
-                style={{
-                  padding:
-                    30,
-
-                  border:
-                    "1px dashed #d1d5db",
-
-                  borderRadius:
-                    10,
-
-                  color:
-                    "#6b7280",
-
-                  textAlign:
-                    "center",
-                }}
-              >
-                No platform permissions
-                found.
-              </div>
-            ) : (
-              groupedPermissions.map(
-                (group) => {
-                  const moduleSelected =
-                    group.permissions
-                      .length >
-                      0 &&
-                    group.permissions.every(
-                      (
-                        permission,
-                      ) =>
-                        selectedPermissionSet.has(
-                          permission.uuid,
-                        ),
-                    );
-
-                  const selectedCount =
-                    group.permissions.filter(
-                      (
-                        permission,
-                      ) =>
-                        selectedPermissionSet.has(
-                          permission.uuid,
-                        ),
-                    ).length;
-
-                  return (
-                    <section
-                      key={
-                        group.module
-                      }
+                    <div
                       style={{
-                        border:
-                          "1px solid #e5e7eb",
+                        display:
+                          "flex",
 
-                        borderRadius:
-                          11,
+                        alignItems:
+                          "center",
+
+                        justifyContent:
+                          "space-between",
+
+                        flexWrap:
+                          "wrap",
+
+                        gap:
+                          12,
+
+                        padding:
+                          "13px 15px",
 
                         background:
-                          "#ffffff",
+                          "#f8fafc",
 
-                        overflow:
-                          "hidden",
+                        borderBottom:
+                          "1px solid #e5e7eb",
                       }}
                     >
-                      {/* Module Header */}
+                      <div>
+                        <strong
+                          style={{
+                            display:
+                              "block",
 
-                      <div
+                            color:
+                              "#111827",
+
+                            fontSize:
+                              14,
+                          }}
+                        >
+                          {formatModuleName(
+                            group.module,
+                          )}
+                        </strong>
+
+                        <span
+                          style={{
+                            display:
+                              "block",
+
+                            marginTop:
+                              3,
+
+                            color:
+                              "#6b7280",
+
+                            fontSize:
+                              12,
+                          }}
+                        >
+                          {
+                            selectedCount
+                          }
+                          /
+                          {
+                            group
+                              .permissions
+                              .length
+                          }{" "}
+                          selected
+                        </span>
+                      </div>
+
+                      <label
                         style={{
                           display:
                             "flex",
@@ -738,366 +871,296 @@ const PlatformRolePermissionModal = ({
                           alignItems:
                             "center",
 
-                          justifyContent:
-                            "space-between",
-
-                          flexWrap:
-                            "wrap",
-
-                          gap:
-                            12,
-
-                          padding:
-                            "13px 15px",
-
-                          background:
-                            "#f8fafc",
-
-                          borderBottom:
-                            "1px solid #e5e7eb",
-                        }}
-                      >
-                        <div>
-                          <strong
-                            style={{
-                              display:
-                                "block",
-
-                              color:
-                                "#111827",
-
-                              fontSize:
-                                14,
-                            }}
-                          >
-                            {formatModuleName(
-                              group.module,
-                            )}
-                          </strong>
-
-                          <span
-                            style={{
-                              display:
-                                "block",
-
-                              marginTop:
-                                3,
-
-                              color:
-                                "#6b7280",
-
-                              fontSize:
-                                12,
-                            }}
-                          >
-                            {
-                              selectedCount
-                            }
-                            /
-                            {
-                              group
-                                .permissions
-                                .length
-                            }{" "}
-                            selected
-                          </span>
-                        </div>
-
-                        <label
-                          style={{
-                            display:
-                              "flex",
-
-                            alignItems:
-                              "center",
-
-                            gap:
-                              8,
-
-                            cursor:
-                              loading
-                                ? "not-allowed"
-                                : "pointer",
-
-                            color:
-                              "#374151",
-
-                            fontSize:
-                              13,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
-                              moduleSelected
-                            }
-                            disabled={
-                              loading
-                            }
-                            onChange={() =>
-                              handleModuleSelectAll(
-                                group,
-                              )
-                            }
-                          />
-
-                          Select all
-                        </label>
-                      </div>
-
-                      {/* Permissions */}
-
-                      <div
-                        style={{
-                          display:
-                            "grid",
-
                           gap:
                             8,
 
-                          padding:
+                          cursor:
+                            loading
+                              ? "not-allowed"
+                              : "pointer",
+
+                          color:
+                            "#374151",
+
+                          fontSize:
                             13,
                         }}
                       >
-                        {group.permissions.map(
-                          (
-                            permission,
-                          ) => {
-                            const checked =
-                              selectedPermissionSet.has(
-                                permission.uuid,
-                              );
+                        <input
+                          type="checkbox"
+                          checked={
+                            moduleSelected
+                          }
+                          disabled={
+                            loading
+                          }
+                          onChange={() =>
+                            handleModuleSelectAll(
+                              group,
+                            )
+                          }
+                        />
 
-                            return (
-                              <label
-                                key={
-                                  permission.uuid
+                        Select all
+                      </label>
+                    </div>
+
+                    {/* Permissions */}
+
+                    <div
+                      style={{
+                        display:
+                          "grid",
+
+                        gap:
+                          8,
+
+                        padding:
+                          13,
+                      }}
+                    >
+                      {group.permissions.map(
+                        (
+                          permission,
+                        ) => {
+                          const checked =
+                            selectedPermissionSet.has(
+                              permission.uuid,
+                            );
+
+                          return (
+                            <label
+                              key={
+                                permission.uuid
+                              }
+                              style={{
+                                display:
+                                  "grid",
+
+                                gridTemplateColumns:
+                                  "auto minmax(0, 1fr) auto",
+
+                                alignItems:
+                                  "center",
+
+                                gap:
+                                  12,
+
+                                padding:
+                                  "11px 13px",
+
+                                border:
+                                  checked
+                                    ? "1px solid #c4b5fd"
+                                    : "1px solid #e5e7eb",
+
+                                borderRadius:
+                                  9,
+
+                                background:
+                                  checked
+                                    ? "#f5f3ff"
+                                    : "#ffffff",
+
+                                cursor:
+                                  loading
+                                    ? "not-allowed"
+                                    : "pointer",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  checked
+                                }
+                                disabled={
+                                  loading
+                                }
+                                onChange={() =>
+                                  handlePermissionChange(
+                                    permission.uuid,
+                                  )
                                 }
                                 style={{
-                                  display:
-                                    "grid",
+                                  width:
+                                    17,
 
-                                  gridTemplateColumns:
-                                    "auto minmax(0, 1fr) auto",
+                                  height:
+                                    17,
 
-                                  alignItems:
-                                    "center",
+                                  margin:
+                                    0,
+                                }}
+                              />
 
-                                  gap:
-                                    12,
-
-                                  padding:
-                                    "11px 13px",
-
-                                  border:
-                                    checked
-                                      ? "1px solid #c4b5fd"
-                                      : "1px solid #e5e7eb",
-
-                                  borderRadius:
-                                    9,
-
-                                  background:
-                                    checked
-                                      ? "#f5f3ff"
-                                      : "#ffffff",
-
-                                  cursor:
-                                    loading
-                                      ? "not-allowed"
-                                      : "pointer",
+                              <div
+                                style={{
+                                  minWidth:
+                                    0,
                                 }}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    checked
-                                  }
-                                  disabled={
-                                    loading
-                                  }
-                                  onChange={() =>
-                                    handlePermissionChange(
-                                      permission.uuid,
-                                    )
-                                  }
+                                <div
                                   style={{
-                                    width:
-                                      17,
+                                    color:
+                                      "#111827",
 
-                                    height:
-                                      17,
+                                    fontSize:
+                                      14,
 
-                                    margin:
-                                      0,
+                                    fontWeight:
+                                      600,
+
+                                    overflowWrap:
+                                      "anywhere",
                                   }}
-                                />
+                                >
+                                  {
+                                    permission.name
+                                  }
+                                </div>
 
                                 <div
                                   style={{
-                                    minWidth:
-                                      0,
+                                    marginTop:
+                                      3,
+
+                                    color:
+                                      "#6b7280",
+
+                                    fontSize:
+                                      12,
+
+                                    overflowWrap:
+                                      "anywhere",
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      color:
-                                        "#111827",
+                                  {
+                                    permission.code
+                                  }
+                                </div>
 
-                                      fontSize:
-                                        14,
-
-                                      fontWeight:
-                                        600,
-
-                                      overflowWrap:
-                                        "anywhere",
-                                    }}
-                                  >
-                                    {
-                                      permission.name
-                                    }
-                                  </div>
-
+                                {permission.description && (
                                   <div
                                     style={{
                                       marginTop:
                                         3,
 
                                       color:
-                                        "#6b7280",
+                                        "#9ca3af",
 
                                       fontSize:
                                         12,
 
-                                      overflowWrap:
-                                        "anywhere",
+                                      lineHeight:
+                                        1.4,
                                     }}
                                   >
                                     {
-                                      permission.code
+                                      permission.description
                                     }
                                   </div>
+                                )}
+                              </div>
 
-                                  {permission.description && (
-                                    <div
-                                      style={{
-                                        marginTop:
-                                          3,
+                              <span
+                                style={{
+                                  padding:
+                                    "4px 8px",
 
-                                        color:
-                                          "#9ca3af",
+                                  borderRadius:
+                                    999,
 
-                                        fontSize:
-                                          12,
+                                  background:
+                                    checked
+                                      ? "#ede9fe"
+                                      : "#f3f4f6",
 
-                                        lineHeight:
-                                          1.4,
-                                      }}
-                                    >
-                                      {
-                                        permission.description
-                                      }
-                                    </div>
-                                  )}
-                                </div>
+                                  color:
+                                    checked
+                                      ? "#6d28d9"
+                                      : "#6b7280",
 
-                                <span
-                                  style={{
-                                    padding:
-                                      "4px 8px",
+                                  fontSize:
+                                    11,
 
-                                    borderRadius:
-                                      999,
+                                  fontWeight:
+                                    600,
 
-                                    background:
-                                      checked
-                                        ? "#ede9fe"
-                                        : "#f3f4f6",
-
-                                    color:
-                                      checked
-                                        ? "#6d28d9"
-                                        : "#6b7280",
-
-                                    fontSize:
-                                      11,
-
-                                    fontWeight:
-                                      600,
-
-                                    whiteSpace:
-                                      "nowrap",
-                                  }}
-                                >
-                                  {checked
-                                    ? "Assigned"
-                                    : "Available"}
-                                </span>
-                              </label>
-                            );
-                          },
-                        )}
-                      </div>
-                    </section>
-                  );
-                },
-              )
-            )}
-          </div>
-
-          {/* Footer */}
-
-          <div
-            style={{
-              display:
-                "flex",
-
-              justifyContent:
-                "flex-end",
-
-              flexWrap:
-                "wrap",
-
-              gap:
-                10,
-
-              paddingTop:
-                10,
-
-              borderTop:
-                "1px solid #e5e7eb",
-            }}
-          >
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                loading
-              }
-              onClick={
-                onClose
-              }
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="button"
-              loading={
-                loading
-              }
-              onClick={
-                handleSave
-              }
-            >
-              Save Permissions
-            </Button>
-          </div>
+                                  whiteSpace:
+                                    "nowrap",
+                                }}
+                              >
+                                {checked
+                                  ? "Assigned"
+                                  : "Available"}
+                              </span>
+                            </label>
+                          );
+                        },
+                      )}
+                    </div>
+                  </section>
+                );
+              },
+            )
+          )}
         </div>
-      )}
-    </Modal>
-  );
+
+        {/* Footer */}
+
+        <div
+          style={{
+            display:
+              "flex",
+
+            justifyContent:
+              "flex-end",
+
+            flexWrap:
+              "wrap",
+
+            gap:
+              10,
+
+            paddingTop:
+              10,
+
+            borderTop:
+              "1px solid #e5e7eb",
+
+            flexShrink:
+              0,
+          }}
+        >
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              loading
+            }
+            onClick={
+              onClose
+            }
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            loading={
+              loading
+            }
+            onClick={
+              handleSave
+            }
+          >
+            Save Permissions
+          </Button>
+        </div>
+      </div>
+    )}
+  </Modal>
+);
 };
 
 interface SummaryCardProps {
