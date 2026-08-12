@@ -13,17 +13,19 @@ import {
 
 export class CreateDepartmentDto {
   @ApiProperty({
-    description: "Organization Unit UUID",
+    description:
+      "Organization Unit UUID",
     example:
       "b68b1d3f-8c27-4b8f-91d2-2f1d7b6d8c10",
   })
   @IsUUID()
-  @IsNotEmpty()
   organizationUnitUuid: string;
 
   @ApiProperty({
-    example: "Information Technology",
-    description: "Department name",
+    example:
+      "Information Technology",
+    description:
+      "Department name",
   })
   @IsString()
   @IsNotEmpty()
@@ -31,8 +33,10 @@ export class CreateDepartmentDto {
   name: string;
 
   @ApiProperty({
-    example: "IT",
-    description: "Department code",
+    example:
+      "IT",
+    description:
+      "Department code",
   })
   @IsString()
   @IsNotEmpty()

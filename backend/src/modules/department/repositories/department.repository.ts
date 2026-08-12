@@ -1,14 +1,64 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { Prisma, Status } from '@prisma/client';
+import {
+  Prisma,
+  Status,
+} from '@prisma/client';
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
 
-import { CreateDepartmentDto } from '../dto/create-department.dto';
+import {
+  CreateDepartmentDto,
+} from '../dto/create-department.dto';
+
+export interface DepartmentAccessBoundary {
+  companyId: bigint;
+
+  /*
+   * null:
+   *   COMPANY scope.
+   *
+   * bigint[]:
+   *   ORGANIZATION_UNIT scope.
+   *
+   * []:
+   *   no accessible organization units.
+   */
+  organizationUnitIds:
+    bigint[] | null;
+}
 
 @Injectable()
 export class DepartmentRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma:
+      PrismaService,
+  ) {}
+
+  private buildAccessWhere(
+    access:
+      DepartmentAccessBoundary,
+  ): Prisma.DepartmentWhereInput {
+    return {
+      companyId:
+        access.companyId,
+
+      deletedAt:
+        null,
+
+      ...(access.organizationUnitIds !==
+        null && {
+        organizationUnitId: {
+          in:
+            access.organizationUnitIds,
+        },
+      }),
+    };
+  }
 
   async create(
     companyId: bigint,
@@ -19,51 +69,93 @@ export class DepartmentRepository {
       data: {
         companyId,
         organizationUnitId,
-        name: dto.name,
-        code: dto.code,
-        description: dto.description,
+
+        name:
+          dto.name,
+
+        code:
+          dto.code,
+
+        description:
+          dto.description,
       },
+
       include: {
-        organizationUnit: true,
+        organizationUnit:
+          true,
       },
     });
   }
 
-  async findAll(companyId?: bigint) {
+  async findAll(
+    access:
+      DepartmentAccessBoundary,
+  ) {
     return this.prisma.department.findMany({
-      where: {
-        deletedAt: null,
-
-        ...(companyId !== undefined
-          ? {
-              companyId,
-            }
-          : {}),
-      },
+      where:
+        this.buildAccessWhere(
+          access,
+        ),
 
       include: {
-        organizationUnit: true,
+        organizationUnit:
+          true,
       },
 
       orderBy: {
-        createdAt: 'desc',
+        createdAt:
+          'desc',
       },
     });
   }
 
-  async findById(companyId: bigint, id: bigint) {
+  async findById(
+    access:
+      DepartmentAccessBoundary,
+    id: bigint,
+  ) {
     return this.prisma.department.findFirst({
       where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
         id,
-        companyId,
-        deletedAt: null,
       },
+
       include: {
-        organizationUnit: true,
+        organizationUnit:
+          true,
       },
     });
   }
 
+  async findByUuid(
+    access:
+      DepartmentAccessBoundary,
+    uuid: string,
+  ) {
+    return this.prisma.department.findFirst({
+      where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
+        uuid,
+      },
+
+      include: {
+        organizationUnit:
+          true,
+      },
+    });
+  }
+
+  /*
+   * Duplicate checks resource-access scope
+   * par nahi, actual tenant + OU boundary
+   * par hone chahiye.
+   */
   async findByName(
     companyId: bigint,
     organizationUnitId: bigint,
@@ -74,7 +166,9 @@ export class DepartmentRepository {
         companyId,
         organizationUnitId,
         name,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -89,81 +183,97 @@ export class DepartmentRepository {
         companyId,
         organizationUnitId,
         code,
-        deletedAt: null,
-      },
-    });
-  }
 
-  async findByUuid(companyId: bigint, uuid: string) {
-    return this.prisma.department.findFirst({
-      where: {
-        companyId,
-        uuid,
-        deletedAt: null,
-      },
-      include: {
-        organizationUnit: true,
+        deletedAt:
+          null,
       },
     });
   }
 
   async update(
-    companyId: bigint,
+    access:
+      DepartmentAccessBoundary,
     id: bigint,
-    data: Prisma.DepartmentUpdateInput,
+    data:
+      Prisma.DepartmentUpdateInput,
   ) {
-    const department = await this.prisma.department.findFirst({
-      where: {
-        id,
-        companyId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const department =
+      await this.prisma.department.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
 
     if (!department) {
-      throw new NotFoundException('Department not found.');
+      return null;
     }
 
     return this.prisma.department.update({
       where: {
-        id: department.id,
+        id:
+          department.id,
       },
+
       data,
+
       include: {
-        organizationUnit: true,
+        organizationUnit:
+          true,
       },
     });
   }
 
-  async softDelete(companyId: bigint, id: bigint) {
-    const department = await this.prisma.department.findFirst({
-      where: {
-        id,
-        companyId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    });
+  async softDelete(
+    access:
+      DepartmentAccessBoundary,
+    id: bigint,
+  ) {
+    const department =
+      await this.prisma.department.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
 
     if (!department) {
-      throw new NotFoundException('Department not found.');
+      return null;
     }
 
     return this.prisma.department.update({
       where: {
-        id: department.id,
+        id:
+          department.id,
       },
+
       data: {
-        deletedAt: new Date(),
-        status: Status.INACTIVE,
+        deletedAt:
+          new Date(),
+
+        status:
+          Status.INACTIVE,
       },
+
       include: {
-        organizationUnit: true,
+        organizationUnit:
+          true,
       },
     });
   }

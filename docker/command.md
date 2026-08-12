@@ -83,6 +83,7 @@ for log
 docker compose -f docker/docker-compose.yml logs -f backend
 
 //format
+
 docker compose -f docker/docker-compose.yml exec backend npx prisma format
 
 //validate
@@ -157,3 +158,11 @@ docker compose \
  --env-file .env.production \
  -f docker-compose.prod.yml \
  restart backend
+
+
+ //update env
+
+ nano docker/.env.production
+ ctrl+O
+ enter
+ ctrl+x

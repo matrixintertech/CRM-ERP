@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -11,9 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import type { Request } from 'express';
+import type {
+  Request,
+} from 'express';
 
-import { UserType, type User } from '@prisma/client';
+import type {
+  User,
+} from '@prisma/client';
 
 import {
   ApiBearerAuth,
@@ -23,65 +26,103 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { AuthGuard } from '@nestjs/passport';
+import {
+  AuthGuard,
+} from '@nestjs/passport';
 
-import { CreateDepartmentDto } from '../dto/create-department.dto';
+import {
+  CreateDepartmentDto,
+} from '../dto/create-department.dto';
 
-import { UpdateDepartmentDto } from '../dto/update-department.dto';
+import {
+  UpdateDepartmentDto,
+} from '../dto/update-department.dto';
 
-import { DepartmentService } from '../services/department.service';
+import {
+  DepartmentService,
+} from '../services/department.service';
 
-interface AuthenticatedRequest extends Request {
+import {
+  PermissionGuard,
+} from '../../authorization/guards/permission.guard';
+
+import {
+  RequirePermission,
+} from '../../authorization/decorators/require-permission.decorator';
+
+interface AuthenticatedRequest
+  extends Request {
   user: User;
 }
 
 @ApiTags('Department')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+  PermissionGuard,
+)
 @Controller('departments')
 export class DepartmentController {
-  constructor(private readonly departmentService: DepartmentService) {}
-
-  private getCompanyId(user: User): bigint {
-    if (!user.companyId) {
-      throw new ForbiddenException('Company context is missing.');
-    }
-
-    return user.companyId;
-  }
+  constructor(
+    private readonly departmentService:
+      DepartmentService,
+  ) {}
 
   @Post()
+  @RequirePermission(
+    'company.department.create',
+  )
   @ApiOperation({
-    summary: 'Create Department',
+    summary:
+      'Create Department',
   })
   @ApiResponse({
     status: 201,
-    description: 'Department created successfully.',
+    description:
+      'Department created successfully.',
   })
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateDepartmentDto) {
-    return this.departmentService.create(this.getCompanyId(req.user), dto);
+  create(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Body()
+    dto: CreateDepartmentDto,
+  ) {
+    return this.departmentService.create(
+      req.user,
+      dto,
+    );
   }
 
   @Get()
+  @RequirePermission(
+    'company.department.view',
+  )
   @ApiOperation({
-    summary: 'Get All Departments',
+    summary:
+      'Get All Departments',
   })
   @ApiResponse({
     status: 200,
-    description: 'Departments fetched successfully.',
+    description:
+      'Departments fetched successfully.',
   })
-  findAll(@Req() req: AuthenticatedRequest) {
-    const companyId =
-      req.user.userType === UserType.PLATFORM_OWNER
-        ? undefined
-        : this.getCompanyId(req.user);
-
-    return this.departmentService.findAll(companyId);
+  findAll(
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.departmentService.findAll(
+      req.user,
+    );
   }
 
   @Get(':uuid')
+  @RequirePermission(
+    'company.department.view',
+  )
   @ApiOperation({
-    summary: 'Get Department By UUID',
+    summary:
+      'Get Department By UUID',
   })
   @ApiParam({
     name: 'uuid',
@@ -89,15 +130,29 @@ export class DepartmentController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Department fetched successfully.',
+    description:
+      'Department fetched successfully.',
   })
-  findOne(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
-    return this.departmentService.findByUuid(this.getCompanyId(req.user), uuid);
+  findOne(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+  ) {
+    return this.departmentService.findByUuid(
+      req.user,
+      uuid,
+    );
   }
 
   @Patch(':uuid')
+  @RequirePermission(
+    'company.department.update',
+  )
   @ApiOperation({
-    summary: 'Update Department',
+    summary:
+      'Update Department',
   })
   @ApiParam({
     name: 'uuid',
@@ -105,23 +160,33 @@ export class DepartmentController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Department updated successfully.',
+    description:
+      'Department updated successfully.',
   })
   update(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
-    @Body() dto: UpdateDepartmentDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+
+    @Body()
+    dto: UpdateDepartmentDto,
   ) {
     return this.departmentService.updateByUuid(
-      this.getCompanyId(req.user),
+      req.user,
       uuid,
       dto,
     );
   }
 
   @Delete(':uuid')
+  @RequirePermission(
+    'company.department.delete',
+  )
   @ApiOperation({
-    summary: 'Delete Department',
+    summary:
+      'Delete Department',
   })
   @ApiParam({
     name: 'uuid',
@@ -129,11 +194,18 @@ export class DepartmentController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Department deleted successfully.',
+    description:
+      'Department deleted successfully.',
   })
-  remove(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
+  remove(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+  ) {
     return this.departmentService.deleteByUuid(
-      this.getCompanyId(req.user),
+      req.user,
       uuid,
     );
   }
