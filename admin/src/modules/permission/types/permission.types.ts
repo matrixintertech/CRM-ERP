@@ -44,20 +44,40 @@ export type SortOrder =
   | "asc"
   | "desc";
 
+/*
+ * Default scope for newly-created
+ * COMPANY permissions.
+ */
+export const DEFAULT_COMPANY_PERMISSION_SCOPES:
+  PermissionScope[] = [
+    "COMPANY",
+  ];
+
 export interface Permission {
   id: string;
   uuid: string;
 
-  module: PermissionModule;
+  module:
+    PermissionModule;
 
-  type: PermissionType;
+  type:
+    PermissionType;
 
-  name: string;
-  code: string;
+  name:
+    string;
+
+  code:
+    string;
 
   /*
-   * Permission kin scopes ko
-   * support karti hai.
+   * Permission kin scopes ke
+   * saath assign ho sakti hai.
+   *
+   * COMPANY:
+   * minimum one scope.
+   *
+   * PLATFORM:
+   * [].
    */
   allowedScopes:
     PermissionScope[];
@@ -89,6 +109,8 @@ export interface CreatePermissionDto {
     string;
 
   /*
+   * Required deliberately.
+   *
    * COMPANY:
    * minimum one scope.
    *
