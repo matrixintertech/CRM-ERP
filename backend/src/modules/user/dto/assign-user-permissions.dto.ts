@@ -39,16 +39,19 @@ export class UserPermissionItemDto {
   @IsEnum(
     PermissionScope,
   )
-  scope: PermissionScope;
+  scope:
+    PermissionScope;
 }
 
 export class AssignUserPermissionsDto {
   @ApiProperty({
     description:
       'Additional permissions assigned directly to the user with access scope. Empty array removes all additional permissions.',
+
     type: [
       UserPermissionItemDto,
     ],
+
     example: [
       {
         permissionUuid:
@@ -57,6 +60,15 @@ export class AssignUserPermissionsDto {
         scope:
           'OWN',
       },
+
+      {
+        permissionUuid:
+          '2f4e1216-a8e9-48c7-a5ac-4cf352b44e0e',
+
+        scope:
+          'ORGANIZATION_UNIT',
+      },
+
       {
         permissionUuid:
           '718a49d2-634a-4b6d-8ad4-8cac1dff2a23',
@@ -72,10 +84,11 @@ export class AssignUserPermissionsDto {
       item:
         UserPermissionItemDto,
     ) =>
-      item.permissionUuid,
+      `${item.permissionUuid}:${item.scope}`,
   )
   @ValidateNested({
-    each: true,
+    each:
+      true,
   })
   @Type(
     () =>

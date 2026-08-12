@@ -15,18 +15,24 @@ import {
 
 export class CreateEmployeeUserAccountDto {
   @ApiProperty({
-    description: "Role UUID",
+    description:
+      "Role UUID",
     example:
       "8c3248d2-449f-4f36-a5d1-4f5d92a3a4e6",
   })
-  @IsUUID()
+  @IsUUID("4")
   roleUuid: string;
 
   @ApiPropertyOptional({
-    enum: UserStatus,
-    default: UserStatus.ACTIVE,
+    enum:
+      UserStatus,
+    default:
+      UserStatus.ACTIVE,
   })
   @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
+  @IsEnum(
+    UserStatus,
+  )
+  status?:
+    UserStatus;
 }

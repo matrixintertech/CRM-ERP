@@ -5,7 +5,6 @@ import {
 
 import {
   UserStatus,
-  UserType,
 } from '@prisma/client';
 
 import {
@@ -15,6 +14,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -23,6 +23,7 @@ export class CreateUserDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   displayName: string;
 
   @ApiPropertyOptional({
@@ -36,29 +37,23 @@ export class CreateUserDto {
     example: '9876543210',
   })
   @IsOptional()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'Invalid mobile number.',
-  })
+  @Matches(
+    /^[6-9]\d{9}$/,
+    {
+      message:
+        'Invalid mobile number.',
+    },
+  )
   mobile?: string;
 
   @ApiPropertyOptional({
-    example: 1,
-  })
-  @IsOptional()
-  companyId?: number;
-
-  @ApiProperty({
-    enum: UserType,
-    example: UserType.COMPANY_ADMIN,
-  })
-  @IsEnum(UserType)
-  userType: UserType;
-
-  @ApiPropertyOptional({
     enum: UserStatus,
-    default: UserStatus.ACTIVE,
+    default:
+      UserStatus.ACTIVE,
   })
   @IsOptional()
-  @IsEnum(UserStatus)
+  @IsEnum(
+    UserStatus,
+  )
   status?: UserStatus;
 }

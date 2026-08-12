@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UserType } from '@prisma/client';
+import {
+  UserStatus,
+  UserType,
+} from "@prisma/client";
 
 import { CompanyRepository } from '../repositories/company.repository';
 import { CompanySubscriptionRepository } from '../../company-subscription/repositories/company-subscription.repository';
@@ -62,24 +65,37 @@ async create(
     );
   }
 
-  // 4. Create Company Admin
-  const user =
-    await this.userService.create({
-      displayName: dto.displayName,
-      email: dto.email,
-      mobile: dto.mobile,
-      companyId: Number(companyId),
-      userType: UserType.COMPANY_ADMIN,
-    });
+ const user =
+  await this.userService.create(
+    {
+      displayName:
+        dto.displayName,
 
-  return {
-    message:
-      'Company admin created successfully.',
-    user,
-  };
+      email:
+        dto.email,
+
+      mobile:
+        dto.mobile,
+    },
+    {
+      companyId,
+
+      userType:
+        UserType.COMPANY_ADMIN,
+
+      status:
+        UserStatus.ACTIVE,
+    },
+  );
+
+return {
+  message:
+    'Company admin created successfully.',
+
+  user,
+};
+
 }
-
-
 
 
 }

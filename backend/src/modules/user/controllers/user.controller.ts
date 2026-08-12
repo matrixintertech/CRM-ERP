@@ -10,7 +10,6 @@ import {
   Put,
   Query,
   Req,
-  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 
@@ -29,8 +28,8 @@ import type {
   Request,
 } from "express";
 
-import {
-  UserType,
+import type {
+  User,
 } from "@prisma/client";
 
 import {
@@ -53,28 +52,24 @@ import {
   AssignUserPermissionsDto,
 } from "../dto/assign-user-permissions.dto";
 
-interface AuthenticatedUser {
-  sub: string;
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
 
-  companyId?:
-    | string
-    | number
-    | bigint;
-
-  userType:
-    UserType;
-}
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
 
 interface AuthenticatedRequest
   extends Request {
-  user?:
-    AuthenticatedUser;
+  user: User;
 }
 
 @ApiTags("Users")
 @ApiBearerAuth("access-token")
 @UseGuards(
   AuthGuard("jwt"),
+  PermissionGuard,
 )
 @Controller("users")
 export class UserController {
@@ -84,12 +79,17 @@ export class UserController {
   ) {}
 
   /*
-   * Keep employee-specific routes
-   * before dynamic :userUuid routes.
+   * Employee user account routes.
+   *
+   * Static/nested routes must stay
+   * before :userUuid.
    */
 
   @Post(
     "employees/:employeeUuid",
+  )
+  @RequirePermission(
+    "company.user.create",
   )
   @ApiOperation({
     summary:
@@ -98,7 +98,6 @@ export class UserController {
   @ApiParam({
     name:
       "employeeUuid",
-
     type:
       String,
   })
@@ -120,18 +119,17 @@ export class UserController {
   ) {
     return this.userService
       .createEmployeeUserAccount(
-        this.getRequiredCompanyId(
-          req,
-        ),
-
+        req.user,
         employeeUuid,
-
         dto,
       );
   }
 
   @Get(
     "employees/:employeeUuid",
+  )
+  @RequirePermission(
+    "company.user.view",
   )
   @ApiOperation({
     summary:
@@ -140,7 +138,6 @@ export class UserController {
   @ApiParam({
     name:
       "employeeUuid",
-
     type:
       String,
   })
@@ -158,16 +155,16 @@ export class UserController {
   ) {
     return this.userService
       .findEmployeeUserAccount(
-        this.getRequiredCompanyId(
-          req,
-        ),
-
+        req.user,
         employeeUuid,
       );
   }
 
   @Patch(
     "employees/:employeeUuid",
+  )
+  @RequirePermission(
+    "company.user.update",
   )
   @ApiOperation({
     summary:
@@ -176,7 +173,6 @@ export class UserController {
   @ApiParam({
     name:
       "employeeUuid",
-
     type:
       String,
   })
@@ -198,18 +194,17 @@ export class UserController {
   ) {
     return this.userService
       .updateEmployeeUserAccount(
-        this.getRequiredCompanyId(
-          req,
-        ),
-
+        req.user,
         employeeUuid,
-
         dto,
       );
   }
 
   @Delete(
     "employees/:employeeUuid",
+  )
+  @RequirePermission(
+    "company.user.delete",
   )
   @ApiOperation({
     summary:
@@ -218,7 +213,6 @@ export class UserController {
   @ApiParam({
     name:
       "employeeUuid",
-
     type:
       String,
   })
@@ -236,28 +230,19 @@ export class UserController {
   ) {
     return this.userService
       .deleteEmployeeUserAccount(
-        this.getRequiredCompanyId(
-          req,
-        ),
-
+        req.user,
         employeeUuid,
       );
   }
 
   /*
-   * Server-side user listing:
-   *
-   * page
-   * limit
-   * search
-   * status
-   * userType
-   * roleUuid
-   * sortBy
-   * sortOrder
+   * User listing.
    */
 
   @Get()
+  @RequirePermission(
+    "company.user.view",
+  )
   @ApiOperation({
     summary:
       "Get Users",
@@ -273,32 +258,30 @@ export class UserController {
   ) {
     return this.userService
       .findAll(
-        this.getCompanyFilterId(
-          req,
-        ),
-
+        req.user,
         query,
       );
   }
 
   /*
-   * User additional permissions.
+   * Additional user permissions.
    *
-   * Nested routes ko :userUuid
-   * details route se pehle rakho.
+   * Must stay before :userUuid.
    */
 
   @Get(
     ":userUuid/permissions",
   )
+  @RequirePermission(
+    "company.user.view",
+  )
   @ApiOperation({
     summary:
-      "Assign Additional Permissions With Scope To User",
+      "Get Additional User Permissions",
   })
   @ApiParam({
     name:
       "userUuid",
-
     type:
       String,
   })
@@ -316,16 +299,16 @@ export class UserController {
   ) {
     return this.userService
       .findPermissions(
-        this.getCompanyFilterId(
-          req,
-        ),
-
+        req.user,
         userUuid,
       );
   }
 
   @Put(
     ":userUuid/permissions",
+  )
+  @RequirePermission(
+    "company.user.update",
   )
   @ApiOperation({
     summary:
@@ -334,7 +317,6 @@ export class UserController {
   @ApiParam({
     name:
       "userUuid",
-
     type:
       String,
   })
@@ -356,12 +338,8 @@ export class UserController {
   ) {
     return this.userService
       .updatePermissions(
-        this.getCompanyFilterId(
-          req,
-        ),
-
+        req.user,
         userUuid,
-
         dto,
       );
   }
@@ -369,12 +347,14 @@ export class UserController {
   /*
    * User details.
    *
-   * Dynamic route ko static/nested
-   * routes ke baad rakho.
+   * Dynamic route must remain last.
    */
 
   @Get(
     ":userUuid",
+  )
+  @RequirePermission(
+    "company.user.view",
   )
   @ApiOperation({
     summary:
@@ -383,7 +363,6 @@ export class UserController {
   @ApiParam({
     name:
       "userUuid",
-
     type:
       String,
   })
@@ -401,82 +380,8 @@ export class UserController {
   ) {
     return this.userService
       .findByUuid(
-        this.getCompanyFilterId(
-          req,
-        ),
-
+        req.user,
         userUuid,
       );
-  }
-
-  /*
-   * Employee login account actions
-   * always require a company context.
-   */
-  private getRequiredCompanyId(
-    req:
-      AuthenticatedRequest,
-  ): bigint {
-    const companyId =
-      req.user?.companyId;
-
-    if (
-      companyId ===
-        undefined ||
-      companyId ===
-        null
-    ) {
-      throw new UnauthorizedException(
-        "Company context not found in access token.",
-      );
-    }
-
-    return BigInt(
-      companyId,
-    );
-  }
-
-  /*
-   * Company users:
-   * returns their company ID.
-   *
-   * Platform owner:
-   * returns null so repository can
-   * query across companies.
-   */
-  private getCompanyFilterId(
-    req:
-      AuthenticatedRequest,
-  ): bigint | null {
-    const user =
-      req.user;
-
-    if (!user) {
-      throw new UnauthorizedException(
-        "Authenticated user not found.",
-      );
-    }
-
-    if (
-      user.userType ===
-      UserType.PLATFORM_OWNER
-    ) {
-      return null;
-    }
-
-    if (
-      user.companyId ===
-        undefined ||
-      user.companyId ===
-        null
-    ) {
-      throw new UnauthorizedException(
-        "Company context not found in access token.",
-      );
-    }
-
-    return BigInt(
-      user.companyId,
-    );
   }
 }

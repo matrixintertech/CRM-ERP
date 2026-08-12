@@ -2,24 +2,45 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  UserStatus,
+  UserType,
+} from '@prisma/client';
 
-import { CompanyService } from 'src/modules/company/services/company.service';
-import { CompanySubscriptionService } from 'src/modules/company-subscription/services/company-subscription.service';
-import { UserService } from 'src/modules/user/services/user.service';
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
 
-import { CreateOnboardingDto } from '../dto/create-onboarding.dto';
+import {
+  CompanyService,
+} from 'src/modules/company/services/company.service';
+
+import {
+  CompanySubscriptionService,
+} from 'src/modules/company-subscription/services/company-subscription.service';
+
+import {
+  UserService,
+} from 'src/modules/user/services/user.service';
+
+import {
+  CreateOnboardingDto,
+} from '../dto/create-onboarding.dto';
 
 @Injectable()
 export class OnboardingService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
 
-    private readonly companyService: CompanyService,
+    private readonly companyService:
+      CompanyService,
 
-    private readonly companySubscriptionService: CompanySubscriptionService,
+    private readonly companySubscriptionService:
+      CompanySubscriptionService,
 
-    private readonly userService: UserService,
+    private readonly userService:
+      UserService,
   ) {}
 
   async create(
@@ -35,38 +56,66 @@ export class OnboardingService {
           );
 
         // 2. Assign Subscription
-         const startDate = new Date();
+        const startDate =
+          new Date();
 
-          const endDate = new Date(startDate);
-          endDate.setMonth(
-            endDate.getMonth() + 1,
+        const endDate =
+          new Date(
+            startDate,
           );
 
-          const subscription =
-            await this.companySubscriptionService.create(
-              {
-                companyId: Number(company.id),
-                subscriptionPlanId:
-                  dto.subscription.subscriptionPlanId,
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-              },
-              tx,
-            );
+        endDate.setMonth(
+          endDate.getMonth() +
+            1,
+        );
 
-        // 3. Create Company Admin
-        const admin =
-          await this.userService.create(
+        const subscription =
+          await this.companySubscriptionService.create(
             {
-              ...dto.admin,
+              companyId:
+                Number(
+                  company.id,
+                ),
 
-              companyId: Number(
-                company.id,
-              ),
+              subscriptionPlanId:
+                dto.subscription
+                  .subscriptionPlanId,
+
+              startDate:
+                startDate.toISOString(),
+
+              endDate:
+                endDate.toISOString(),
             },
             tx,
           );
 
+        // 3. Create Company Admin
+       const admin =
+  await this.userService.create(
+          {
+            displayName:
+              dto.admin.displayName,
+
+            email:
+              dto.admin.email,
+
+            mobile:
+              dto.admin.mobile,
+          },
+          {
+            companyId:
+              company.id,
+
+            userType:
+              UserType.COMPANY_ADMIN,
+
+            status:
+              UserStatus.ACTIVE,
+          },
+          tx,
+        );
+        
         return {
           message:
             'Company onboarding completed successfully.',

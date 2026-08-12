@@ -40,8 +40,35 @@ export interface UserListQuery {
 
 export interface UserPermissionAssignment {
   permissionId: bigint;
-
   scope: PermissionScope;
+}
+
+export interface UserAccessBoundary {
+  companyId: bigint;
+
+  /*
+   * true = COMPANY scope.
+   *
+   * false = access directUserIds /
+   * organizationUnitIds se resolve hoga.
+   */
+  companyAccess: boolean;
+
+  /*
+   * OWN / TEAM scope se resolved users.
+   *
+   * OWN:
+   * [currentUserId]
+   *
+   * TEAM:
+   * [team user IDs]
+   */
+  directUserIds: bigint[];
+
+  /*
+   * ORGANIZATION_UNIT scope.
+   */
+  organizationUnitIds: bigint[];
 }
 
 @Injectable()
@@ -82,6 +109,8 @@ export class UserRepository {
         mobile: true,
         avatarUrl: true,
 
+        organizationUnitId: true,
+
         organizationUnit: {
           select: {
             uuid: true,
@@ -119,14 +148,132 @@ export class UserRepository {
     description: true,
     type: true,
     status: true,
+
+    /*
+     * Direct permission assignment ke
+     * waqt requested scope validate
+     * karne ke liye required.
+     */
+    allowedScopes: true,
   } satisfies Prisma.PermissionSelect;
 
+  /*
+   * Authorization boundary.
+   *
+   * Always company hard-filtered.
+   *
+   * COMPANY:
+   * companyAccess = true
+   *
+   * OWN / TEAM:
+   * directUserIds
+   *
+   * ORGANIZATION_UNIT:
+   * employee.organizationUnitId
+   */
+  private buildAccessWhere(
+    access: UserAccessBoundary,
+  ): Prisma.UserWhereInput {
+    const baseWhere:
+      Prisma.UserWhereInput = {
+      companyId:
+        access.companyId,
+
+      deletedAt:
+        null,
+    };
+
+    /*
+     * COMPANY scope means all users
+     * inside current tenant.
+     */
+    if (
+      access.companyAccess
+    ) {
+      return baseWhere;
+    }
+
+    const accessOr:
+      Prisma.UserWhereInput[] = [];
+
+    /*
+     * OWN / TEAM
+     */
+    if (
+      access.directUserIds.length >
+      0
+    ) {
+      accessOr.push({
+        id: {
+          in:
+            access.directUserIds,
+        },
+      });
+    }
+
+    /*
+     * ORGANIZATION_UNIT
+     *
+     * User
+     *   -> Employee
+     *      -> organizationUnitId
+     */
+    if (
+      access.organizationUnitIds.length >
+      0
+    ) {
+      accessOr.push({
+        employee: {
+          is: {
+            organizationUnitId: {
+              in:
+                access.organizationUnitIds,
+            },
+
+            deletedAt:
+              null,
+          },
+        },
+      });
+    }
+
+    /*
+     * Permission exists but no
+     * effective resource boundary.
+     *
+     * Fail closed.
+     */
+    if (
+      accessOr.length ===
+      0
+    ) {
+      return {
+        ...baseWhere,
+
+        id: {
+          in: [],
+        },
+      };
+    }
+
+    return {
+      ...baseWhere,
+
+      OR:
+        accessOr,
+    };
+  }
+
   async create(
-    data: Prisma.UserCreateInput,
-    tx?: Prisma.TransactionClient,
+    data:
+      Prisma.UserCreateInput,
+
+    tx?:
+      Prisma.TransactionClient,
   ) {
     return (
-      tx ?? this.prisma
+      tx ??
+      this.prisma
     ).user.create({
       data,
 
@@ -135,21 +282,29 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Authorization-aware user listing.
+   */
   async findAll(
-    companyId: bigint | null,
-    query: UserListQuery = {},
+    access:
+      UserAccessBoundary,
+
+    query:
+      UserListQuery = {},
   ) {
     const page =
       Math.max(
         1,
-        query.page ?? 1,
+        query.page ??
+          1,
       );
 
     const limit =
       Math.min(
         Math.max(
           1,
-          query.limit ?? 10,
+          query.limit ??
+            10,
         ),
         100,
       );
@@ -168,110 +323,137 @@ export class UserRepository {
 
     const sortOrder:
       Prisma.SortOrder =
-        query.sortOrder ??
-        "desc";
+      query.sortOrder ??
+      "desc";
+
+    /*
+     * IMPORTANT:
+     *
+     * Access filter bhi OR use karta hai
+     * aur search bhi OR use karta hai.
+     *
+     * Isliye spread karke OR overwrite
+     * nahi karna.
+     *
+     * AND:
+     *   access boundary
+     *   filters
+     *   search OR
+     */
+    const andWhere:
+      Prisma.UserWhereInput[] = [
+        this.buildAccessWhere(
+          access,
+        ),
+      ];
+
+    const filters:
+      Prisma.UserWhereInput = {
+      ...(query.status !==
+        undefined && {
+        status:
+          query.status,
+      }),
+
+      ...(query.userType !==
+        undefined && {
+        userType:
+          query.userType,
+      }),
+
+      ...(query.roleId !==
+        undefined && {
+        roleId:
+          query.roleId,
+      }),
+    };
+
+    andWhere.push(
+      filters,
+    );
+
+    if (
+      normalizedSearch
+    ) {
+      andWhere.push({
+        OR: [
+          {
+            displayName: {
+              contains:
+                normalizedSearch,
+
+              mode:
+                "insensitive",
+            },
+          },
+
+          {
+            email: {
+              contains:
+                normalizedSearch,
+
+              mode:
+                "insensitive",
+            },
+          },
+
+          {
+            mobile: {
+              contains:
+                normalizedSearch,
+            },
+          },
+
+          {
+            employee: {
+              is: {
+                employeeCode: {
+                  contains:
+                    normalizedSearch,
+
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+
+          {
+            employee: {
+              is: {
+                displayName: {
+                  contains:
+                    normalizedSearch,
+
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+
+          {
+            role: {
+              is: {
+                name: {
+                  contains:
+                    normalizedSearch,
+
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+        ],
+      });
+    }
 
     const where:
       Prisma.UserWhereInput = {
-        deletedAt:
-          null,
-
-        ...(companyId !==
-          null && {
-          companyId,
-        }),
-
-        ...(query.status !==
-          undefined && {
-          status:
-            query.status,
-        }),
-
-        ...(query.userType !==
-          undefined && {
-          userType:
-            query.userType,
-        }),
-
-        ...(query.roleId !==
-          undefined && {
-          roleId:
-            query.roleId,
-        }),
-
-        ...(normalizedSearch && {
-          OR: [
-            {
-              displayName: {
-                contains:
-                  normalizedSearch,
-
-                mode:
-                  "insensitive",
-              },
-            },
-
-            {
-              email: {
-                contains:
-                  normalizedSearch,
-
-                mode:
-                  "insensitive",
-              },
-            },
-
-            {
-              mobile: {
-                contains:
-                  normalizedSearch,
-              },
-            },
-
-            {
-              employee: {
-                is: {
-                  employeeCode: {
-                    contains:
-                      normalizedSearch,
-
-                    mode:
-                      "insensitive",
-                  },
-                },
-              },
-            },
-
-            {
-              employee: {
-                is: {
-                  displayName: {
-                    contains:
-                      normalizedSearch,
-
-                    mode:
-                      "insensitive",
-                  },
-                },
-              },
-            },
-
-            {
-              role: {
-                is: {
-                  name: {
-                    contains:
-                      normalizedSearch,
-
-                    mode:
-                      "insensitive",
-                  },
-                },
-              },
-            },
-          ],
-        }),
-      };
+      AND:
+        andWhere,
+    };
 
     let orderBy:
       Prisma.UserOrderByWithRelationInput;
@@ -362,6 +544,14 @@ export class UserRepository {
     };
   }
 
+  /*
+   * INTERNAL LOOKUP.
+   *
+   * Auth/profile/JWT flow ke liye.
+   *
+   * Company management authorization
+   * ke liye use mat karna.
+   */
   async findById(
     id: bigint,
   ) {
@@ -378,21 +568,22 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Authorization-aware lookup.
+   */
   async findByUuid(
-    companyId: bigint | null,
+    access:
+      UserAccessBoundary,
+
     uuid: string,
   ) {
     return this.prisma.user.findFirst({
       where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
         uuid,
-
-        deletedAt:
-          null,
-
-        ...(companyId !==
-          null && {
-          companyId,
-        }),
       },
 
       include:
@@ -400,6 +591,34 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Internal same-company validation.
+   *
+   * Example:
+   * relation/business validation after
+   * company boundary already resolved.
+   */
+  async findByUuidInCompany(
+    companyId: bigint,
+    uuid: string,
+  ) {
+    return this.prisma.user.findFirst({
+      where: {
+        companyId,
+        uuid,
+
+        deletedAt:
+          null,
+      },
+
+      include:
+        this.userInclude,
+    });
+  }
+
+  /*
+   * Auth/internal uniqueness lookup.
+   */
   async findByEmail(
     email: string,
   ) {
@@ -413,6 +632,9 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Auth/internal uniqueness lookup.
+   */
   async findByMobile(
     mobile: string,
   ) {
@@ -426,6 +648,10 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Internal same-company employee
+   * relation lookup.
+   */
   async findByEmployee(
     companyId: bigint,
     employeeId: bigint,
@@ -445,7 +671,43 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Authorization-aware employee
+   * user account lookup.
+   */
   async findByEmployeeUuid(
+    access:
+      UserAccessBoundary,
+
+    employeeUuid: string,
+  ) {
+    return this.prisma.user.findFirst({
+      where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
+        employee: {
+          is: {
+            uuid:
+              employeeUuid,
+
+            deletedAt:
+              null,
+          },
+        },
+      },
+
+      include:
+        this.userInclude,
+    });
+  }
+
+  /*
+   * Internal same-company employee
+   * user lookup.
+   */
+  async findByEmployeeUuidInCompany(
     companyId: bigint,
     employeeUuid: string,
   ) {
@@ -472,21 +734,27 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Authorization-aware user +
+   * role/direct permissions lookup.
+   *
+   * user_permission.view/update route
+   * ke liye service appropriate
+   * UserAccessBoundary pass karegi.
+   */
   async findUserWithPermissions(
-    companyId: bigint | null,
+    access:
+      UserAccessBoundary,
+
     uuid: string,
   ) {
     return this.prisma.user.findFirst({
       where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
         uuid,
-
-        deletedAt:
-          null,
-
-        ...(companyId !==
-          null && {
-          companyId,
-        }),
       },
 
       include: {
@@ -506,6 +774,9 @@ export class UserRepository {
 
             firstName: true,
             lastName: true,
+
+            organizationUnitId:
+              true,
 
             organizationUnit: {
               select: {
@@ -584,8 +855,16 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Permission assignment validation.
+   *
+   * COMPANY permissions only.
+   * allowedScopes permissionSelect se
+   * available honge.
+   */
   async findActivePermissionsByUuids(
-    permissionUuids: string[],
+    permissionUuids:
+      string[],
   ) {
     if (
       permissionUuids.length ===
@@ -616,8 +895,16 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Direct UserPermission =
+   * additional grants.
+   *
+   * Empty assignments remove all
+   * direct additional permissions.
+   */
   async replaceUserPermissions(
     userId: bigint,
+
     assignments:
       UserPermissionAssignment[],
   ) {
@@ -690,14 +977,45 @@ export class UserRepository {
     );
   }
 
+  /*
+   * Authorization-aware update.
+   *
+   * First scoped resource resolve,
+   * then update by internal ID.
+   */
   async update(
+    access:
+      UserAccessBoundary,
+
     id: bigint,
+
     data:
       Prisma.UserUpdateInput,
   ) {
+    const user =
+      await this.prisma.user.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+    if (!user) {
+      return null;
+    }
+
     return this.prisma.user.update({
       where: {
-        id,
+        id:
+          user.id,
       },
 
       data,
@@ -707,12 +1025,39 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Authorization-aware soft delete.
+   */
   async softDelete(
+    access:
+      UserAccessBoundary,
+
     id: bigint,
   ) {
+    const user =
+      await this.prisma.user.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+    if (!user) {
+      return null;
+    }
+
     return this.prisma.user.update({
       where: {
-        id,
+        id:
+          user.id,
       },
 
       data: {
@@ -728,6 +1073,12 @@ export class UserRepository {
     });
   }
 
+  /*
+   * Internal company bootstrap lookup.
+   *
+   * UserType is category only;
+   * authorization bypass nahi.
+   */
   async findCompanyAdmin(
     companyId: bigint,
   ) {

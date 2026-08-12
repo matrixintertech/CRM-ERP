@@ -35,6 +35,10 @@ import {
 } from "./policies/designation.policy";
 
 import {
+  UserPolicy,
+} from "./policies/user.policy";
+
+import {
   PermissionGuard,
 } from "./guards/permission.guard";
 
@@ -53,6 +57,7 @@ import {
      DepartmentPolicy,
      DesignationPolicy,
   DesignationPolicy,
+  UserPolicy
 
   ],
 
@@ -65,6 +70,7 @@ import {
      ProjectPolicy,
      DepartmentPolicy,
   DesignationPolicy,
+  UserPolicy
 
   ],
 })

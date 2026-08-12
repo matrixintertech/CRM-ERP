@@ -4,16 +4,12 @@ import {
 } from '@nestjs/swagger';
 
 import {
-  UserStatus,
-  UserType,
-} from '@prisma/client';
-
-import {
   IsEmail,
-  IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateCompanyAdminDto {
@@ -21,6 +17,8 @@ export class CreateCompanyAdminDto {
     example: 'Anil Kumar',
   })
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
   displayName: string;
 
   @ApiPropertyOptional({
@@ -34,12 +32,12 @@ export class CreateCompanyAdminDto {
     example: '9876543210',
   })
   @IsOptional()
-  @Matches(/^[6-9]\d{9}$/)
+  @Matches(
+    /^[6-9]\d{9}$/,
+    {
+      message:
+        'Invalid mobile number.',
+    },
+  )
   mobile?: string;
-
-  @IsEnum(UserType)
-  userType: UserType = UserType.COMPANY_ADMIN;
-
-  @IsEnum(UserStatus)
-  status: UserStatus = UserStatus.ACTIVE;
 }
