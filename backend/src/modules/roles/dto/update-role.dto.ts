@@ -1,6 +1,5 @@
 import {
   ApiPropertyOptional,
-  OmitType,
   PartialType,
 } from "@nestjs/swagger";
 
@@ -18,12 +17,7 @@ import {
 } from "./create-role.dto";
 
 export class UpdateRoleDto extends PartialType(
-  OmitType(
-    CreateRoleDto,
-    [
-      "isSystem",
-    ] as const,
-  ),
+  CreateRoleDto,
 ) {
   @ApiPropertyOptional({
     enum: Status,

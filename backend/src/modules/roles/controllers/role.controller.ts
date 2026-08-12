@@ -16,8 +16,8 @@ import type {
   Request,
 } from 'express';
 
-import {
-  UserType,
+import type {
+  User,
 } from '@prisma/client';
 
 import {
@@ -48,10 +48,23 @@ import {
   RoleService,
 } from '../services/role.service';
 
+import {
+  PermissionGuard,
+} from '../../authorization/guards/permission.guard';
+
+import {
+  RequirePermission,
+} from '../../authorization/decorators/require-permission.decorator';
+
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
+
 @ApiTags('Role')
 @ApiBearerAuth('access-token')
 @UseGuards(
   AuthGuard('jwt'),
+  PermissionGuard,
 )
 @Controller('roles')
 export class RoleController {
@@ -61,6 +74,9 @@ export class RoleController {
   ) {}
 
   @Post()
+  @RequirePermission(
+    'company.role.create',
+  )
   @ApiOperation({
     summary:
       'Create Role',
@@ -72,21 +88,21 @@ export class RoleController {
   })
   create(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Body()
     dto: CreateRoleDto,
   ) {
     return this.roleService.create(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
+      req.user,
       dto,
     );
   }
 
   @Get()
+  @RequirePermission(
+    'company.role.view',
+  )
   @ApiOperation({
     summary:
       'Get Roles',
@@ -98,30 +114,21 @@ export class RoleController {
   })
   findAll(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
   ) {
-    const user =
-      req.user as any;
-
-    if (
-      user.userType ===
-      UserType.PLATFORM_OWNER
-    ) {
-      return this.roleService.findAll();
-    }
-
     return this.roleService.findAll(
-      BigInt(
-        user.companyId,
-      ),
+      req.user,
     );
   }
 
   /*
-   * Static route ko :uuid route se
-   * pehle rakho.
+   * Static route ko :uuid route
+   * se pehle rakho.
    */
   @Get('dropdown')
+  @RequirePermission(
+    'company.role.view',
+  )
   @ApiOperation({
     summary:
       'Get Active Role Dropdown',
@@ -133,13 +140,10 @@ export class RoleController {
   })
   findDropdown(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
   ) {
     return this.roleService.findDropdown(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
+      req.user,
     );
   }
 
@@ -148,15 +152,16 @@ export class RoleController {
    * :uuid route se pehle rakho.
    */
   @Get(':uuid/permissions')
+  @RequirePermission(
+    'company.role.view',
+  )
   @ApiOperation({
     summary:
       'Get Role Permissions',
   })
   @ApiParam({
-    name:
-      'uuid',
-    type:
-      String,
+    name: 'uuid',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -165,7 +170,7 @@ export class RoleController {
   })
   findRolePermissions(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Param(
       'uuid',
@@ -173,25 +178,24 @@ export class RoleController {
     )
     uuid: string,
   ) {
-    return this.roleService.findRolePermissions(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
-      uuid,
-    );
+    return this.roleService
+      .findRolePermissions(
+        req.user,
+        uuid,
+      );
   }
 
   @Put(':uuid/permissions')
+  @RequirePermission(
+    'company.role.update',
+  )
   @ApiOperation({
     summary:
       'Assign Role Permissions With Scope',
   })
   @ApiParam({
-    name:
-      'uuid',
-    type:
-      String,
+    name: 'uuid',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -200,7 +204,7 @@ export class RoleController {
   })
   assignPermissions(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Param(
       'uuid',
@@ -212,26 +216,25 @@ export class RoleController {
     dto:
       AssignRolePermissionsDto,
   ) {
-    return this.roleService.assignPermissions(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
-      uuid,
-      dto,
-    );
+    return this.roleService
+      .assignPermissions(
+        req.user,
+        uuid,
+        dto,
+      );
   }
 
   @Get(':uuid')
+  @RequirePermission(
+    'company.role.view',
+  )
   @ApiOperation({
     summary:
       'Get Role By UUID',
   })
   @ApiParam({
-    name:
-      'uuid',
-    type:
-      String,
+    name: 'uuid',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -240,7 +243,7 @@ export class RoleController {
   })
   findOne(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Param(
       'uuid',
@@ -249,24 +252,22 @@ export class RoleController {
     uuid: string,
   ) {
     return this.roleService.findOne(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
+      req.user,
       uuid,
     );
   }
 
   @Patch(':uuid')
+  @RequirePermission(
+    'company.role.update',
+  )
   @ApiOperation({
     summary:
       'Update Role',
   })
   @ApiParam({
-    name:
-      'uuid',
-    type:
-      String,
+    name: 'uuid',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -275,7 +276,7 @@ export class RoleController {
   })
   update(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Param(
       'uuid',
@@ -287,25 +288,23 @@ export class RoleController {
     dto: UpdateRoleDto,
   ) {
     return this.roleService.update(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
+      req.user,
       uuid,
       dto,
     );
   }
 
   @Delete(':uuid')
+  @RequirePermission(
+    'company.role.delete',
+  )
   @ApiOperation({
     summary:
       'Delete Role',
   })
   @ApiParam({
-    name:
-      'uuid',
-    type:
-      String,
+    name: 'uuid',
+    type: String,
   })
   @ApiResponse({
     status: 200,
@@ -314,7 +313,7 @@ export class RoleController {
   })
   remove(
     @Req()
-    req: Request,
+    req: AuthenticatedRequest,
 
     @Param(
       'uuid',
@@ -323,10 +322,7 @@ export class RoleController {
     uuid: string,
   ) {
     return this.roleService.delete(
-      BigInt(
-        (req.user as any)
-          .companyId,
-      ),
+      req.user,
       uuid,
     );
   }

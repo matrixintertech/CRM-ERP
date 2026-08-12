@@ -146,34 +146,6 @@ export class RoleRepository {
     });
   }
 
-  async findAll() {
-    return this.prisma.role.findMany({
-      where: {
-        deletedAt:
-          null,
-      },
-
-      include:
-        this.include,
-
-      orderBy: [
-        {
-          company: {
-            name:
-              'asc',
-          },
-        },
-        {
-          isSystem:
-            'desc',
-        },
-        {
-          name:
-            'asc',
-        },
-      ],
-    });
-  }
 
   async findActiveByCompanyId(
     companyId: bigint,

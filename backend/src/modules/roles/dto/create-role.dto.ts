@@ -4,7 +4,6 @@ import {
 } from "@nestjs/swagger";
 
 import {
-  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -35,12 +34,4 @@ export class CreateRoleDto {
   @IsString()
   @MaxLength(500)
   description?: string;
-
-  @ApiPropertyOptional({
-    example: false,
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isSystem?: boolean;
 }
