@@ -411,53 +411,46 @@ export class RoleService {
     };
   }
 
-  async assignPermissions(
-    companyId: bigint,
-    roleUuid: string,
-    dto: AssignRolePermissionsDto,
-  ) {
-    const role =
-      await this.roleRepository.findByUuid(
-        companyId,
-        roleUuid,
-      );
-
-    if (!role) {
-      throw new NotFoundException(
-        'Role not found.',
-      );
-    }
-
-    const result =
-      await this.roleRepository.assignPermissions(
-        companyId,
-        roleUuid,
-        dto.permissions,
-      );
-
-    if (!result) {
-      throw new NotFoundException(
-        'Role not found.',
-      );
-    }
-
-    if (
-      result.assignedPermissionCount !==
-      result.requestedPermissionCount
-    ) {
-      throw new NotFoundException(
-        'One or more permissions were not found, inactive, or not valid for company roles.',
-      );
-    }
-
-    return {
-      message:
-        'Permissions assigned successfully.',
-
+ async assignPermissions(
+  companyId: bigint,
+  roleUuid: string,
+  dto: AssignRolePermissionsDto,
+) {
+  const role =
+    await this.roleRepository.findByUuid(
+      companyId,
       roleUuid,
+    );
 
-      permissions:
-        result.assignedPermissions,
-    };
+  if (!role) {
+    throw new NotFoundException(
+      'Role not found.',
+    );
   }
+
+  const result =
+    await this.roleRepository.assignPermissions(
+      companyId,
+      roleUuid,
+      dto.permissions,
+    );
+
+  if (!result) {
+    throw new NotFoundException(
+      'Role not found.',
+    );
+  }
+
+  return {
+    message:
+      'Permissions assigned successfully.',
+
+    roleUuid,
+
+    permissions:
+      result.assignedPermissions,
+  };
+}
+
+
 }

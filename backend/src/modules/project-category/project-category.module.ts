@@ -21,10 +21,15 @@ import {
   ProjectCategoryRepository,
 } from './repositories/project-category.repository';
 
+import {
+  AuthorizationModule,
+} from 'src/modules/authorization/authorization.module';
+
 
 @Module({
   imports: [
     PrismaModule,
+    AuthorizationModule,
   ],
 
   controllers: [

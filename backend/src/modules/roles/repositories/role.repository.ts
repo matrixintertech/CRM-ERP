@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
 } from '@nestjs/common';
 
@@ -386,6 +387,8 @@ export class RoleRepository {
             type:
               true,
 
+            allowedScopes: true,
+
             status:
               true,
           },
@@ -409,168 +412,240 @@ export class RoleRepository {
     });
   }
 
-  async assignPermissions(
-    companyId: bigint,
-    roleUuid: string,
-    assignments:
-      RolePermissionAssignment[],
-  ) {
-    return this.prisma.$transaction(
-      async (
-        transaction,
-      ) => {
-        const role =
-          await transaction.role.findFirst({
-            where: {
-              companyId,
-
-              uuid:
-                roleUuid,
-
-              deletedAt:
-                null,
-            },
-
-            select: {
-              id:
-                true,
-            },
-          });
-
-        if (!role) {
-          return null;
-        }
-
-        const permissionUuids =
-          assignments.map(
-            (
-              assignment,
-            ) =>
-              assignment
-                .permissionUuid,
-          );
-
-        const uniquePermissionUuids = [
-          ...new Set(
-            permissionUuids,
-          ),
-        ];
-
-        const permissions =
-          uniquePermissionUuids
-            .length > 0
-            ? await transaction.permission.findMany({
-                where: {
-                  uuid: {
-                    in:
-                      uniquePermissionUuids,
-                  },
-
-                  type:
-                    PermissionType.COMPANY,
-
-                  status:
-                    Status.ACTIVE,
-
-                  deletedAt:
-                    null,
-                },
-
-                select: {
-                  id:
-                    true,
-
-                  uuid:
-                    true,
-                },
-              })
-            : [];
-
-        const scopeByPermissionUuid =
-          new Map<
-            string,
-            PermissionScope
-          >();
-
-        for (
-          const assignment
-          of assignments
-        ) {
-          scopeByPermissionUuid.set(
-            assignment
-              .permissionUuid,
-
-            assignment
-              .scope,
-          );
-        }
-
-        await transaction.rolePermission.deleteMany({
+async assignPermissions(
+  companyId: bigint,
+  roleUuid: string,
+  assignments:
+    RolePermissionAssignment[],
+) {
+  return this.prisma.$transaction(
+    async (
+      transaction,
+    ) => {
+      const role =
+        await transaction.role.findFirst({
           where: {
-            roleId:
-              role.id,
+            companyId,
+
+            uuid:
+              roleUuid,
+
+            deletedAt:
+              null,
+          },
+
+          select: {
+            id:
+              true,
           },
         });
 
+      if (!role) {
+        return null;
+      }
+
+      /*
+       * Same permission ek role me
+       * sirf ek baar assign ho sakti hai.
+       */
+      const permissionUuids =
+        assignments.map(
+          (
+            assignment,
+          ) =>
+            assignment.permissionUuid,
+        );
+
+      const uniquePermissionUuids = [
+        ...new Set(
+          permissionUuids,
+        ),
+      ];
+
+      if (
+        uniquePermissionUuids.length !==
+        permissionUuids.length
+      ) {
+        throw new BadRequestException(
+          'Duplicate permission assignments are not allowed.',
+        );
+      }
+
+      /*
+       * Sirf active COMPANY permissions
+       * assign ki ja sakti hain.
+       */
+      const permissions =
+        uniquePermissionUuids.length > 0
+          ? await transaction.permission.findMany({
+              where: {
+                uuid: {
+                  in:
+                    uniquePermissionUuids,
+                },
+
+                type:
+                  PermissionType.COMPANY,
+
+                status:
+                  Status.ACTIVE,
+
+                deletedAt:
+                  null,
+              },
+
+              select: {
+                id:
+                  true,
+
+                uuid:
+                  true,
+
+                code:
+                  true,
+
+                allowedScopes:
+                  true,
+              },
+            })
+          : [];
+
+      /*
+       * Important:
+       * Invalid permission UUID hone par
+       * existing role permissions delete
+       * nahi honi chahiye.
+       */
+      if (
+        permissions.length !==
+        uniquePermissionUuids.length
+      ) {
+        throw new BadRequestException(
+          'One or more permissions are invalid or inactive.',
+        );
+      }
+
+      const permissionByUuid =
+        new Map(
+          permissions.map(
+            (
+              permission,
+            ) => [
+              permission.uuid,
+              permission,
+            ],
+          ),
+        );
+
+      /*
+       * Permission ke allowedScopes ke
+       * against requested scope validate karo.
+       */
+      for (
+        const assignment
+        of assignments
+      ) {
+        const permission =
+          permissionByUuid.get(
+            assignment.permissionUuid,
+          );
+
+        if (!permission) {
+          throw new BadRequestException(
+            'Invalid permission assignment.',
+          );
+        }
+
         if (
-          permissions.length >
-          0
+          !permission.allowedScopes.includes(
+            assignment.scope,
+          )
         ) {
-          await transaction.rolePermission.createMany({
-            data:
-              permissions.map(
-                (
-                  permission,
-                ) => ({
+          throw new BadRequestException(
+            `Scope ${assignment.scope} is not allowed for permission ${permission.code}.`,
+          );
+        }
+      }
+
+      /*
+       * Validation complete hone ke baad
+       * hi existing permissions replace karo.
+       */
+      await transaction.rolePermission.deleteMany({
+        where: {
+          roleId:
+            role.id,
+        },
+      });
+
+      if (
+        assignments.length > 0
+      ) {
+        await transaction.rolePermission.createMany({
+          data:
+            assignments.map(
+              (
+                assignment,
+              ) => {
+                const permission =
+                  permissionByUuid.get(
+                    assignment.permissionUuid,
+                  );
+
+                if (!permission) {
+                  throw new BadRequestException(
+                    'Invalid permission assignment.',
+                  );
+                }
+
+                return {
                   roleId:
                     role.id,
 
                   permissionId:
                     permission.id,
 
+                  /*
+                   * No default OWN.
+                   * Scope explicitly supplied hai.
+                   */
                   scope:
-                    scopeByPermissionUuid.get(
-                      permission.uuid,
-                    ) ??
-                    PermissionScope.OWN,
-                }),
-              ),
-
-            skipDuplicates:
-              true,
-          });
-        }
-
-        return {
-          roleId:
-            role.id,
-
-          requestedPermissionCount:
-            uniquePermissionUuids
-              .length,
-
-          assignedPermissionCount:
-            permissions.length,
-
-          assignedPermissions:
-            permissions.map(
-              (
-                permission,
-              ) => ({
-                permissionUuid:
-                  permission.uuid,
-
-                scope:
-                  scopeByPermissionUuid.get(
-                    permission.uuid,
-                  ) ??
-                  PermissionScope.OWN,
-              }),
+                    assignment.scope,
+                };
+              },
             ),
-        };
-      },
-    );
-  }
+
+          skipDuplicates:
+            true,
+        });
+      }
+
+      return {
+        roleId:
+          role.id,
+
+        requestedPermissionCount:
+          assignments.length,
+
+        assignedPermissionCount:
+          assignments.length,
+
+        assignedPermissions:
+          assignments.map(
+            (
+              assignment,
+            ) => ({
+              permissionUuid:
+                assignment.permissionUuid,
+
+              scope:
+                assignment.scope,
+            }),
+          ),
+      };
+    },
+  );
+}
 
   async countUsers(
     companyId: bigint,

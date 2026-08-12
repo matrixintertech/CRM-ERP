@@ -1,28 +1,30 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
 import {
+  PermissionScope,
   PermissionType,
-} from "@prisma/client";
+} from '@prisma/client';
 
 import {
   PermissionRepository,
-} from "../repositories/permission.repository";
+} from '../repositories/permission.repository';
 
 import type {
   FindPermissionsParams,
-} from "../repositories/permission.repository";
+} from '../repositories/permission.repository';
 
 import {
   CreatePermissionDto,
-} from "../dto/create-permission.dto";
+} from '../dto/create-permission.dto';
 
 import {
   UpdatePermissionDto,
-} from "../dto/update-permission.dto";
+} from '../dto/update-permission.dto';
 
 @Injectable()
 export class PermissionService {
@@ -30,6 +32,43 @@ export class PermissionService {
     private readonly permissionRepository:
       PermissionRepository,
   ) {}
+
+  private normalizeAllowedScopes(
+    type: PermissionType,
+    allowedScopes: PermissionScope[],
+  ): PermissionScope[] {
+    const scopes =
+      Array.from(
+        new Set(
+          allowedScopes,
+        ),
+      );
+
+    if (
+      type ===
+      PermissionType.PLATFORM
+    ) {
+      if (scopes.length > 0) {
+        throw new BadRequestException(
+          'Platform permissions cannot have scopes.',
+        );
+      }
+
+      return [];
+    }
+
+    if (
+      type ===
+        PermissionType.COMPANY &&
+      scopes.length === 0
+    ) {
+      throw new BadRequestException(
+        'Company permissions must have at least one allowed scope.',
+      );
+    }
+
+    return scopes;
+  }
 
   async create(
     dto: CreatePermissionDto,
@@ -46,9 +85,15 @@ export class PermissionService {
 
     if (existingPermission) {
       throw new ConflictException(
-        "Permission code already exists.",
+        'Permission code already exists.',
       );
     }
+
+    const allowedScopes =
+      this.normalizeAllowedScopes(
+        dto.type,
+        dto.allowedScopes,
+      );
 
     const permission =
       await this.permissionRepository.create({
@@ -66,6 +111,8 @@ export class PermissionService {
         code:
           normalizedCode,
 
+        allowedScopes,
+
         description:
           dto.description
             ?.trim(),
@@ -73,7 +120,7 @@ export class PermissionService {
 
     return {
       message:
-        "Permission created successfully.",
+        'Permission created successfully.',
 
       permission,
     };
@@ -85,19 +132,20 @@ export class PermissionService {
     const [
       result,
       modules,
-    ] = await Promise.all([
-      this.permissionRepository.findAll(
-        params,
-      ),
+    ] =
+      await Promise.all([
+        this.permissionRepository.findAll(
+          params,
+        ),
 
-      this.permissionRepository.findModules(
-        params.type,
-      ),
-    ]);
+        this.permissionRepository.findModules(
+          params.type,
+        ),
+      ]);
 
     return {
       message:
-        "Permissions fetched successfully.",
+        'Permissions fetched successfully.',
 
       permissions:
         result.permissions,
@@ -126,13 +174,13 @@ export class PermissionService {
 
     if (!permission) {
       throw new NotFoundException(
-        "Permission not found.",
+        'Permission not found.',
       );
     }
 
     return {
       message:
-        "Permission fetched successfully.",
+        'Permission fetched successfully.',
 
       permission,
     };
@@ -149,7 +197,7 @@ export class PermissionService {
 
     if (!existingPermission) {
       throw new NotFoundException(
-        "Permission not found.",
+        'Permission not found.',
       );
     }
 
@@ -174,9 +222,65 @@ export class PermissionService {
           uuid
       ) {
         throw new ConflictException(
-          "Permission code already exists.",
+          'Permission code already exists.',
         );
       }
+    }
+
+    const effectiveType =
+      dto.type ??
+      existingPermission.type;
+
+    let allowedScopes:
+      PermissionScope[] |
+      undefined;
+
+    /*
+     * Agar permission PLATFORM banayi ja rahi hai,
+     * scope automatically empty kar denge.
+     */
+    if (
+      effectiveType ===
+      PermissionType.PLATFORM
+    ) {
+      if (
+        dto.allowedScopes &&
+        dto.allowedScopes.length > 0
+      ) {
+        throw new BadRequestException(
+          'Platform permissions cannot have scopes.',
+        );
+      }
+
+      /*
+       * Type COMPANY -> PLATFORM change hua
+       * to existing scopes remove karna zaroori hai.
+       */
+      if (
+        dto.type !== undefined ||
+        dto.allowedScopes !== undefined
+      ) {
+        allowedScopes = [];
+      }
+    } else if (
+      dto.allowedScopes !== undefined ||
+      dto.type !== undefined
+    ) {
+      /*
+       * COMPANY permission ke case me:
+       *
+       * - new scopes aaye to woh use honge
+       * - sirf type change hua ho to existing scopes use honge
+       */
+      const effectiveScopes =
+        dto.allowedScopes ??
+        existingPermission.allowedScopes;
+
+      allowedScopes =
+        this.normalizeAllowedScopes(
+          effectiveType,
+          effectiveScopes,
+        );
     }
 
     const permission =
@@ -213,6 +317,11 @@ export class PermissionService {
               dto.description.trim(),
           }),
 
+          ...(allowedScopes !==
+            undefined && {
+            allowedScopes,
+          }),
+
           ...(dto.status !==
             undefined && {
             status:
@@ -223,7 +332,7 @@ export class PermissionService {
 
     return {
       message:
-        "Permission updated successfully.",
+        'Permission updated successfully.',
 
       permission,
     };
@@ -239,7 +348,7 @@ export class PermissionService {
 
     if (!existingPermission) {
       throw new NotFoundException(
-        "Permission not found.",
+        'Permission not found.',
       );
     }
 
@@ -250,7 +359,7 @@ export class PermissionService {
 
     return {
       message:
-        "Permission deleted successfully.",
+        'Permission deleted successfully.',
 
       permission,
     };
@@ -305,7 +414,7 @@ export class PermissionService {
 
     return {
       message:
-        "Grouped permissions fetched successfully.",
+        'Grouped permissions fetched successfully.',
 
       type:
         type ?? null,

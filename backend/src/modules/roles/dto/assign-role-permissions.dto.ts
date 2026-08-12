@@ -1,10 +1,10 @@
 import {
   ApiProperty,
-} from "@nestjs/swagger";
+} from '@nestjs/swagger';
 
 import {
   Type,
-} from "class-transformer";
+} from 'class-transformer';
 
 import {
   ArrayUnique,
@@ -12,53 +12,56 @@ import {
   IsEnum,
   IsUUID,
   ValidateNested,
-} from "class-validator";
+} from 'class-validator';
 
 import {
   PermissionScope,
-} from "@prisma/client";
+} from '@prisma/client';
 
 export class RolePermissionItemDto {
   @ApiProperty({
     description:
-      "Permission UUID.",
+      'Permission UUID.',
     example:
-      "550e8400-e29b-41d4-a716-446655440000",
+      '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsUUID("4")
+  @IsUUID('4')
   permissionUuid: string;
 
   @ApiProperty({
     description:
-      "Data scope for this permission.",
+      'Selected scope for this permission. Must be one of the permission allowedScopes.',
     enum:
       PermissionScope,
     example:
-      PermissionScope.OWN,
+      PermissionScope.COMPANY,
   })
-  @IsEnum(PermissionScope)
-  scope: PermissionScope;
+  @IsEnum(
+    PermissionScope,
+  )
+  scope:
+    PermissionScope;
 }
 
 export class AssignRolePermissionsDto {
   @ApiProperty({
     description:
-      "Permissions with their access scopes. Empty array removes all permissions.",
+      'Permissions with their selected access scopes. Empty array removes all permissions.',
     type: [
       RolePermissionItemDto,
     ],
     example: [
       {
         permissionUuid:
-          "550e8400-e29b-41d4-a716-446655440000",
+          '550e8400-e29b-41d4-a716-446655440000',
         scope:
-          "OWN",
+          'COMPANY',
       },
       {
         permissionUuid:
-          "550e8400-e29b-41d4-a716-446655440001",
+          '550e8400-e29b-41d4-a716-446655440001',
         scope:
-          "PROJECT",
+          'PROJECT',
       },
     ],
   })

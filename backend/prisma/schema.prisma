@@ -621,6 +621,8 @@ model Permission {
 
   type PermissionType @default(COMPANY)
 
+  allowedScopes PermissionScope[] @default([])
+
   status Status @default(ACTIVE)
 
   createdAt DateTime  @default(now())
@@ -647,7 +649,7 @@ model RolePermission {
   roleId       BigInt
   permissionId BigInt
 
-  scope PermissionScope @default(OWN)
+  scope PermissionScope
 
   role       Role       @relation(fields: [roleId], references: [id])
   permission Permission @relation(fields: [permissionId], references: [id])
@@ -671,7 +673,7 @@ model UserPermission {
   permissionId BigInt
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
-  scope PermissionScope @default(OWN)
+  scope PermissionScope
 
   assignedAt DateTime @default(now())
 

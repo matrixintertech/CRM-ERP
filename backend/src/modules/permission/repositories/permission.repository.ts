@@ -54,33 +54,44 @@ export class PermissionRepository {
       PrismaService,
   ) {}
 
-  create(
-    data: CreatePermissionDto,
-  ) {
-    return this.prisma.permission.create({
-      data: {
-        ...data,
+create(
+  data: CreatePermissionDto,
+) {
+  return this.prisma.permission.create({
+    data: {
+      module:
+        data.module,
 
-        module:
-          data.module,
+      type:
+        data.type,
 
-        type:
-          data.type,
+      name:
+        data.name.trim(),
 
-        name:
-          data.name.trim(),
+      code:
+        data.code
+          .trim()
+          .toLowerCase(),
 
-        code:
-          data.code
-            .trim()
-            .toLowerCase(),
+      description:
+        data.description
+          ?.trim(),
 
-        description:
-          data.description
-            ?.trim(),
-      },
-    });
-  }
+      allowedScopes:
+        Array.from(
+          new Set(
+            data.allowedScopes,
+          ),
+        ),
+
+      ...(data.status !==
+        undefined && {
+        status:
+          data.status,
+      }),
+    },
+  });
+}
 
   async findAll(
     params: FindPermissionsParams = {},
@@ -369,62 +380,76 @@ export class PermissionRepository {
     });
   }
 
-  update(
-    uuid: string,
-    data: UpdatePermissionDto,
-  ) {
-    const payload:
-      Prisma.PermissionUpdateInput = {
-        ...(data.module !==
-          undefined && {
-          module:
-            data.module,
-        }),
+update(
+  uuid: string,
+  data: UpdatePermissionDto,
+) {
+  const payload:
+    Prisma.PermissionUpdateInput = {
+      ...(data.module !==
+        undefined && {
+        module:
+          data.module,
+      }),
 
-        ...(data.type !==
-          undefined && {
-          type:
-            data.type,
-        }),
+      ...(data.type !==
+        undefined && {
+        type:
+          data.type,
+      }),
 
-        ...(data.name !==
-          undefined && {
-          name:
-            data.name.trim(),
-        }),
+      ...(data.name !==
+        undefined && {
+        name:
+          data.name.trim(),
+      }),
 
-        ...(data.code !==
-          undefined && {
-          code:
-            data.code
-              .trim()
-              .toLowerCase(),
-        }),
+      ...(data.code !==
+        undefined && {
+        code:
+          data.code
+            .trim()
+            .toLowerCase(),
+      }),
 
-        ...(data.description !==
-          undefined && {
-          description:
-            data.description
-              .trim() ||
-            null,
-        }),
+      ...(data.description !==
+        undefined && {
+        description:
+          data.description
+            .trim() ||
+          null,
+      }),
 
-        ...(data.status !==
-          undefined && {
-          status:
-            data.status,
-        }),
-      };
+      ...(data.allowedScopes !==
+        undefined && {
+        allowedScopes: {
+          set:
+            Array.from(
+              new Set(
+                data.allowedScopes,
+              ),
+            ),
+        },
+      }),
 
-    return this.prisma.permission.update({
-      where: {
-        uuid,
-      },
+      ...(data.status !==
+        undefined && {
+        status:
+          data.status,
+      }),
+    };
 
-      data:
-        payload,
-    });
-  }
+  return this.prisma.permission.update({
+    where: {
+      uuid,
+    },
+
+    data:
+      payload,
+  });
+}
+
+
 
   softDelete(
     uuid: string,

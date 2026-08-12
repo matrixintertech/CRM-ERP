@@ -1,24 +1,26 @@
 import {
   ApiProperty,
   ApiPropertyOptional,
-} from "@nestjs/swagger";
+} from '@nestjs/swagger';
 
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
-} from "class-validator";
+} from 'class-validator';
 
 import {
+  PermissionScope,
   PermissionType,
   Status,
-} from "@prisma/client";
+} from '@prisma/client';
 
 import {
   PermissionModule,
-} from "../enums/permission-module.enum";
+} from '../enums/permission-module.enum';
 
 export class CreatePermissionDto {
   @ApiProperty({
@@ -36,7 +38,7 @@ export class CreatePermissionDto {
   type: PermissionType;
 
   @ApiProperty({
-    example: "Create Company",
+    example: 'View Project Categories',
   })
   @IsString()
   @IsNotEmpty()
@@ -44,16 +46,35 @@ export class CreatePermissionDto {
   name: string;
 
   @ApiProperty({
-    example: "company.create",
+    example:
+      'company.project_category.view',
   })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   code: string;
 
+  @ApiProperty({
+    enum: PermissionScope,
+    isArray: true,
+    example: [
+      PermissionScope.COMPANY,
+    ],
+    description:
+      'Scopes supported by this permission. PLATFORM permissions must use an empty array.',
+  })
+  @IsArray()
+  @IsEnum(
+    PermissionScope,
+    {
+      each: true,
+    },
+  )
+  allowedScopes: PermissionScope[];
+
   @ApiPropertyOptional({
     example:
-      "Allow user to create company",
+      'Allow user to view project categories',
   })
   @IsOptional()
   @IsString()
