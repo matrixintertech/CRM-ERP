@@ -186,9 +186,9 @@ export class RoleController {
   }
 
   @Put(':uuid/permissions')
-  // @RequirePermission(
-  //   'company.role.update',
-  // )
+  @RequirePermission(
+    'company.role.update',
+  )
   @ApiOperation({
     summary:
       'Assign Role Permissions With Scope',
