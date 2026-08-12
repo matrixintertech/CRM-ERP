@@ -13,17 +13,19 @@ import {
 
 export class CreateDesignationDto {
   @ApiProperty({
-    description: "Department UUID",
+    description:
+      "Department UUID",
     example:
       "e1b6f7fd-c3ef-4f18-93fa-cc5d09cb4d9a",
   })
   @IsUUID()
-  @IsNotEmpty()
   departmentUuid: string;
 
   @ApiProperty({
-    example: "Project Manager",
-    description: "Designation name",
+    example:
+      "Project Manager",
+    description:
+      "Designation name",
   })
   @IsString()
   @IsNotEmpty()
@@ -31,8 +33,10 @@ export class CreateDesignationDto {
   name: string;
 
   @ApiProperty({
-    example: "PM",
-    description: "Unique designation code",
+    example:
+      "PM",
+    description:
+      "Unique designation code",
   })
   @IsString()
   @IsNotEmpty()

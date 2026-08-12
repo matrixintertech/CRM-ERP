@@ -277,4 +277,21 @@ export class DepartmentRepository {
       },
     });
   }
+
+  async findByUuidInCompany(
+  companyId: bigint,
+  uuid: string,
+) {
+  return this.prisma.department.findFirst({
+    where: {
+      companyId,
+      uuid,
+      deletedAt: null,
+    },
+
+    include: {
+      organizationUnit: true,
+    },
+  });
+}
 }

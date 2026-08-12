@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -11,90 +10,155 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import { AuthGuard } from '@nestjs/passport';
+import {
+  AuthGuard,
+} from '@nestjs/passport';
 
-import type { Request } from 'express';
+import type {
+  Request,
+} from 'express';
 
-import { UserType, type User } from '@prisma/client';
+import type {
+  User,
+} from '@prisma/client';
 
-import { CreateDesignationDto } from '../dto/create-designation.dto';
-import { UpdateDesignationDto } from '../dto/update-designation.dto';
+import {
+  CreateDesignationDto,
+} from '../dto/create-designation.dto';
 
-import { DesignationService } from '../services/designation.service';
+import {
+  UpdateDesignationDto,
+} from '../dto/update-designation.dto';
 
-interface AuthenticatedRequest extends Request {
+import {
+  DesignationService,
+} from '../services/designation.service';
+
+import {
+  PermissionGuard,
+} from '../../authorization/guards/permission.guard';
+
+import {
+  RequirePermission,
+} from '../../authorization/decorators/require-permission.decorator';
+
+interface AuthenticatedRequest
+  extends Request {
   user: User;
 }
 
 @ApiTags('Designation')
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(
+  AuthGuard('jwt'),
+  PermissionGuard,
+)
 @Controller('designations')
 export class DesignationController {
-  constructor(private readonly designationService: DesignationService) {}
-
-  private getCompanyId(user: User): bigint {
-    if (!user.companyId) {
-      throw new ForbiddenException('Company context is missing.');
-    }
-
-    return user.companyId;
-  }
+  constructor(
+    private readonly designationService:
+      DesignationService,
+  ) {}
 
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateDesignationDto) {
-    return this.designationService.create(this.getCompanyId(req.user), dto);
+  @RequirePermission(
+    'company.designation.create',
+  )
+  create(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Body()
+    dto: CreateDesignationDto,
+  ) {
+    return this.designationService.create(
+      req.user,
+      dto,
+    );
   }
 
   @Get()
-  findAll(@Req() req: AuthenticatedRequest) {
-    const companyId =
-      req.user.userType === UserType.PLATFORM_OWNER
-        ? undefined
-        : this.getCompanyId(req.user);
-
-    return this.designationService.findAll(companyId);
+  @RequirePermission(
+    'company.designation.view',
+  )
+  findAll(
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.designationService.findAll(
+      req.user,
+    );
   }
 
   @Get(':uuid')
+  @RequirePermission(
+    'company.designation.view',
+  )
   @ApiParam({
     name: 'uuid',
     type: String,
   })
-  findOne(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
+  findOne(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+  ) {
     return this.designationService.findByUuid(
-      this.getCompanyId(req.user),
+      req.user,
       uuid,
     );
   }
 
   @Patch(':uuid')
+  @RequirePermission(
+    'company.designation.update',
+  )
   @ApiParam({
     name: 'uuid',
     type: String,
   })
   update(
-    @Req() req: AuthenticatedRequest,
-    @Param('uuid') uuid: string,
-    @Body() dto: UpdateDesignationDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+
+    @Body()
+    dto: UpdateDesignationDto,
   ) {
     return this.designationService.updateByUuid(
-      this.getCompanyId(req.user),
+      req.user,
       uuid,
       dto,
     );
   }
 
   @Delete(':uuid')
+  @RequirePermission(
+    'company.designation.delete',
+  )
   @ApiParam({
     name: 'uuid',
     type: String,
   })
-  delete(@Req() req: AuthenticatedRequest, @Param('uuid') uuid: string) {
+  delete(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param('uuid')
+    uuid: string,
+  ) {
     return this.designationService.deleteByUuid(
-      this.getCompanyId(req.user),
+      req.user,
       uuid,
     );
   }

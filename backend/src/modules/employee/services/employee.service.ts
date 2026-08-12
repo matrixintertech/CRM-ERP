@@ -373,39 +373,51 @@ export class EmployeeService {
     return organizationUnit;
   }
 
-  private async validateDepartment(companyId: bigint, uuid?: string) {
-    if (!uuid) {
-      return null;
-    }
+private async validateDepartment(
+  companyId: bigint,
+  uuid?: string,
+) {
+  if (!uuid) {
+    return null;
+  }
 
-    const department = await this.departmentRepository.findByUuid(
+  const department =
+    await this.departmentRepository.findByUuidInCompany(
       companyId,
       uuid,
     );
 
-    if (!department) {
-      throw new NotFoundException('Department not found.');
-    }
-
-    return department;
+  if (!department) {
+    throw new NotFoundException(
+      'Department not found.',
+    );
   }
 
-  private async validateDesignation(companyId: bigint, uuid?: string) {
-    if (!uuid) {
-      return null;
-    }
+  return department;
+}
 
-    const designation = await this.designationRepository.findByUuid(
+private async validateDesignation(
+  companyId: bigint,
+  uuid?: string,
+) {
+  if (!uuid) {
+    return null;
+  }
+
+  const designation =
+    await this.designationRepository.findByUuidInCompany(
       companyId,
       uuid,
     );
 
-    if (!designation) {
-      throw new NotFoundException('Designation not found.');
-    }
-
-    return designation;
+  if (!designation) {
+    throw new NotFoundException(
+      'Designation not found.',
+    );
   }
+
+  return designation;
+}
 
   private async validateManager(companyId: bigint, uuid?: string) {
     if (!uuid) {

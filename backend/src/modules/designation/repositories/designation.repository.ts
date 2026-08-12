@@ -1,12 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+} from '@prisma/client';
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
+
+export interface DesignationAccessBoundary {
+  companyId: bigint;
+
+  /*
+   * null:
+   *   COMPANY scope.
+   *
+   * bigint[]:
+   *   ORGANIZATION_UNIT scope.
+   *
+   * []:
+   *   no accessible organization units.
+   */
+  organizationUnitIds:
+    bigint[] | null;
+}
 
 @Injectable()
 export class DesignationRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma:
+      PrismaService,
+  ) {}
 
   private readonly include = {
     department: {
@@ -29,101 +55,240 @@ export class DesignationRepository {
     },
   } satisfies Prisma.DesignationInclude;
 
-  async create(data: Prisma.DesignationCreateInput) {
+  private buildAccessWhere(
+    access:
+      DesignationAccessBoundary,
+  ): Prisma.DesignationWhereInput {
+    return {
+      companyId:
+        access.companyId,
+
+      deletedAt:
+        null,
+
+      ...(access.organizationUnitIds !==
+        null && {
+        department: {
+          is: {
+            organizationUnitId: {
+              in:
+                access.organizationUnitIds,
+            },
+
+            deletedAt:
+              null,
+          },
+        },
+      }),
+    };
+  }
+
+  async create(
+    data:
+      Prisma.DesignationCreateInput,
+  ) {
     return this.prisma.designation.create({
       data,
-      include: this.include,
+
+      include:
+        this.include,
     });
   }
 
-  async findAll(companyId?: bigint) {
+  async findAll(
+    access:
+      DesignationAccessBoundary,
+  ) {
     return this.prisma.designation.findMany({
-      where: {
-        deletedAt: null,
+      where:
+        this.buildAccessWhere(
+          access,
+        ),
 
-        ...(companyId !== undefined
-          ? {
-              companyId,
-            }
-          : {}),
-      },
-
-      include: this.include,
+      include:
+        this.include,
 
       orderBy: {
-        createdAt: 'desc',
+        createdAt:
+          'desc',
       },
     });
   }
-  async findById(companyId: bigint, id: bigint) {
+
+  async findById(
+    access:
+      DesignationAccessBoundary,
+    id: bigint,
+  ) {
     return this.prisma.designation.findFirst({
       where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
         id,
-        companyId,
-        deletedAt: null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async findByUuid(companyId: bigint, uuid: string) {
+  async findByUuid(
+    access:
+      DesignationAccessBoundary,
+    uuid: string,
+  ) {
+    return this.prisma.designation.findFirst({
+      where: {
+        ...this.buildAccessWhere(
+          access,
+        ),
+
+        uuid,
+      },
+
+      include:
+        this.include,
+    });
+  }
+
+  /*
+   * Internal business validation ke liye.
+   *
+   * Example:
+   * EmployeeService ko designation validate
+   * karna ho after company boundary is already
+   * resolved.
+   */
+  async findByUuidInCompany(
+    companyId: bigint,
+    uuid: string,
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
         uuid,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async findByName(companyId: bigint, departmentId: bigint, name: string) {
+  async findByName(
+    companyId: bigint,
+    departmentId: bigint,
+    name: string,
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
         departmentId,
         name,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
 
-  async findByCode(companyId: bigint, departmentId: bigint, code: string) {
+  async findByCode(
+    companyId: bigint,
+    departmentId: bigint,
+    code: string,
+  ) {
     return this.prisma.designation.findFirst({
       where: {
         companyId,
         departmentId,
         code,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
 
-  async update(id: bigint, data: Prisma.DesignationUpdateInput) {
+  async update(
+    access:
+      DesignationAccessBoundary,
+    id: bigint,
+    data:
+      Prisma.DesignationUpdateInput,
+  ) {
+    const designation =
+      await this.prisma.designation.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!designation) {
+      return null;
+    }
+
     return this.prisma.designation.update({
       where: {
-        id,
+        id:
+          designation.id,
       },
 
       data,
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async softDelete(id: bigint) {
+  async softDelete(
+    access:
+      DesignationAccessBoundary,
+    id: bigint,
+  ) {
+    const designation =
+      await this.prisma.designation.findFirst({
+        where: {
+          ...this.buildAccessWhere(
+            access,
+          ),
+
+          id,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!designation) {
+      return null;
+    }
+
     return this.prisma.designation.update({
       where: {
-        id,
+        id:
+          designation.id,
       },
 
       data: {
-        deletedAt: new Date(),
+        deletedAt:
+          new Date(),
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 }

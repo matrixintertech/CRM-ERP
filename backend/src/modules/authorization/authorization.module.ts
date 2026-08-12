@@ -31,6 +31,10 @@ import {
 } from './policies/department.policy';
 
 import {
+  DesignationPolicy,
+} from "./policies/designation.policy";
+
+import {
   PermissionGuard,
 } from "./guards/permission.guard";
 
@@ -46,7 +50,10 @@ import {
     CompanyBoundaryService,
     PermissionGuard,
      ProjectPolicy,
-     DepartmentPolicy
+     DepartmentPolicy,
+     DesignationPolicy,
+  DesignationPolicy,
+
   ],
 
   exports: [
@@ -56,7 +63,9 @@ import {
      CompanyBoundaryService,
     PermissionGuard,
      ProjectPolicy,
-     DepartmentPolicy
+     DepartmentPolicy,
+  DesignationPolicy,
+
   ],
 })
 export class AuthorizationModule {}
