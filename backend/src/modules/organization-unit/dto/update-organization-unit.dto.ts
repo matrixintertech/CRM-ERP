@@ -1,5 +1,4 @@
 import {
-  OmitType,
   PartialType,
 } from "@nestjs/swagger";
 
@@ -8,8 +7,5 @@ import {
 } from "./create-organization-unit.dto";
 
 export class UpdateOrganizationUnitDto extends PartialType(
-  OmitType(
-    CreateOrganizationUnitDto,
-    ["companyUuid"] as const,
-  ),
+  CreateOrganizationUnitDto,
 ) {}

@@ -15,20 +15,7 @@ import {
   IsUUID,
 } from 'class-validator';
 
-
 export class CreateOrganizationUnitDto {
-
-  @ApiPropertyOptional({
-    description:
-      'Required only for Platform Owner',
-    example:
-      '7c2b9d90-59f3-4e7a-a53e-61b2b6b5d9a7',
-  })
-  @IsOptional()
-  @IsUUID()
-  companyUuid?: string;
-
-
   @ApiPropertyOptional({
     description:
       'Parent Organization Unit UUID',
@@ -39,15 +26,17 @@ export class CreateOrganizationUnitDto {
   @IsUUID()
   parentUuid?: string;
 
-
   @ApiProperty({
-    enum: OrganizationUnitType,
+    enum:
+      OrganizationUnitType,
     example:
       OrganizationUnitType.HEAD_OFFICE,
   })
-  @IsEnum(OrganizationUnitType)
-  type: OrganizationUnitType;
-
+  @IsEnum(
+    OrganizationUnitType,
+  )
+  type:
+    OrganizationUnitType;
 
   @ApiProperty({
     example:
@@ -56,7 +45,6 @@ export class CreateOrganizationUnitDto {
   @IsString()
   name: string;
 
-
   @ApiProperty({
     example:
       'HO001',
@@ -64,30 +52,25 @@ export class CreateOrganizationUnitDto {
   @IsString()
   code: string;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   email?: string;
-
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   mobile?: string;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   addressLine1?: string;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   addressLine2?: string;
-
 
   @ApiPropertyOptional({
     description:
@@ -97,7 +80,6 @@ export class CreateOrganizationUnitDto {
   @IsUUID()
   stateUuid?: string;
 
-
   @ApiPropertyOptional({
     description:
       'City UUID',
@@ -106,24 +88,25 @@ export class CreateOrganizationUnitDto {
   @IsUUID()
   cityUuid?: string;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   country?: string;
-
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   pincode?: string;
 
-
   @ApiPropertyOptional({
-    enum: Status,
-    default: Status.ACTIVE,
+    enum:
+      Status,
+    default:
+      Status.ACTIVE,
   })
   @IsOptional()
-  @IsEnum(Status)
+  @IsEnum(
+    Status,
+  )
   status?: Status;
 }

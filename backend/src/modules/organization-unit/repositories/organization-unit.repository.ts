@@ -1,6 +1,5 @@
 import {
   Injectable,
-  NotFoundException,
 } from "@nestjs/common";
 
 import {
@@ -8,151 +7,158 @@ import {
   Prisma,
 } from "@prisma/client";
 
-import { PrismaService } from "src/database/prisma.service";
+import {
+  PrismaService,
+} from "src/database/prisma.service";
 
 @Injectable()
 export class OrganizationUnitRepository {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {}
 
-private readonly include = {
-  company: {
-    select: {
-      uuid: true,
-      name: true,
-      code: true,
+  private readonly include = {
+    company: {
+      select: {
+        uuid: true,
+        name: true,
+        code: true,
+      },
     },
-  },
 
-  parent: {
-    select: {
-      uuid: true,
-      name: true,
-      code: true,
-      type: true,
+    parent: {
+      select: {
+        uuid: true,
+        name: true,
+        code: true,
+        type: true,
+      },
     },
-  },
 
-  state: {
-    select: {
-      uuid: true,
-      name: true,
+    state: {
+      select: {
+        uuid: true,
+        name: true,
+      },
     },
-  },
 
-  city: {
-    select: {
-      uuid: true,
-      name: true,
+    city: {
+      select: {
+        uuid: true,
+        name: true,
+        stateId: true,
+      },
     },
-  },
-} satisfies Prisma.OrganizationUnitInclude;
+  } satisfies Prisma.OrganizationUnitInclude;
 
   async create(
-    data: Prisma.OrganizationUnitCreateInput,
+    data:
+      Prisma.OrganizationUnitCreateInput,
   ) {
     return this.prisma.organizationUnit.create({
       data,
-      include: this.include,
+
+      include:
+        this.include,
     });
   }
 
   async findAll(
-    companyId: bigint | null,
+    companyId: bigint,
   ) {
     return this.prisma.organizationUnit.findMany({
       where: {
-        deletedAt: null,
+        companyId,
 
-        ...(companyId !== null && {
-          companyId,
-        }),
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
 
-      orderBy: [
-        {
-          createdAt: "desc",
-        },
-      ],
+      orderBy: {
+        createdAt:
+          "desc",
+      },
     });
   }
 
   async findById(
-    companyId: bigint | null,
+    companyId: bigint,
     id: bigint,
   ) {
     return this.prisma.organizationUnit.findFirst({
       where: {
         id,
-        deletedAt: null,
+        companyId,
 
-        ...(companyId !== null && {
-          companyId,
-        }),
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
   async findByUuid(
-    companyId: bigint | null,
+    companyId: bigint,
     uuid: string,
   ) {
     return this.prisma.organizationUnit.findFirst({
       where: {
         uuid,
-        deletedAt: null,
+        companyId,
 
-        ...(companyId !== null && {
-          companyId,
-        }),
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
   async findChildren(
-    companyId: bigint | null,
+    companyId: bigint,
     parentId: bigint,
   ) {
     return this.prisma.organizationUnit.findMany({
       where: {
+        companyId,
         parentId,
-        deletedAt: null,
 
-        ...(companyId !== null && {
-          companyId,
-        }),
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
 
       orderBy: {
-        name: "asc",
+        name:
+          "asc",
       },
     });
   }
 
   async findParentById(
-    companyId: bigint | null,
+    companyId: bigint,
     id: bigint,
   ) {
     return this.prisma.organizationUnit.findFirst({
       where: {
         id,
-        deletedAt: null,
+        companyId,
 
-        ...(companyId !== null && {
-          companyId,
-        }),
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
@@ -164,10 +170,13 @@ private readonly include = {
       where: {
         companyId,
         code,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
@@ -179,10 +188,13 @@ private readonly include = {
       where: {
         companyId,
         name,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
@@ -192,123 +204,106 @@ private readonly include = {
     return this.prisma.organizationUnit.findMany({
       where: {
         companyId,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
 
       orderBy: [
         {
-          type: "asc",
+          type:
+            "asc",
         },
         {
-          name: "asc",
+          name:
+            "asc",
         },
       ],
     });
   }
 
   async update(
-    companyId: bigint | null,
+    companyId: bigint,
     uuid: string,
-    data: Prisma.OrganizationUnitUpdateInput,
+    data:
+      Prisma.OrganizationUnitUpdateInput,
   ) {
+    /*
+     * Prisma update() uuid only se tenant
+     * boundary enforce nahi kar sakta.
+     *
+     * Pehle same-company record resolve karo.
+     */
     const unit =
       await this.prisma.organizationUnit.findFirst({
         where: {
           uuid,
-          deletedAt: null,
+          companyId,
 
-          ...(companyId !== null && {
-            companyId,
-          }),
+          deletedAt:
+            null,
         },
 
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
     if (!unit) {
-      throw new NotFoundException(
-        "Organization unit not found.",
-      );
+      return null;
     }
 
     return this.prisma.organizationUnit.update({
       where: {
-        id: unit.id,
+        id:
+          unit.id,
       },
 
       data,
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
 
-  async delete(
-    companyId: bigint | null,
+  async softDelete(
+    companyId: bigint,
     uuid: string,
   ) {
     const unit =
       await this.prisma.organizationUnit.findFirst({
         where: {
           uuid,
-          deletedAt: null,
+          companyId,
 
-          ...(companyId !== null && {
-            companyId,
-          }),
+          deletedAt:
+            null,
         },
 
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
     if (!unit) {
-      throw new NotFoundException(
-        "Organization unit not found.",
-      );
+      return null;
     }
 
     return this.prisma.organizationUnit.update({
       where: {
-        id: unit.id,
+        id:
+          unit.id,
       },
 
       data: {
-        deletedAt: new Date(),
+        deletedAt:
+          new Date(),
       },
 
-      include: this.include,
+      include:
+        this.include,
     });
   }
-
-  async findCompanyById(
-    id: bigint,
-  ) {
-    return this.prisma.company.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
-  }
-
-  async findCompanyByUuid(
-    uuid: string,
-  ) {
-    return this.prisma.company.findFirst({
-      where: {
-        uuid,
-        deletedAt: null,
-      },
-    });
-  }
-
-
-
-
-
-
-
 }

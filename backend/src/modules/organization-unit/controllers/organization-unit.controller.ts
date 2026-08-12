@@ -18,15 +18,37 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 
-import { AuthGuard } from "@nestjs/passport";
+import {
+  AuthGuard,
+} from "@nestjs/passport";
 
-import type { Request } from "express";
-import type { User } from "@prisma/client";
+import type {
+  Request,
+} from "express";
 
-import { CreateOrganizationUnitDto } from "../dto/create-organization-unit.dto";
-import { UpdateOrganizationUnitDto } from "../dto/update-organization-unit.dto";
+import type {
+  User,
+} from "@prisma/client";
 
-import { OrganizationUnitService } from "../services/organization-unit.service";
+import {
+  CreateOrganizationUnitDto,
+} from "../dto/create-organization-unit.dto";
+
+import {
+  UpdateOrganizationUnitDto,
+} from "../dto/update-organization-unit.dto";
+
+import {
+  OrganizationUnitService,
+} from "../services/organization-unit.service";
+
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
+
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
 
 interface AuthenticatedRequest
   extends Request {
@@ -35,7 +57,10 @@ interface AuthenticatedRequest
 
 @ApiTags("Organization Unit")
 @ApiBearerAuth("access-token")
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(
+  AuthGuard("jwt"),
+  PermissionGuard,
+)
 @Controller("organization-units")
 export class OrganizationUnitController {
   constructor(
@@ -44,8 +69,12 @@ export class OrganizationUnitController {
   ) {}
 
   @Post()
+  @RequirePermission(
+    "company.organization_unit.create",
+  )
   @ApiOperation({
-    summary: "Create Organization Unit",
+    summary:
+      "Create Organization Unit",
   })
   @ApiResponse({
     status: 201,
@@ -53,8 +82,11 @@ export class OrganizationUnitController {
       "Organization unit created successfully.",
   })
   create(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: CreateOrganizationUnitDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Body()
+    dto: CreateOrganizationUnitDto,
   ) {
     return this.organizationUnitService.create(
       req.user,
@@ -63,8 +95,12 @@ export class OrganizationUnitController {
   }
 
   @Get()
+  @RequirePermission(
+    "company.organization_unit.view",
+  )
   @ApiOperation({
-    summary: "Get Organization Units",
+    summary:
+      "Get Organization Units",
   })
   @ApiResponse({
     status: 200,
@@ -72,7 +108,8 @@ export class OrganizationUnitController {
       "Organization units fetched successfully.",
   })
   findAll(
-    @Req() req: AuthenticatedRequest,
+    @Req()
+    req: AuthenticatedRequest,
   ) {
     return this.organizationUnitService.findAll(
       req.user,
@@ -80,8 +117,12 @@ export class OrganizationUnitController {
   }
 
   @Get(":uuid")
+  @RequirePermission(
+    "company.organization_unit.view",
+  )
   @ApiOperation({
-    summary: "Get Organization Unit",
+    summary:
+      "Get Organization Unit",
   })
   @ApiParam({
     name: "uuid",
@@ -93,8 +134,11 @@ export class OrganizationUnitController {
       "Organization unit fetched successfully.",
   })
   findOne(
-    @Req() req: AuthenticatedRequest,
-    @Param("uuid") uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param("uuid")
+    uuid: string,
   ) {
     return this.organizationUnitService.findOne(
       req.user,
@@ -103,6 +147,9 @@ export class OrganizationUnitController {
   }
 
   @Patch(":uuid")
+  @RequirePermission(
+    "company.organization_unit.update",
+  )
   @ApiOperation({
     summary:
       "Update Organization Unit",
@@ -117,9 +164,14 @@ export class OrganizationUnitController {
       "Organization unit updated successfully.",
   })
   update(
-    @Req() req: AuthenticatedRequest,
-    @Param("uuid") uuid: string,
-    @Body() dto: UpdateOrganizationUnitDto,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param("uuid")
+    uuid: string,
+
+    @Body()
+    dto: UpdateOrganizationUnitDto,
   ) {
     return this.organizationUnitService.update(
       req.user,
@@ -129,6 +181,9 @@ export class OrganizationUnitController {
   }
 
   @Delete(":uuid")
+  @RequirePermission(
+    "company.organization_unit.delete",
+  )
   @ApiOperation({
     summary:
       "Delete Organization Unit",
@@ -143,8 +198,11 @@ export class OrganizationUnitController {
       "Organization unit deleted successfully.",
   })
   delete(
-    @Req() req: AuthenticatedRequest,
-    @Param("uuid") uuid: string,
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param("uuid")
+    uuid: string,
   ) {
     return this.organizationUnitService.delete(
       req.user,
