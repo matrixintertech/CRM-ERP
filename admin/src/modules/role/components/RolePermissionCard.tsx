@@ -2,18 +2,16 @@ import Select from "@/shared/components/Select";
 
 import type {
   Permission,
-} from "../../permission/types/permission.types";
-
-import type {
   PermissionScope,
-} from "../../role-permission/types/role-permission.types";
+} from "../../permission/types/permission.types";
 
 interface Props {
   permission: Permission;
 
   checked: boolean;
 
-  scope: PermissionScope;
+  scope:
+    PermissionScope | null;
 
   disabled?: boolean;
 
@@ -27,28 +25,22 @@ interface Props {
   ) => void;
 }
 
-const scopeOptions = [
-  {
-    label: "Own",
-    value: "OWN",
-  },
-  {
-    label: "Team",
-    value: "TEAM",
-  },
-  {
-    label: "Organization Unit",
-    value: "ORGANIZATION_UNIT",
-  },
-  {
-    label: "Project",
-    value: "PROJECT",
-  },
-  {
-    label: "Company",
-    value: "COMPANY",
-  },
-];
+const scopeLabels:
+  Record<
+    PermissionScope,
+    string
+  > = {
+    OWN: "Own",
+
+    TEAM: "Team",
+
+    ORGANIZATION_UNIT:
+      "Organization Unit",
+
+    PROJECT: "Project",
+
+    COMPANY: "Company",
+  };
 
 const RolePermissionCard = ({
   permission,
@@ -58,36 +50,85 @@ const RolePermissionCard = ({
   onToggle,
   onScopeChange,
 }: Props) => {
-  const handleToggle = () => {
-    if (disabled) {
-      return;
-    }
+  const allowedScopes =
+    permission.allowedScopes ??
+    [];
 
-    onToggle(
-      permission.uuid,
+  /*
+   * Sirf permission ke supported
+   * scopes dropdown me show honge.
+   */
+  const scopeOptions =
+    allowedScopes.map(
+      (
+        allowedScope,
+      ) => ({
+        label:
+          scopeLabels[
+            allowedScope
+          ],
+
+        value:
+          allowedScope,
+      }),
     );
-  };
+
+  const hasAllowedScopes =
+    allowedScopes.length >
+    0;
+
+  const isDisabled =
+    disabled ||
+    !hasAllowedScopes;
+
+  const handleToggle =
+    () => {
+      if (isDisabled) {
+        return;
+      }
+
+      onToggle(
+        permission.uuid,
+      );
+    };
 
   const handleScopeChange = (
     value: string,
   ) => {
     if (
-      disabled ||
+      isDisabled ||
       !checked
+    ) {
+      return;
+    }
+
+    const selectedScope =
+      value as PermissionScope;
+
+    /*
+     * Frontend safety:
+     * selected value permission ke
+     * allowedScopes me hona chahiye.
+     */
+    if (
+      !allowedScopes.includes(
+        selectedScope,
+      )
     ) {
       return;
     }
 
     onScopeChange(
       permission.uuid,
-      value as PermissionScope,
+      selectedScope,
     );
   };
 
   return (
     <div
       style={{
-        display: "grid",
+        display:
+          "grid",
 
         gridTemplateColumns:
           "auto minmax(0, 1fr) 180px",
@@ -95,13 +136,14 @@ const RolePermissionCard = ({
         alignItems:
           "center",
 
-        gap: 12,
+        gap:
+          12,
 
         padding:
           "12px 16px",
 
         opacity:
-          disabled
+          isDisabled
             ? 0.6
             : 1,
 
@@ -111,8 +153,12 @@ const RolePermissionCard = ({
     >
       <input
         type="checkbox"
-        checked={checked}
-        disabled={disabled}
+        checked={
+          checked
+        }
+        disabled={
+          isDisabled
+        }
         onChange={
           handleToggle
         }
@@ -120,10 +166,11 @@ const RolePermissionCard = ({
 
       <div
         style={{
-          minWidth: 0,
+          minWidth:
+            0,
 
           cursor:
-            disabled
+            isDisabled
               ? "not-allowed"
               : "pointer",
         }}
@@ -133,32 +180,43 @@ const RolePermissionCard = ({
       >
         <div
           style={{
-            fontWeight: 500,
+            fontWeight:
+              500,
           }}
         >
-          {permission.name}
+          {
+            permission.name
+          }
         </div>
 
         <div
           style={{
-            fontSize: 12,
+            fontSize:
+              12,
 
-            opacity: 0.7,
+            opacity:
+              0.7,
 
-            marginTop: 2,
+            marginTop:
+              2,
           }}
         >
-          {permission.code}
+          {
+            permission.code
+          }
         </div>
 
         {permission.description && (
           <div
             style={{
-              fontSize: 12,
+              fontSize:
+                12,
 
-              opacity: 0.7,
+              opacity:
+                0.7,
 
-              marginTop: 4,
+              marginTop:
+                4,
             }}
           >
             {
@@ -166,11 +224,26 @@ const RolePermissionCard = ({
             }
           </div>
         )}
+
+        {!hasAllowedScopes && (
+          <div
+            style={{
+              fontSize:
+                12,
+
+              marginTop:
+                4,
+            }}
+          >
+            No scopes configured
+          </div>
+        )}
       </div>
 
       <Select
         value={
-          scope
+          scope ??
+          ""
         }
         showPlaceholder={
           false
@@ -180,13 +253,14 @@ const RolePermissionCard = ({
         }
         disabled={
           !checked ||
-          disabled
+          isDisabled
         }
         onChange={(
           event,
         ) =>
           handleScopeChange(
-            event.target.value,
+            event.target
+              .value,
           )
         }
       />

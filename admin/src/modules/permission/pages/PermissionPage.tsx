@@ -325,98 +325,125 @@ const PermissionPage = () => {
   };
 
   const handleSubmit =
-    async () => {
-      try {
-        const payload:
-          PermissionFormData = {
-            module:
-              formData.module,
+  async () => {
+    try {
+      const allowedScopes =
+        formData.type === "PLATFORM"
+          ? []
+          : formData.allowedScopes ?? [];
 
-            type:
-              formData.type,
-
-            name:
-              formData.name
-                .trim(),
-
-            code:
-              formData.code
-                .trim()
-                .toLowerCase(),
-
-            description:
-              formData.description
-                ?.trim() ||
-              undefined,
-
-            status:
-              formData.status ??
-              "ACTIVE",
-          };
-
-        if (editUuid) {
-          await update(
-            editUuid,
-            payload,
-          );
-        } else {
-          await create(
-            payload,
-          );
-        }
-
-        handleClose();
-      } catch (error) {
+      if (
+        formData.type === "COMPANY" &&
+        allowedScopes.length === 0
+      ) {
         console.error(
-          "Failed to save permission:",
-          error,
+          "Select at least one allowed scope.",
+        );
+
+        return;
+      }
+
+      const payload:
+        PermissionFormData = {
+          module:
+            formData.module,
+
+          type:
+            formData.type,
+
+          name:
+            formData.name
+              .trim(),
+
+          code:
+            formData.code
+              .trim()
+              .toLowerCase(),
+
+          allowedScopes,
+
+          description:
+            formData.description
+              ?.trim() ||
+            undefined,
+
+          status:
+            formData.status ??
+            "ACTIVE",
+        };
+
+      console.log(
+        "Permission payload:",
+        payload,
+      );
+
+      if (editUuid) {
+        await update(
+          editUuid,
+          payload,
+        );
+      } else {
+        await create(
+          payload,
         );
       }
-    };
 
-  const handleEdit =
-    async (
-      uuid: string,
-    ) => {
-      try {
-        const permission =
-          await fetchPermission(
-            uuid,
-          );
+      handleClose();
+    } catch (error) {
+      console.error(
+        "Failed to save permission:",
+        error,
+      );
+    }
+  };
 
-        setEditUuid(
+const handleEdit =
+  async (
+    uuid: string,
+  ) => {
+    try {
+      const permission =
+        await fetchPermission(
           uuid,
         );
 
-        setFormData({
-          module:
-            permission.module,
+      setEditUuid(
+        uuid,
+      );
 
-          type:
-            permission.type,
+      setFormData({
+        module:
+          permission.module,
 
-          name:
-            permission.name,
+        type:
+          permission.type,
 
-          code:
-            permission.code,
+        name:
+          permission.name,
 
-          description:
-            permission.description ??
-            "",
+        code:
+          permission.code,
 
-          status:
-            permission.status,
-        });
+        allowedScopes:
+          permission.allowedScopes ??
+          [],
 
-        setOpen(true);
-      } catch (error) {
-        console.error(
-          "Failed to load permission:",
-          error,
-        );
-      }
-    };
+        description:
+          permission.description ??
+          "",
+
+        status:
+          permission.status,
+      });
+
+      setOpen(true);
+    } catch (error) {
+      console.error(
+        "Failed to load permission:",
+        error,
+      );
+    }
+  };
 
   const handleDelete =
     async (

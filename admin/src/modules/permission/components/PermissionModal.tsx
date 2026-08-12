@@ -34,11 +34,16 @@ const PermissionModal = ({
   onClose,
   onSubmit,
 }: Props) => {
+  const hasValidScopes =
+    formData.type === "PLATFORM" ||
+    (formData.allowedScopes?.length ?? 0) > 0;
+
   const isSubmitDisabled =
     !formData.type ||
     !formData.module ||
     !formData.name.trim() ||
-    !formData.code.trim();
+    !formData.code.trim() ||
+    !hasValidScopes;
 
   return (
     <Modal

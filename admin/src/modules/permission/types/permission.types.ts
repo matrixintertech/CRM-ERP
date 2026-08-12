@@ -6,6 +6,13 @@ export type PermissionType =
   | "PLATFORM"
   | "COMPANY";
 
+export type PermissionScope =
+  | "OWN"
+  | "TEAM"
+  | "ORGANIZATION_UNIT"
+  | "PROJECT"
+  | "COMPANY";
+
 export type PermissionModule =
   | "DASHBOARD"
   | "COMPANY"
@@ -48,25 +55,54 @@ export interface Permission {
   name: string;
   code: string;
 
-  description?: string | null;
+  /*
+   * Permission kin scopes ko
+   * support karti hai.
+   */
+  allowedScopes:
+    PermissionScope[];
 
-  status: PermissionStatus;
+  description?:
+    string | null;
 
-  createdAt: string;
-  updatedAt: string;
+  status:
+    PermissionStatus;
+
+  createdAt:
+    string;
+
+  updatedAt:
+    string;
 }
 
 export interface CreatePermissionDto {
-  module: PermissionModule;
+  module:
+    PermissionModule;
 
-  type: PermissionType;
+  type:
+    PermissionType;
 
-  name: string;
-  code: string;
+  name:
+    string;
 
-  description?: string;
+  code:
+    string;
 
-  status?: PermissionStatus;
+  /*
+   * COMPANY:
+   * minimum one scope.
+   *
+   * PLATFORM:
+   * [].
+   */
+  allowedScopes:
+    PermissionScope[];
+
+  description?:
+    string;
+
+  status?:
+    PermissionStatus;
 }
 
 export interface UpdatePermissionDto
@@ -76,46 +112,68 @@ export type PermissionFormData =
   CreatePermissionDto;
 
 export interface PermissionGroup {
-  module: PermissionModule;
+  module:
+    PermissionModule;
 
-  permissions: Permission[];
+  permissions:
+    Permission[];
 }
 
 export interface GetPermissionsParams {
-  page?: number;
-  limit?: number;
+  page?:
+    number;
 
-  search?: string;
+  limit?:
+    number;
 
-  module?: PermissionModule;
+  search?:
+    string;
 
-  type?: PermissionType;
+  module?:
+    PermissionModule;
 
-  status?: PermissionStatus;
+  type?:
+    PermissionType;
 
-  sortBy?: PermissionSortField;
+  status?:
+    PermissionStatus;
 
-  sortOrder?: SortOrder;
+  sortBy?:
+    PermissionSortField;
+
+  sortOrder?:
+    SortOrder;
 }
 
 export interface PermissionPagination {
-  page: number;
-  limit: number;
+  page:
+    number;
 
-  total: number;
-  totalPages: number;
+  limit:
+    number;
+
+  total:
+    number;
+
+  totalPages:
+    number;
 }
 
 export interface PermissionFilters {
-  modules: PermissionModule[];
+  modules:
+    PermissionModule[];
 
-  types: PermissionType[];
+  types:
+    PermissionType[];
 }
 
 export interface PermissionListResponse {
-  permissions: Permission[];
+  permissions:
+    Permission[];
 
-  pagination: PermissionPagination;
+  pagination:
+    PermissionPagination;
 
-  filters: PermissionFilters;
+  filters:
+    PermissionFilters;
 }

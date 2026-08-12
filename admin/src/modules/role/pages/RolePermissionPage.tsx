@@ -94,8 +94,8 @@ const RolePermissionPage = () => {
   ] = useState(false);
 
   /*
-   * Selected permissions now store
-   * both permission UUID and scope.
+   * Selected permissions store
+   * permission UUID + selected scope.
    */
   const [
     selectedPermissions,
@@ -116,76 +116,75 @@ const RolePermissionPage = () => {
     setSearch,
   ] = useState("");
 
-useEffect(() => {
-  if (!uuid) {
-    return;
-  }
+  useEffect(() => {
+    if (!uuid) {
+      return;
+    }
 
-  const loadRolePermissions =
-    async () => {
-      try {
-        setRolePermissionLoading(
-          true,
-        );
-
-        const response =
-          await fetchRolePermissions(
-            uuid,
+    const loadRolePermissions =
+      async () => {
+        try {
+          setRolePermissionLoading(
+            true,
           );
 
-        setRolePermissionData(
-          response,
-        );
+          const response =
+            await fetchRolePermissions(
+              uuid,
+            );
 
-        const permissions:
-          RolePermissionAssignment[] =
-          response
-            ?.permissions
-            ?.map(
+          setRolePermissionData(
+            response,
+          );
+
+          const permissions:
+            RolePermissionAssignment[] =
+            response
+              ?.permissions
+              ?.map(
+                (permission) => ({
+                  permissionUuid:
+                    permission.uuid,
+
+                  scope:
+                    permission.scope,
+                }),
+              ) ?? [];
+
+          setSelectedPermissions(
+            permissions.map(
               (permission) => ({
-                permissionUuid:
-                  permission.uuid,
-
-                scope:
-                  permission.scope,
+                ...permission,
               }),
-            ) ?? [];
+            ),
+          );
 
-        setSelectedPermissions(
-          permissions.map(
-            (permission) => ({
-              ...permission,
-            }),
-          ),
-        );
+          setInitialPermissions(
+            permissions.map(
+              (permission) => ({
+                ...permission,
+              }),
+            ),
+          );
+        } catch (error: any) {
+          console.error(
+            error?.response?.data ??
+              error,
+          );
+        } finally {
+          setRolePermissionLoading(
+            false,
+          );
+        }
+      };
 
-        setInitialPermissions(
-          permissions.map(
-            (permission) => ({
-              ...permission,
-            }),
-          ),
-        );
-      } catch (error: any) {
-        console.error(
-          error?.response?.data ??
-            error,
-        );
-      } finally {
-        setRolePermissionLoading(
-          false,
-        );
-      }
-    };
-
-  void loadRolePermissions();
-}, [
-  uuid,
-]);
+    void loadRolePermissions();
+  }, [
+    uuid,
+  ]);
 
   /*
-   * Derived UUID array is useful
-   * for checkbox/group selection.
+   * Selected permission UUIDs.
    */
   const selectedPermissionUuids =
     useMemo(
@@ -194,8 +193,7 @@ useEffect(() => {
           (
             permission,
           ) =>
-            permission
-              .permissionUuid,
+            permission.permissionUuid,
         ),
       [
         selectedPermissions,
@@ -203,8 +201,8 @@ useEffect(() => {
     );
 
   /*
-   * Fast lookup for each
-   * permission's current scope.
+   * Fast lookup:
+   * permissionUuid -> selected scope
    */
   const permissionScopes =
     useMemo(
@@ -214,9 +212,7 @@ useEffect(() => {
             (
               permission,
             ) => [
-              permission
-                .permissionUuid,
-
+              permission.permissionUuid,
               permission.scope,
             ],
           ),
@@ -229,6 +225,9 @@ useEffect(() => {
       ],
     );
 
+  /*
+   * Search/filter permission groups.
+   */
   const filteredGroups =
     useMemo<
       PermissionGroup[]
@@ -280,14 +279,78 @@ useEffect(() => {
             group:
               PermissionGroup,
           ) =>
-            group.permissions
-              .length > 0,
+            group.permissions.length >
+            0,
         );
     }, [
       groupedPermissions,
       search,
     ]);
 
+  /*
+   * Fast permission lookup.
+   *
+   * Isse kisi permission ka
+   * allowedScopes easily mil jayega.
+   */
+  const permissionByUuid =
+    useMemo(() => {
+      return new Map(
+        groupedPermissions.flatMap(
+          (
+            group,
+          ) =>
+            group.permissions.map(
+              (
+                permission,
+              ) =>
+                [
+                  permission.uuid,
+                  permission,
+                ] as const,
+            ),
+        ),
+      );
+    }, [
+      groupedPermissions,
+    ]);
+
+  /*
+   * Jab permission first time select hoti hai,
+   * uska first configured allowed scope
+   * default selected hoga.
+   *
+   * Example:
+   *
+   * Project Category:
+   * [COMPANY]
+   * -> COMPANY
+   *
+   * Project:
+   * [PROJECT, COMPANY]
+   * -> PROJECT
+   */
+  const getDefaultScope = (
+    permissionUuid: string,
+  ): PermissionScope | null => {
+    const permission =
+      permissionByUuid.get(
+        permissionUuid,
+      );
+
+    const allowedScopes =
+      permission?.allowedScopes ??
+      [];
+
+    return (
+      allowedScopes[0] ??
+      null
+    );
+  };
+
+  /*
+   * All permissions count.
+   */
   const allPermissionUuids =
     useMemo(
       () =>
@@ -308,7 +371,14 @@ useEffect(() => {
       ],
     );
 
-  const visiblePermissionUuids =
+  /*
+   * Visible permissions which can
+   * actually be assigned.
+   *
+   * COMPANY permission with
+   * allowedScopes = [] is not selectable.
+   */
+  const visiblePermissions =
     useMemo(
       () =>
         filteredGroups.flatMap(
@@ -316,15 +386,34 @@ useEffect(() => {
             group:
               PermissionGroup,
           ) =>
-            group.permissions.map(
+            group.permissions.filter(
               (
                 permission,
               ) =>
-                permission.uuid,
+                (
+                  permission
+                    .allowedScopes
+                    ?.length ??
+                  0
+                ) > 0,
             ),
         ),
       [
         filteredGroups,
+      ],
+    );
+
+  const visiblePermissionUuids =
+    useMemo(
+      () =>
+        visiblePermissions.map(
+          (
+            permission,
+          ) =>
+            permission.uuid,
+        ),
+      [
+        visiblePermissions,
       ],
     );
 
@@ -341,8 +430,8 @@ useEffect(() => {
     );
 
   /*
-   * Compare permission + scope.
-   * Scope change must also enable Save.
+   * Permission + scope both compare karo.
+   * Scope change bhi Save enable karega.
    */
   const hasChanges =
     useMemo(() => {
@@ -385,6 +474,9 @@ useEffect(() => {
       selectedPermissions,
     ]);
 
+  /*
+   * Single permission toggle.
+   */
   const togglePermission = (
     permissionUuid: string,
   ) => {
@@ -413,6 +505,20 @@ useEffect(() => {
           );
         }
 
+        const defaultScope =
+          getDefaultScope(
+            permissionUuid,
+          );
+
+        /*
+         * allowedScopes configured
+         * nahi hai to permission
+         * assign nahi hogi.
+         */
+        if (!defaultScope) {
+          return previous;
+        }
+
         return [
           ...previous,
 
@@ -420,13 +526,16 @@ useEffect(() => {
             permissionUuid,
 
             scope:
-              "OWN",
+              defaultScope,
           },
         ];
       },
     );
   };
 
+  /*
+   * Selected permission ka scope change.
+   */
   const handleScopeChange = (
     permissionUuid: string,
     scope: PermissionScope,
@@ -452,12 +561,32 @@ useEffect(() => {
     );
   };
 
+  /*
+   * Whole module/group toggle.
+   */
   const toggleGroup = (
     group:
       PermissionGroup,
   ) => {
+    /*
+     * Empty allowedScopes wale
+     * permissions selectable nahi hain.
+     */
+    const selectablePermissions =
+      group.permissions.filter(
+        (
+          permission,
+        ) =>
+          (
+            permission
+              .allowedScopes
+              ?.length ??
+            0
+          ) > 0,
+      );
+
     const groupPermissionUuids =
-      group.permissions.map(
+      selectablePermissions.map(
         (
           permission,
         ) =>
@@ -507,25 +636,37 @@ useEffect(() => {
 
         const newPermissions:
           RolePermissionAssignment[] =
-          groupPermissionUuids
-            .filter(
-              (
-                permissionUuid,
-              ) =>
-                !alreadySelected.has(
-                  permissionUuid,
-                ),
-            )
-            .map(
-              (
-                permissionUuid,
-              ) => ({
-                permissionUuid,
+          [];
 
-                scope:
-                  "OWN",
-              }),
+        for (
+          const permission
+          of selectablePermissions
+        ) {
+          if (
+            alreadySelected.has(
+              permission.uuid,
+            )
+          ) {
+            continue;
+          }
+
+          const defaultScope =
+            getDefaultScope(
+              permission.uuid,
             );
+
+          if (!defaultScope) {
+            continue;
+          }
+
+          newPermissions.push({
+            permissionUuid:
+              permission.uuid,
+
+            scope:
+              defaultScope,
+          });
+        }
 
         return [
           ...previous,
@@ -535,6 +676,10 @@ useEffect(() => {
     );
   };
 
+  /*
+   * Select/Clear all currently
+   * visible permissions.
+   */
   const toggleAllVisible =
     () => {
       setSelectedPermissions(
@@ -553,6 +698,8 @@ useEffect(() => {
             );
 
           const allVisibleSelected =
+            visiblePermissionUuids.length >
+              0 &&
             visiblePermissionUuids.every(
               (
                 permissionUuid,
@@ -578,25 +725,37 @@ useEffect(() => {
 
           const newPermissions:
             RolePermissionAssignment[] =
-            visiblePermissionUuids
-              .filter(
-                (
-                  permissionUuid,
-                ) =>
-                  !selectedUuids.has(
-                    permissionUuid,
-                  ),
-              )
-              .map(
-                (
-                  permissionUuid,
-                ) => ({
-                  permissionUuid,
+            [];
 
-                  scope:
-                    "OWN",
-                }),
+          for (
+            const permission
+            of visiblePermissions
+          ) {
+            if (
+              selectedUuids.has(
+                permission.uuid,
+              )
+            ) {
+              continue;
+            }
+
+            const defaultScope =
+              getDefaultScope(
+                permission.uuid,
               );
+
+            if (!defaultScope) {
+              continue;
+            }
+
+            newPermissions.push({
+              permissionUuid:
+                permission.uuid,
+
+              scope:
+                defaultScope,
+            });
+          }
 
           return [
             ...previous,

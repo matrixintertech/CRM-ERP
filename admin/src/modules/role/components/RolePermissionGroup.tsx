@@ -60,36 +60,50 @@ const RolePermissionGroup = ({
   onScopeChange,
   onToggleGroup,
 }: Props) => {
-  const groupPermissionUuids =
-    group.permissions.map(
-      (
-        permission,
-      ) =>
+  /*
+   * Sirf wahi permissions group-level
+   * selection me participate karengi
+   * jinke allowedScopes configured hain.
+   */
+  const selectablePermissions =
+    group.permissions.filter(
+      (permission) =>
+        (
+          permission.allowedScopes
+            ?.length ??
+          0
+        ) > 0,
+    );
+
+  const selectablePermissionUuids =
+    selectablePermissions.map(
+      (permission) =>
         permission.uuid,
     );
 
   const selectedCount =
-    groupPermissionUuids.filter(
-      (
-        permissionUuid,
-      ) =>
+    selectablePermissionUuids.filter(
+      (permissionUuid) =>
         selectedPermissionUuids.includes(
           permissionUuid,
         ),
     ).length;
 
   const allGroupSelected =
-    groupPermissionUuids.length >
+    selectablePermissionUuids.length >
       0 &&
     selectedCount ===
-      groupPermissionUuids.length;
+      selectablePermissionUuids.length;
 
   return (
     <div
       style={{
         border:
           "1px solid var(--border-color, #e5e7eb)",
-        borderRadius: 10,
+
+        borderRadius:
+          10,
+
         overflow:
           "hidden",
       }}
@@ -143,7 +157,9 @@ const RolePermissionGroup = ({
             }}
           >
             {selectedCount}/
-            {group.permissions.length}{" "}
+            {
+              selectablePermissions.length
+            }{" "}
             selected
           </div>
         </div>
@@ -153,7 +169,7 @@ const RolePermissionGroup = ({
           variant="secondary"
           disabled={
             disabled ||
-            group.permissions.length ===
+            selectablePermissions.length ===
               0
           }
           onClick={() =>
@@ -186,11 +202,34 @@ const RolePermissionGroup = ({
                 permission.uuid,
               );
 
+            const allowedScopes =
+              permission.allowedScopes ??
+              [];
+
+            /*
+             * Selected role scope.
+             *
+             * Agar permission selected nahi hai
+             * to UI ke liye first allowed scope
+             * use kar sakte hain.
+             *
+             * OWN hardcoded fallback nahi.
+             */
             const scope =
               permissionScopes[
                 permission.uuid
               ] ??
-              "OWN";
+              allowedScopes[0] ??
+              null;
+
+            /*
+             * Legacy/misconfigured permission:
+             * COMPANY permission but no
+             * allowedScopes configured.
+             */
+            const hasAllowedScopes =
+              allowedScopes.length >
+              0;
 
             return (
               <RolePermissionCard
@@ -207,7 +246,8 @@ const RolePermissionGroup = ({
                   scope
                 }
                 disabled={
-                  disabled
+                  disabled ||
+                  !hasAllowedScopes
                 }
                 onToggle={
                   onTogglePermission

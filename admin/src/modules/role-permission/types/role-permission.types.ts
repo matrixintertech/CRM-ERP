@@ -18,6 +18,19 @@ export interface Permission {
   type?: "COMPANY" | "PLATFORM";
 
   status?: "ACTIVE" | "INACTIVE";
+
+  /*
+   * Scopes supported by this permission.
+   *
+   * Examples:
+   *
+   * company.project.view
+   * -> ["PROJECT", "COMPANY"]
+   *
+   * company.project_category.view
+   * -> ["COMPANY"]
+   */
+  allowedScopes: PermissionScope[];
 }
 
 export interface PermissionGroupData {
@@ -29,6 +42,10 @@ export interface PermissionGroupData {
 
 export interface RolePermission
   extends Permission {
+  /*
+   * Scope currently assigned
+   * to this role.
+   */
   scope: PermissionScope;
 }
 
