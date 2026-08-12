@@ -57,6 +57,10 @@ const createDefaultForm =
     description: "",
 
     status: "ACTIVE",
+
+    allowedScopes: [
+      "COMPANY",
+    ],
   });
 
 const typeOptions = [
