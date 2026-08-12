@@ -32,15 +32,14 @@ export class ProjectRoleRepository {
   }
 
   async findAll(
-    companyId?: bigint,
+    companyId: bigint,
   ) {
     return this.prisma.projectRole.findMany({
       where: {
-        ...(companyId !== undefined && {
-          companyId,
-        }),
+        companyId,
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
 
       include: {
@@ -49,28 +48,29 @@ export class ProjectRoleRepository {
 
       orderBy: [
         {
-          sortOrder: "asc",
+          sortOrder:
+            "asc",
         },
         {
-          name: "asc",
+          name:
+            "asc",
         },
       ],
     });
   }
 
   async findByUuid(
-    companyId: bigint | undefined,
+    companyId: bigint,
     uuid: string,
   ) {
     return this.prisma.projectRole.findFirst({
       where: {
+        companyId,
+
         uuid,
 
-        ...(companyId !== undefined && {
-          companyId,
-        }),
-
-        deletedAt: null,
+        deletedAt:
+          null,
       },
 
       include: {
@@ -86,8 +86,11 @@ export class ProjectRoleRepository {
     return this.prisma.projectRole.findFirst({
       where: {
         companyId,
+
         name,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -99,8 +102,11 @@ export class ProjectRoleRepository {
     return this.prisma.projectRole.findFirst({
       where: {
         companyId,
+
         code,
-        deletedAt: null,
+
+        deletedAt:
+          null,
       },
     });
   }
@@ -112,8 +118,12 @@ export class ProjectRoleRepository {
     return this.prisma.projectRole.findFirst({
       where: {
         companyId,
+
         uuid,
-        deletedAt: null,
+
+        deletedAt:
+          null,
+
         status:
           Status.ACTIVE,
       },
@@ -121,13 +131,42 @@ export class ProjectRoleRepository {
   }
 
   async update(
-    id: bigint,
+    companyId: bigint,
+    uuid: string,
     data:
       Prisma.ProjectRoleUpdateInput,
   ) {
+    /*
+     * Tenant-safe lookup first.
+     *
+     * UUID globally unique hai,
+     * phir bhi companyId boundary
+     * deliberately enforce kar rahe hain.
+     */
+    const projectRole =
+      await this.prisma.projectRole.findFirst({
+        where: {
+          companyId,
+
+          uuid,
+
+          deletedAt:
+            null,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!projectRole) {
+      return null;
+    }
+
     return this.prisma.projectRole.update({
       where: {
-        id,
+        id:
+          projectRole.id,
       },
 
       data,
@@ -139,11 +178,33 @@ export class ProjectRoleRepository {
   }
 
   async softDelete(
-    id: bigint,
+    companyId: bigint,
+    uuid: string,
   ) {
+    const projectRole =
+      await this.prisma.projectRole.findFirst({
+        where: {
+          companyId,
+
+          uuid,
+
+          deletedAt:
+            null,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!projectRole) {
+      return null;
+    }
+
     return this.prisma.projectRole.update({
       where: {
-        id,
+        id:
+          projectRole.id,
       },
 
       data: {
@@ -157,37 +218,54 @@ export class ProjectRoleRepository {
   }
 
   async countActiveMembers(
+    companyId: bigint,
     projectRoleId: bigint,
   ) {
     return this.prisma.projectMember.count({
       where: {
+        companyId,
+
         projectRoleId,
-        isActive: true,
+
+        isActive:
+          true,
+
+        removedAt:
+          null,
       },
     });
   }
 
   async countDependentRoles(
+    companyId: bigint,
     projectRoleId: bigint,
   ) {
     return this.prisma.projectRole.count({
       where: {
+        companyId,
+
         requiredRoleId:
           projectRoleId,
 
-        deletedAt: null,
+        deletedAt:
+          null,
       },
     });
   }
 
   async findById(
-  id: bigint,
-) {
-  return this.prisma.projectRole.findFirst({
-    where: {
-      id,
-      deletedAt: null,
-    },
-  });
-}
+    companyId: bigint,
+    id: bigint,
+  ) {
+    return this.prisma.projectRole.findFirst({
+      where: {
+        companyId,
+
+        id,
+
+        deletedAt:
+          null,
+      },
+    });
+  }
 }

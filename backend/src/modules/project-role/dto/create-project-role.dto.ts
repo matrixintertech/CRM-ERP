@@ -56,7 +56,7 @@ export class CreateProjectRoleDto {
   })
   @IsOptional()
   @IsUUID()
-  requiredRoleUuid?: string;
+  requiredRoleUuid?: string | null;
 
   @ApiPropertyOptional({
     example: 1,

@@ -14,7 +14,15 @@ import {
   ProjectRoleService,
 } from "./services/project-role.service";
 
+import {
+  AuthorizationModule,
+} from "../authorization/authorization.module";
+
 @Module({
+  imports: [
+    AuthorizationModule,
+  ],
+
   controllers: [
     ProjectRoleController,
   ],

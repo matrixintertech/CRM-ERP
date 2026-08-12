@@ -18,49 +18,68 @@ import {
   ProjectRoleRepository,
 } from "../repositories/project-role.repository";
 
+import {
+  CompanyBoundaryService,
+} from "../../authorization/services/company-boundary.service";
+
+interface AuthUser {
+  id: bigint;
+}
+
 @Injectable()
 export class ProjectRoleService {
   constructor(
     private readonly projectRoleRepository:
       ProjectRoleRepository,
+
+    private readonly companyBoundaryService:
+      CompanyBoundaryService,
   ) {}
 
-  private ensureCompanyContext(
-    companyId?: bigint | null,
-  ): bigint {
-    if (!companyId) {
-      throw new BadRequestException(
-        "Project Roles can only be managed within a company context.",
-      );
-    }
-
-    return companyId;
+private async resolveRequiredRole(
+  companyId: bigint,
+  requiredRoleUuid?: string | null,
+) {
+  if (!requiredRoleUuid) {
+    return null;
   }
 
-  private async resolveRequiredRole(
+  const requiredRole =
+    await this.projectRoleRepository.findRequiredRoleByUuid(
+      companyId,
+      requiredRoleUuid,
+    );
+
+  if (!requiredRole) {
+    throw new BadRequestException(
+      "Required project role not found or inactive.",
+    );
+  }
+
+  return requiredRole;
+}
+
+  private async findRoleOrThrow(
     companyId: bigint,
-    requiredRoleUuid?: string,
+    uuid: string,
   ) {
-    if (!requiredRoleUuid) {
-      return null;
-    }
-
-    const requiredRole =
-      await this.projectRoleRepository.findRequiredRoleByUuid(
+    const projectRole =
+      await this.projectRoleRepository.findByUuid(
         companyId,
-        requiredRoleUuid,
+        uuid,
       );
 
-    if (!requiredRole) {
-      throw new BadRequestException(
-        "Required project role not found or inactive.",
+    if (!projectRole) {
+      throw new NotFoundException(
+        "Project role not found.",
       );
     }
 
-    return requiredRole;
+    return projectRole;
   }
 
   private async ensureNoCircularDependency(
+    companyId: bigint,
     projectRoleId: bigint,
     requiredRoleId: bigint,
   ) {
@@ -104,6 +123,7 @@ export class ProjectRoleService {
 
       const role =
         await this.projectRoleRepository.findById(
+          companyId,
           currentRoleId,
         );
 
@@ -117,15 +137,12 @@ export class ProjectRoleService {
   }
 
   async create(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+    user: AuthUser,
     dto: CreateProjectRoleDto,
   ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
+    const companyId =
+      await this.companyBoundaryService.getCompanyId(
+        user.id,
       );
 
     const name =
@@ -142,7 +159,7 @@ export class ProjectRoleService {
 
     const existingName =
       await this.projectRoleRepository.findByName(
-        resolvedCompanyId,
+        companyId,
         name,
       );
 
@@ -154,7 +171,7 @@ export class ProjectRoleService {
 
     const existingCode =
       await this.projectRoleRepository.findByCode(
-        resolvedCompanyId,
+        companyId,
         code,
       );
 
@@ -166,7 +183,7 @@ export class ProjectRoleService {
 
     const requiredRole =
       await this.resolveRequiredRole(
-        resolvedCompanyId,
+        companyId,
         dto.requiredRoleUuid,
       );
 
@@ -175,7 +192,7 @@ export class ProjectRoleService {
         company: {
           connect: {
             id:
-              resolvedCompanyId,
+              companyId,
           },
         },
 
@@ -189,6 +206,7 @@ export class ProjectRoleService {
         }),
 
         name,
+
         code,
 
         description:
@@ -200,7 +218,8 @@ export class ProjectRoleService {
           false,
 
         sortOrder:
-          dto.sortOrder ?? 0,
+          dto.sortOrder ??
+          0,
 
         status:
           Status.ACTIVE,
@@ -215,14 +234,16 @@ export class ProjectRoleService {
   }
 
   async findAll(
-    companyId?:
-      | bigint
-      | null,
+    user: AuthUser,
   ) {
+    const companyId =
+      await this.companyBoundaryService.getCompanyId(
+        user.id,
+      );
+
     const projectRoles =
       await this.projectRoleRepository.findAll(
-        companyId ??
-          undefined,
+        companyId,
       );
 
     return {
@@ -234,44 +255,33 @@ export class ProjectRoleService {
   }
 
   async findByUuid(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+    user: AuthUser,
     uuid: string,
   ) {
-    const projectRole =
-      await this.projectRoleRepository.findByUuid(
-        companyId ??
-          undefined,
-        uuid,
+    const companyId =
+      await this.companyBoundaryService.getCompanyId(
+        user.id,
       );
 
-    if (!projectRole) {
-      throw new NotFoundException(
-        "Project role not found.",
-      );
-    }
-
-    return projectRole;
+    return this.findRoleOrThrow(
+      companyId,
+      uuid,
+    );
   }
 
   async updateByUuid(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+    user: AuthUser,
     uuid: string,
     dto: UpdateProjectRoleDto,
   ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
+    const companyId =
+      await this.companyBoundaryService.getCompanyId(
+        user.id,
       );
 
     const projectRole =
-      await this.findByUuid(
-        resolvedCompanyId,
+      await this.findRoleOrThrow(
+        companyId,
         uuid,
       );
 
@@ -292,13 +302,13 @@ export class ProjectRoleService {
         : undefined;
 
     if (
-      name &&
+      name !== undefined &&
       name !==
         projectRole.name
     ) {
       const duplicate =
         await this.projectRoleRepository.findByName(
-          resolvedCompanyId,
+          companyId,
           name,
         );
 
@@ -314,13 +324,13 @@ export class ProjectRoleService {
     }
 
     if (
-      code &&
+      code !== undefined &&
       code !==
         projectRole.code
     ) {
       const duplicate =
         await this.projectRoleRepository.findByCode(
-          resolvedCompanyId,
+          companyId,
           code,
         );
 
@@ -349,12 +359,13 @@ export class ProjectRoleService {
     ) {
       requiredRole =
         await this.resolveRequiredRole(
-          resolvedCompanyId,
+          companyId,
           dto.requiredRoleUuid,
         );
 
       if (requiredRole) {
         await this.ensureNoCircularDependency(
+          companyId,
           projectRole.id,
           requiredRole.id,
         );
@@ -363,7 +374,8 @@ export class ProjectRoleService {
 
     const updated =
       await this.projectRoleRepository.update(
-        projectRole.id,
+        companyId,
+        uuid,
         {
           ...(name !==
             undefined && {
@@ -418,6 +430,12 @@ export class ProjectRoleService {
         },
       );
 
+    if (!updated) {
+      throw new NotFoundException(
+        "Project role not found.",
+      );
+    }
+
     return {
       message:
         "Project role updated successfully.",
@@ -428,25 +446,23 @@ export class ProjectRoleService {
   }
 
   async deleteByUuid(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+    user: AuthUser,
     uuid: string,
   ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
+    const companyId =
+      await this.companyBoundaryService.getCompanyId(
+        user.id,
       );
 
     const projectRole =
-      await this.findByUuid(
-        resolvedCompanyId,
+      await this.findRoleOrThrow(
+        companyId,
         uuid,
       );
 
     const memberCount =
       await this.projectRoleRepository.countActiveMembers(
+        companyId,
         projectRole.id,
       );
 
@@ -458,6 +474,7 @@ export class ProjectRoleService {
 
     const dependentRoleCount =
       await this.projectRoleRepository.countDependentRoles(
+        companyId,
         projectRole.id,
       );
 
@@ -469,9 +486,17 @@ export class ProjectRoleService {
       );
     }
 
-    await this.projectRoleRepository.softDelete(
-      projectRole.id,
-    );
+    const deleted =
+      await this.projectRoleRepository.softDelete(
+        companyId,
+        uuid,
+      );
+
+    if (!deleted) {
+      throw new NotFoundException(
+        "Project role not found.",
+      );
+    }
 
     return {
       message:
