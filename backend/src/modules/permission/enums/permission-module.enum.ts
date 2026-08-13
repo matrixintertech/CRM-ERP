@@ -17,6 +17,7 @@ export enum PermissionModule {
 
   PROJECT = "PROJECT",
   PROJECT_CATEGORY = "PROJECT_CATEGORY",
+  PROJECT_ROLE = "PROJECT_ROLE",
 
   TASK = "TASK",
 
