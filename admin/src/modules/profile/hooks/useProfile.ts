@@ -82,6 +82,9 @@ export const useProfile = () => {
 
       retry:
         false,
+
+      refetchOnWindowFocus:
+        "always",
     });
 
 
