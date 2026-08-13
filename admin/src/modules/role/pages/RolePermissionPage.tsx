@@ -47,8 +47,7 @@ import type {
 } from "../../role-permission/types/role-permission.types";
 
 const RolePermissionPage = () => {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
   useDocumentTitle(
     "Role Permissions",

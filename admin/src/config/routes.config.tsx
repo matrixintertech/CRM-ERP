@@ -27,6 +27,8 @@ import PlatformUserPage from "@/modules/platform-user/pages/PlatformUserPage";
 import ProjectRoleListPage from "@/modules/project-role/pages/ProjectRoleListPage";
 import PlatformRolePage from "@/modules/platform-role/pages/PlatformRolePage";
 
+import PermissionRoute from "@/shared/components/guards/PermissionRoute";
+
 export interface AppRoute {
   path: string;
   element: ReactNode;
@@ -114,10 +116,14 @@ export const protectedRoutes: AppRoute[] = [
     element: <DesignationPage />,
   },
 
-  {
-    path: "/departments",
-    element: <DepartmentPage />,
-  },
+{
+  path: "/departments",
+  element: (
+    <PermissionRoute permission="company.department.view">
+      <DepartmentPage />
+    </PermissionRoute>
+  ),
+},
 
   {
     path: "/employees",

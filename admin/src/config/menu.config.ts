@@ -138,6 +138,10 @@ export const menu: MenuItem[] = [
         title: "Departments",
         path: "/departments",
         icon: Building,
+
+        permissions: [
+          "company.department.view",
+        ],
       },
       {
         id: "designations",

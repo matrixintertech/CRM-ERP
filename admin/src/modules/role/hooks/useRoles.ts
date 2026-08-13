@@ -9,6 +9,10 @@ import {
 } from "@/shared/utils/notify";
 
 import {
+  PROFILE_QUERY_KEY,
+} from "@/modules/profile/hooks/useProfile";
+
+import {
   assignRolePermissions,
   createRole,
   deleteRole,
@@ -263,30 +267,47 @@ export const useRole = () => {
           payload,
         ),
 
-      onSuccess: async (
-        _data,
-        variables,
-      ) => {
-        notify.success(
-          "Role permissions updated successfully.",
-        );
+     onSuccess: async (
+  _data,
+  variables,
+) => {
+  notify.success(
+    "Role permissions updated successfully.",
+  );
 
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: [
-              "role-permissions-detail",
-              variables.uuid,
-            ],
-          }),
+  await Promise.all([
+    /*
+     * Role permission screen ka
+     * cached data refresh.
+     */
+    queryClient.invalidateQueries({
+      queryKey: [
+        "role-permissions-detail",
+        variables.uuid,
+      ],
+    }),
 
-          queryClient.invalidateQueries({
-            queryKey: [
-              "role-permissions",
-              variables.uuid,
-            ],
-          }),
-        ]);
-      },
+    queryClient.invalidateQueries({
+      queryKey: [
+        "role-permissions",
+        variables.uuid,
+      ],
+    }),
+
+    /*
+     * Current logged-in user's
+     * effective permissions refresh.
+     *
+     * Agar edited role current user ka
+     * role hai to sidebar/routes/buttons
+     * immediately update ho jayenge.
+     */
+    queryClient.invalidateQueries({
+      queryKey:
+        PROFILE_QUERY_KEY,
+    }),
+  ]);
+},
 
       onError: (error) => {
         notify.error(

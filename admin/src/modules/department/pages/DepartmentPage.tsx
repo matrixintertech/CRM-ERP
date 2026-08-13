@@ -7,6 +7,10 @@ import {
 } from "react-router-dom";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
   Eye,
   SquarePen,
   Trash2,
@@ -36,6 +40,7 @@ import type {
   DepartmentFormData,
 } from "../types/department.types";
 
+
 const createDefaultForm =
   (): DepartmentFormData => ({
     organizationUnitUuid: "",
@@ -44,9 +49,43 @@ const createDefaultForm =
     description: "",
   });
 
+
 const DepartmentPage = () => {
   const navigate =
     useNavigate();
+
+
+  /*
+   * Frontend authorization is UX only.
+   *
+   * Actual authorization + scope
+   * enforcement backend handles.
+   */
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canViewDepartment =
+    hasPermission(
+      "company.department.view",
+    );
+
+  const canCreateDepartment =
+    hasPermission(
+      "company.department.create",
+    );
+
+  const canUpdateDepartment =
+    hasPermission(
+      "company.department.update",
+    );
+
+  const canDeleteDepartment =
+    hasPermission(
+      "company.department.delete",
+    );
+
 
   const {
     loading,
@@ -61,14 +100,17 @@ const DepartmentPage = () => {
     saving,
   } = useDepartment();
 
+
   const {
     organizationUnits,
   } = useOrganizationUnits();
+
 
   const [
     open,
     setOpen,
   ] = useState(false);
+
 
   const [
     editUuid,
@@ -77,6 +119,7 @@ const DepartmentPage = () => {
     string | null
   >(null);
 
+
   const [
     formData,
     setFormData,
@@ -84,7 +127,6 @@ const DepartmentPage = () => {
     useState<DepartmentFormData>(
       createDefaultForm,
     );
-
 
 
   const resetForm = () => {
@@ -97,14 +139,22 @@ const DepartmentPage = () => {
     );
   };
 
+
   const handleOpenCreate =
     () => {
+      if (
+        !canCreateDepartment
+      ) {
+        return;
+      }
+
       resetForm();
 
       setOpen(
         true,
       );
     };
+
 
   const handleClose =
     () => {
@@ -115,8 +165,30 @@ const DepartmentPage = () => {
       resetForm();
     };
 
+
   const handleSubmit =
     async () => {
+      /*
+       * UI-level protection.
+       *
+       * Backend is still final
+       * authorization authority.
+       */
+      if (
+        editUuid &&
+        !canUpdateDepartment
+      ) {
+        return;
+      }
+
+      if (
+        !editUuid &&
+        !canCreateDepartment
+      ) {
+        return;
+      }
+
+
       try {
         const payload:
           DepartmentFormData = {
@@ -141,6 +213,7 @@ const DepartmentPage = () => {
             undefined,
         };
 
+
         if (editUuid) {
           await update(
             editUuid,
@@ -152,8 +225,11 @@ const DepartmentPage = () => {
           );
         }
 
+
         handleClose();
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -161,27 +237,39 @@ const DepartmentPage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateDepartment
+      ) {
+        return;
+      }
+
+
       try {
         const department =
           await fetchDepartment(
             uuid,
           );
 
+
         if (!department) {
           return;
         }
+
 
         setEditUuid(
           uuid,
         );
 
+
         setFormData({
           organizationUnitUuid:
-            department.organizationUnit
+            department
+              .organizationUnit
               ?.uuid ?? "",
 
           name:
@@ -195,41 +283,57 @@ const DepartmentPage = () => {
             "",
         });
 
+
         setOpen(
           true,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteDepartment
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this department?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const columns:
     DataTableColumn<Department>[] = [
@@ -248,14 +352,19 @@ const DepartmentPage = () => {
     },
 
     {
-      key: "name",
+      key:
+        "name",
+
       title:
         "Department",
     },
 
     {
-      key: "code",
-      title: "Code",
+      key:
+        "code",
+
+      title:
+        "Code",
     },
 
     {
@@ -273,76 +382,112 @@ const DepartmentPage = () => {
     },
 
     {
-      key: "status",
-      title: "Status",
+      key:
+        "status",
+
+      title:
+        "Status",
+
       align:
         "center",
     },
 
     {
-      key: "actions",
-      title: "Actions",
+      key:
+        "actions",
+
+      title:
+        "Actions",
+
       align:
         "center",
 
       render: (
         row,
-      ) => (
-        <div
-          style={{
-            display:
-              "flex",
+      ) => {
+        const hasAnyAction =
+          canViewDepartment ||
+          canUpdateDepartment ||
+          canDeleteDepartment;
 
-            justifyContent:
-              "center",
 
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              navigate(
-                `/departments/${row.uuid}`,
-              )
-            }
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              justifyContent:
+                "center",
+
+              gap: 8,
+            }}
           >
-            <Eye
-              size={16}
-            />
-          </Button>
+            {canViewDepartment && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`View ${row.name}`}
+                title="View department"
+                onClick={() =>
+                  navigate(
+                    `/departments/${row.uuid}`,
+                  )
+                }
+              >
+                <Eye
+                  size={16}
+                />
+              </Button>
+            )}
 
-          <Button
-            size="sm"
-            onClick={() =>
-              handleEdit(
-                row.uuid,
-              )
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              handleDelete(
-                row.uuid,
-              )
-            }
-          >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
+            {canUpdateDepartment && (
+              <Button
+                size="sm"
+                aria-label={`Edit ${row.name}`}
+                title="Edit department"
+                onClick={() =>
+                  void handleEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                <SquarePen
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {canDeleteDepartment && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={`Delete ${row.name}`}
+                title="Delete department"
+                onClick={() =>
+                  void handleDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                <Trash2
+                  size={16}
+                />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
 
   return (
     <>
@@ -354,6 +499,7 @@ const DepartmentPage = () => {
             style={{
               display:
                 "flex",
+
               gap: 12,
             }}
           >
@@ -368,16 +514,20 @@ const DepartmentPage = () => {
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleOpenCreate
-              }
-            >
-              Add Department
-            </Button>
+
+            {canCreateDepartment && (
+              <Button
+                onClick={
+                  handleOpenCreate
+                }
+              >
+                Add Department
+              </Button>
+            )}
           </div>
         }
       />
+
 
       <Card>
         <DataTable
@@ -396,41 +546,46 @@ const DepartmentPage = () => {
         />
       </Card>
 
-      <DepartmentModal
-        title={
-          editUuid
-            ? "Edit Department"
-            : "Create Department"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        open={
-          open
-        }
-        loading={
-          saving
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        organizationUnits={
-          organizationUnits
-        }
-        onClose={
-          handleClose
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
+
+      {(canCreateDepartment ||
+        canUpdateDepartment) && (
+        <DepartmentModal
+          title={
+            editUuid
+              ? "Edit Department"
+              : "Create Department"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          organizationUnits={
+            organizationUnits
+          }
+          onClose={
+            handleClose
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default DepartmentPage;
