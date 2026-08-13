@@ -98,7 +98,12 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/clients",
-    element: <ClientListPage />,
+
+    element: (
+    <PermissionRoute permission="company.client.view">
+      <ClientListPage />
+    </PermissionRoute>
+  ),
   },
 
   {
@@ -134,7 +139,11 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/employees",
-    element: <EmployeePage />,
+    element: (
+    <PermissionRoute permission="company.employee.view">
+      <EmployeePage />
+    </PermissionRoute>
+  ),
   },
 
   {

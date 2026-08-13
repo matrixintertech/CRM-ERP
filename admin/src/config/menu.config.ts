@@ -102,6 +102,9 @@ export const menu: MenuItem[] = [
         title: "Clients",
         path: "/clients",
         icon: Users,
+         permissions: [
+          "company.client.view",
+        ],
       },
 
       {
@@ -158,7 +161,13 @@ export const menu: MenuItem[] = [
         title: "Employees",
         path: "/employees",
         icon: Users,
+
+         permissions: [
+          "company.employee.view",
+        ],
       },
+
+      
     ],
   },
 

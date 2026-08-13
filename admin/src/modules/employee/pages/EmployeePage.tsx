@@ -8,6 +8,10 @@ import {
 } from "react-router-dom";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
   Eye,
   ShieldCheck,
   SquarePen,
@@ -54,6 +58,7 @@ import type {
   UpdateEmployeeDto,
 } from "../types/employee.types";
 
+
 const createDefaultForm =
   (): CreateEmployeeDto => ({
     firstName: "",
@@ -78,9 +83,57 @@ const createDefaultForm =
     status: "ACTIVE",
   });
 
+
 const EmployeePage = () => {
   const navigate =
     useNavigate();
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  /*
+   * Employee authorization.
+   */
+  const canViewEmployee =
+    hasPermission(
+      "company.employee.view",
+    );
+
+  const canCreateEmployee =
+    hasPermission(
+      "company.employee.create",
+    );
+
+  const canUpdateEmployee =
+    hasPermission(
+      "company.employee.update",
+    );
+
+  const canDeleteEmployee =
+    hasPermission(
+      "company.employee.delete",
+    );
+
+
+  /*
+   * Login/user-account authorization.
+   *
+   * Employee data aur user account
+   * separate authorization domains hain.
+   */
+  const canCreateUser =
+    hasPermission(
+      "company.user.create",
+    );
+
+  const canUpdateUser =
+    hasPermission(
+      "company.user.update",
+    );
+
 
   const {
     loading,
@@ -98,26 +151,32 @@ const EmployeePage = () => {
       refetchEmployees,
   } = useEmployee();
 
+
   const {
     organizationUnits,
   } = useOrganizationUnits();
+
 
   const {
     departments,
   } = useDepartment();
 
+
   const {
     designations,
   } = useDesignation();
 
+
   const {
-  roles,
-} = useRole();
+    roles,
+  } = useRole();
+
 
   const [
     open,
     setOpen,
   ] = useState(false);
+
 
   const [
     editUuid,
@@ -125,6 +184,7 @@ const EmployeePage = () => {
   ] = useState<
     string | null
   >(null);
+
 
   const [
     formData,
@@ -134,10 +194,12 @@ const EmployeePage = () => {
       createDefaultForm,
     );
 
+
   const [
     viewOpen,
     setViewOpen,
   ] = useState(false);
+
 
   const [
     selectedEmployee,
@@ -146,10 +208,12 @@ const EmployeePage = () => {
     Employee | null
   >(null);
 
+
   const [
     accountModalOpen,
     setAccountModalOpen,
   ] = useState(false);
+
 
   const [
     accountEmployee,
@@ -157,7 +221,6 @@ const EmployeePage = () => {
   ] = useState<
     Employee | null
   >(null);
-
 
 
   const resetForm =
@@ -171,14 +234,23 @@ const EmployeePage = () => {
       );
     }, []);
 
+
   const handleOpenCreate =
     () => {
+      if (
+        !canCreateEmployee
+      ) {
+        return;
+      }
+
+
       resetForm();
 
       setOpen(
         true,
       );
     };
+
 
   const handleClose =
     () => {
@@ -189,9 +261,28 @@ const EmployeePage = () => {
       resetForm();
     };
 
+
   const handleOpenAccount = (
     employee: Employee,
   ) => {
+    /*
+     * Existing account:
+     * company.user.update
+     *
+     * New account:
+     * company.user.create
+     */
+    const allowed =
+      employee.user
+        ? canUpdateUser
+        : canCreateUser;
+
+
+    if (!allowed) {
+      return;
+    }
+
+
     setAccountEmployee(
       employee,
     );
@@ -200,6 +291,7 @@ const EmployeePage = () => {
       true,
     );
   };
+
 
   const handleCloseAccount =
     () => {
@@ -212,13 +304,37 @@ const EmployeePage = () => {
       );
     };
 
+
   const handleAccountSuccess =
     async () => {
       await refetchEmployees();
-  };
+    };
+
 
   const handleSubmit =
     async () => {
+      /*
+       * Defensive UX checks.
+       *
+       * Backend remains final
+       * authorization authority.
+       */
+      if (
+        editUuid &&
+        !canUpdateEmployee
+      ) {
+        return;
+      }
+
+
+      if (
+        !editUuid &&
+        !canCreateEmployee
+      ) {
+        return;
+      }
+
+
       try {
         const commonPayload = {
           firstName:
@@ -280,11 +396,13 @@ const EmployeePage = () => {
             "ACTIVE",
         };
 
+
         if (editUuid) {
           const payload:
             UpdateEmployeeDto = {
             ...commonPayload,
           };
+
 
           await update(
             editUuid,
@@ -302,13 +420,17 @@ const EmployeePage = () => {
               commonPayload.email,
           };
 
+
           await create(
             payload,
           );
         }
 
+
         handleClose();
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -316,23 +438,34 @@ const EmployeePage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateEmployee
+      ) {
+        return;
+      }
+
+
       try {
         const employee =
           await fetchEmployee(
             uuid,
           );
 
+
         if (!employee) {
           return;
         }
 
+
         setEditUuid(
           uuid,
         );
+
 
         setFormData({
           firstName:
@@ -392,10 +525,13 @@ const EmployeePage = () => {
             employee.status,
         });
 
+
         setOpen(
           true,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -403,19 +539,29 @@ const EmployeePage = () => {
       }
     };
 
+
   const handleView =
     async (
       uuid: string,
     ) => {
+      if (
+        !canViewEmployee
+      ) {
+        return;
+      }
+
+
       try {
         const employee =
           await fetchEmployee(
             uuid,
           );
 
+
         if (!employee) {
           return;
         }
+
 
         setSelectedEmployee(
           employee,
@@ -424,32 +570,46 @@ const EmployeePage = () => {
         setViewOpen(
           true,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteEmployee
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this employee?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -457,16 +617,23 @@ const EmployeePage = () => {
       }
     };
 
+
   const columns:
     DataTableColumn<Employee>[] = [
     {
-      key: "employeeCode",
-      title: "Code",
+      key:
+        "employeeCode",
+
+      title:
+        "Code",
     },
 
     {
-      key: "displayName",
-      title: "Employee",
+      key:
+        "displayName",
+
+      title:
+        "Employee",
 
       render: (
         row,
@@ -480,6 +647,7 @@ const EmployeePage = () => {
     {
       key:
         "organizationUnit",
+
       title:
         "Location",
 
@@ -491,7 +659,9 @@ const EmployeePage = () => {
     },
 
     {
-      key: "department",
+      key:
+        "department",
+
       title:
         "Department",
 
@@ -503,7 +673,9 @@ const EmployeePage = () => {
     },
 
     {
-      key: "designation",
+      key:
+        "designation",
+
       title:
         "Designation",
 
@@ -517,8 +689,10 @@ const EmployeePage = () => {
     {
       key:
         "userAccount",
+
       title:
         "Login Account",
+
       align:
         "center",
 
@@ -532,6 +706,7 @@ const EmployeePage = () => {
                 style={{
                   fontSize:
                     12,
+
                   fontWeight:
                     500,
                 }}
@@ -543,8 +718,10 @@ const EmployeePage = () => {
                 style={{
                   marginTop:
                     3,
+
                   fontSize:
                     11,
+
                   opacity:
                     0.65,
                 }}
@@ -554,6 +731,7 @@ const EmployeePage = () => {
             </div>
           );
         }
+
 
         return (
           <div>
@@ -572,8 +750,10 @@ const EmployeePage = () => {
               style={{
                 marginTop:
                   3,
+
                 fontSize:
                   12,
+
                 opacity:
                   0.7,
               }}
@@ -588,8 +768,11 @@ const EmployeePage = () => {
     },
 
     {
-      key: "email",
-      title: "Email",
+      key:
+        "email",
+
+      title:
+        "Email",
 
       render: (
         row,
@@ -599,8 +782,11 @@ const EmployeePage = () => {
     },
 
     {
-      key: "mobile",
-      title: "Mobile",
+      key:
+        "mobile",
+
+      title:
+        "Mobile",
 
       render: (
         row,
@@ -610,128 +796,174 @@ const EmployeePage = () => {
     },
 
     {
-      key: "status",
-      title: "Status",
+      key:
+        "status",
+
+      title:
+        "Status",
+
       align:
         "center",
     },
 
     {
-      key: "actions",
-      title: "Actions",
+      key:
+        "actions",
+
+      title:
+        "Actions",
+
       align:
         "center",
 
       render: (
         row,
-      ) => (
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "center",
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            aria-label={`View ${
-              row.displayName ||
-              row.firstName
-            }`}
-            title="View Employee"
-            onClick={() =>
-              handleView(
-                row.uuid,
-              )
-            }
-          >
-            <Eye
-              size={16}
-            />
-          </Button>
+      ) => {
+        /*
+         * Login account action depends
+         * on whether account already exists.
+         */
+        const canManageAccount =
+          row.user
+            ? canUpdateUser
+            : canCreateUser;
 
-          <Button
-            size="sm"
-            variant={
-              row.user
-                ? "secondary"
-                : undefined
-            }
-            aria-label={
-              row.user
-                ? `Manage access for ${
-                    row.displayName ||
-                    row.firstName
-                  }`
-                : `Create login for ${
-                    row.displayName ||
-                    row.firstName
-                  }`
-            }
-            title={
-              row.user
-                ? "Manage Access"
-                : "Create Login"
-            }
-            onClick={() =>
-              handleOpenAccount(
-                row,
-              )
-            }
+
+        const hasAnyAction =
+          canViewEmployee ||
+          canManageAccount ||
+          canUpdateEmployee ||
+          canDeleteEmployee;
+
+
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              justifyContent:
+                "center",
+
+              gap: 8,
+            }}
           >
-            {row.user ? (
-              <ShieldCheck
-                size={16}
-              />
-            ) : (
-              <UserPlus
-                size={16}
-              />
+            {canViewEmployee && (
+              <Button
+                size="sm"
+                aria-label={`View ${
+                  row.displayName ||
+                  row.firstName
+                }`}
+                title="View Employee"
+                onClick={() =>
+                  void handleView(
+                    row.uuid,
+                  )
+                }
+              >
+                <Eye
+                  size={16}
+                />
+              </Button>
             )}
-          </Button>
 
-          <Button
-            size="sm"
-            aria-label={`Edit ${
-              row.displayName ||
-              row.firstName
-            }`}
-            title="Edit Employee"
-            onClick={() =>
-              handleEdit(
-                row.uuid,
-              )
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-            aria-label={`Delete ${
-              row.displayName ||
-              row.firstName
-            }`}
-            title="Delete Employee"
-            onClick={() =>
-              handleDelete(
-                row.uuid,
-              )
-            }
-          >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
+            {canManageAccount && (
+              <Button
+                size="sm"
+                variant={
+                  row.user
+                    ? "secondary"
+                    : undefined
+                }
+                aria-label={
+                  row.user
+                    ? `Manage access for ${
+                        row.displayName ||
+                        row.firstName
+                      }`
+                    : `Create login for ${
+                        row.displayName ||
+                        row.firstName
+                      }`
+                }
+                title={
+                  row.user
+                    ? "Manage Access"
+                    : "Create Login"
+                }
+                onClick={() =>
+                  handleOpenAccount(
+                    row,
+                  )
+                }
+              >
+                {row.user ? (
+                  <ShieldCheck
+                    size={16}
+                  />
+                ) : (
+                  <UserPlus
+                    size={16}
+                  />
+                )}
+              </Button>
+            )}
+
+
+            {canUpdateEmployee && (
+              <Button
+                size="sm"
+                aria-label={`Edit ${
+                  row.displayName ||
+                  row.firstName
+                }`}
+                title="Edit Employee"
+                onClick={() =>
+                  void handleEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                <SquarePen
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {canDeleteEmployee && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={`Delete ${
+                  row.displayName ||
+                  row.firstName
+                }`}
+                title="Delete Employee"
+                onClick={() =>
+                  void handleDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                <Trash2
+                  size={16}
+                />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
 
   return (
     <>
@@ -743,6 +975,7 @@ const EmployeePage = () => {
             style={{
               display:
                 "flex",
+
               gap: 12,
             }}
           >
@@ -757,16 +990,20 @@ const EmployeePage = () => {
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleOpenCreate
-              }
-            >
-              Add Employee
-            </Button>
+
+            {canCreateEmployee && (
+              <Button
+                onClick={
+                  handleOpenCreate
+                }
+              >
+                Add Employee
+              </Button>
+            )}
           </div>
         }
       />
+
 
       <Card>
         <DataTable
@@ -785,89 +1022,101 @@ const EmployeePage = () => {
         />
       </Card>
 
-      <EmployeeModal
-        title={
-          editUuid
-            ? "Edit Employee"
-            : "Create Employee"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        editingUuid={
-          editUuid
-        }
-        open={
-          open
-        }
-        loading={
-          saving
-        }
-        employees={
-          employees
-        }
-        organizationUnits={
-          organizationUnits
-        }
-        departments={
-          departments
-        }
-        designations={
-          designations
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleClose
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
 
-      <EmployeeDetailsModal
-        open={
-          viewOpen
-        }
-        employee={
-          selectedEmployee
-        }
-        onClose={() => {
-          setViewOpen(
-            false,
-          );
+      {(canCreateEmployee ||
+        canUpdateEmployee) && (
+        <EmployeeModal
+          title={
+            editUuid
+              ? "Edit Employee"
+              : "Create Employee"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          editingUuid={
+            editUuid
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          employees={
+            employees
+          }
+          organizationUnits={
+            organizationUnits
+          }
+          departments={
+            departments
+          }
+          designations={
+            designations
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleClose
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
 
-          setSelectedEmployee(
-            null,
-          );
-        }}
-      />
 
-      <EmployeeUserAccountModal
-        open={
-          accountModalOpen
-        }
-        employee={
-          accountEmployee
-        }
-        roles={
-          roles ?? []
-        }
-        onClose={
-          handleCloseAccount
-        }
-        onSuccess={
-          handleAccountSuccess
-        }
-      />
+      {canViewEmployee && (
+        <EmployeeDetailsModal
+          open={
+            viewOpen
+          }
+          employee={
+            selectedEmployee
+          }
+          onClose={() => {
+            setViewOpen(
+              false,
+            );
+
+            setSelectedEmployee(
+              null,
+            );
+          }}
+        />
+      )}
+
+
+      {(canCreateUser ||
+        canUpdateUser) && (
+        <EmployeeUserAccountModal
+          open={
+            accountModalOpen
+          }
+          employee={
+            accountEmployee
+          }
+          roles={
+            roles ?? []
+          }
+          onClose={
+            handleCloseAccount
+          }
+          onSuccess={
+            handleAccountSuccess
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default EmployeePage;
