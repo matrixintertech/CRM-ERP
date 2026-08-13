@@ -189,9 +189,14 @@ export interface Permission {
 
   description?: string | null;
 
-  type?: "COMPANY" | "PLATFORM";
+  type:
+    | "COMPANY"
+    | "PLATFORM";
 
   status: string;
+
+  allowedScopes:
+    PermissionScope[];
 }
 
 export interface ScopedPermission

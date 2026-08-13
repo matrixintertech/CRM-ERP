@@ -57,34 +57,38 @@ import type {
   UserType,
 } from "../types/user.types";
 
+
 const initialQuery:
   UserQueryParams = {
-    page: 1,
-    limit: 10,
+  page: 1,
 
-    search:
-      undefined,
+  limit: 10,
 
-    status:
-      undefined,
+  search:
+    undefined,
 
-    userType:
-      undefined,
+  status:
+    undefined,
 
-    roleUuid:
-      undefined,
+  userType:
+    undefined,
 
-    sortBy:
-      "createdAt",
+  roleUuid:
+    undefined,
 
-    sortOrder:
-      "desc",
-  };
+  sortBy:
+    "createdAt",
+
+  sortOrder:
+    "desc",
+};
+
 
 const UserListPage = () => {
   useDocumentTitle(
     "All Users",
   );
+
 
   const [
     query,
@@ -93,6 +97,61 @@ const UserListPage = () => {
     useState<UserQueryParams>(
       initialQuery,
     );
+
+
+  const [
+    searchValue,
+    setSearchValue,
+  ] = useState("");
+
+
+  const [
+    openDetails,
+    setOpenDetails,
+  ] = useState(false);
+
+
+  const [
+    openEdit,
+    setOpenEdit,
+  ] = useState(false);
+
+
+  const [
+    openPermissions,
+    setOpenPermissions,
+  ] = useState(false);
+
+
+  const [
+    selectedUser,
+    setSelectedUser,
+  ] = useState<
+    User | null
+  >(null);
+
+
+  const [
+    permissions,
+    setPermissions,
+  ] = useState<
+    UserPermissions | null
+  >(null);
+
+
+  const [
+    permissionUserUuid,
+    setPermissionUserUuid,
+  ] = useState<
+    string | null
+  >(null);
+
+
+  const [
+    accountUpdating,
+    setAccountUpdating,
+  ] = useState(false);
+
 
   const {
     loading,
@@ -112,78 +171,39 @@ const UserListPage = () => {
     query,
   );
 
+
   const {
     roles,
   } = useRole();
 
+
   /*
-   * Load all active permissions once
-   * and keep them in React Query cache.
+   * Global permission list sirf
+   * permission modal open hone par
+   * fetch hogi.
    *
-   * Permission modal click par
-   * grouped permissions dobara
-   * fetch nahi hongi.
+   * Har permission ke response me
+   * allowedScopes expected hain.
    */
-const groupedPermissionsQuery =
-  useQuery({
-    queryKey: [
-      "grouped-permissions",
-      "COMPANY",
-    ],
-
-    queryFn: () =>
-      getGroupedPermissions(
+  const groupedPermissionsQuery =
+    useQuery({
+      queryKey: [
+        "grouped-permissions",
         "COMPANY",
-      ),
+      ],
 
-    staleTime:
-      5 * 60 * 1000,
-  });
-  const [
-    searchValue,
-    setSearchValue,
-  ] = useState("");
+      queryFn: () =>
+        getGroupedPermissions(
+          "COMPANY",
+        ),
 
-  const [
-    openDetails,
-    setOpenDetails,
-  ] = useState(false);
+      enabled:
+        openPermissions,
 
-  const [
-    openEdit,
-    setOpenEdit,
-  ] = useState(false);
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-  const [
-    openPermissions,
-    setOpenPermissions,
-  ] = useState(false);
-
-  const [
-    selectedUser,
-    setSelectedUser,
-  ] = useState<
-    User | null
-  >(null);
-
-  const [
-    permissions,
-    setPermissions,
-  ] = useState<
-    UserPermissions | null
-  >(null);
-
-  const [
-    permissionUserUuid,
-    setPermissionUserUuid,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    accountUpdating,
-    setAccountUpdating,
-  ] = useState(false);
 
   const roleOptions =
     useMemo(
@@ -208,8 +228,15 @@ const groupedPermissionsQuery =
       ],
     );
 
+
   /*
-   * Flatten grouped permissions once.
+   * Permission groups flatten karo.
+   *
+   * Permission object me:
+   *
+   * allowedScopes: PermissionScope[]
+   *
+   * expected hai.
    */
   const allPermissions =
     useMemo(
@@ -226,6 +253,7 @@ const groupedPermissionsQuery =
       ],
     );
 
+
   const handleSearch =
     () => {
       setQuery(
@@ -241,6 +269,7 @@ const groupedPermissionsQuery =
       );
     };
 
+
   const handleResetFilters =
     () => {
       setSearchValue(
@@ -251,6 +280,7 @@ const groupedPermissionsQuery =
         ...initialQuery,
       });
     };
+
 
   const handleFilterChange =
     (
@@ -275,6 +305,7 @@ const groupedPermissionsQuery =
       );
     };
 
+
   const handleSortByChange =
     (
       value:
@@ -291,6 +322,7 @@ const groupedPermissionsQuery =
         }),
       );
     };
+
 
   const handleSortOrderChange =
     (
@@ -309,9 +341,11 @@ const groupedPermissionsQuery =
       );
     };
 
+
   const handlePageChange =
     (
-      nextPage: number,
+      nextPage:
+        number,
     ) => {
       if (
         nextPage < 1 ||
@@ -331,9 +365,11 @@ const groupedPermissionsQuery =
       );
     };
 
+
   const handleView =
     async (
-      uuid: string,
+      uuid:
+        string,
     ) => {
       setSelectedUser(
         null,
@@ -356,12 +392,18 @@ const groupedPermissionsQuery =
         setOpenDetails(
           false,
         );
+
+        setSelectedUser(
+          null,
+        );
       }
     };
 
+
   const handleEdit =
     async (
-      uuid: string,
+      uuid:
+        string,
     ) => {
       setSelectedUser(
         null,
@@ -384,21 +426,26 @@ const groupedPermissionsQuery =
         setOpenEdit(
           false,
         );
+
+        setSelectedUser(
+          null,
+        );
       }
     };
 
+
   /*
-   * Permission button:
+   * Selected user's role/direct/effective
+   * permissions fetch karo.
    *
-   * Only selected user's permissions
-   * are fetched here.
-   *
-   * Global permissions already
-   * React Query cache me hain.
+   * openPermissions true hote hi
+   * grouped COMPANY permissions bhi
+   * React Query se load ho jayengi.
    */
   const handlePermissions =
     async (
-      uuid: string,
+      uuid:
+        string,
     ) => {
       setPermissions(
         null,
@@ -435,6 +482,7 @@ const groupedPermissionsQuery =
         );
       }
     };
+
 
   const handleUpdateAccount =
     async (
@@ -486,14 +534,16 @@ const groupedPermissionsQuery =
           error as {
             response?: {
               data?: {
-                message?: string;
+                message?:
+                  string;
               };
             };
           };
 
         notify.error(
           apiError.response
-            ?.data?.message ??
+            ?.data
+            ?.message ??
             "Failed to update user account.",
         );
       } finally {
@@ -503,39 +553,93 @@ const groupedPermissionsQuery =
       }
     };
 
- const handleSavePermissions =
-  async (
-    selectedPermissions:
-      UserPermissionAssignment[],
-  ) => {
-    if (
-      !permissionUserUuid
-    ) {
-      notify.error(
-        "User is not selected.",
-      );
 
-      return;
-    }
-
-    try {
-      const updatedPermissions =
-        await savePermissions(
-          permissionUserUuid,
-          {
-            permissions:
-              selectedPermissions,
-          },
+  /*
+   * Multi-scope direct user grants.
+   *
+   * Same permission multiple scopes
+   * ke saath aa sakti hai:
+   *
+   * [
+   *   {
+   *     permissionUuid: "...",
+   *     scope: "ORGANIZATION_UNIT"
+   *   },
+   *   {
+   *     permissionUuid: "...",
+   *     scope: "COMPANY"
+   *   }
+   * ]
+   */
+  const handleSavePermissions =
+    async (
+      selectedPermissions:
+        UserPermissionAssignment[],
+    ) => {
+      if (
+        !permissionUserUuid
+      ) {
+        notify.error(
+          "User is not selected.",
         );
 
-      setPermissions(
-        updatedPermissions,
-      );
+        return;
+      }
 
-      notify.success(
-        "User permissions updated successfully.",
-      );
+      try {
+        const updatedPermissions =
+          await savePermissions(
+            permissionUserUuid,
+            {
+              permissions:
+                selectedPermissions,
+            },
+          );
 
+        setPermissions(
+          updatedPermissions,
+        );
+
+        notify.success(
+          "User permissions updated successfully.",
+        );
+
+        setOpenPermissions(
+          false,
+        );
+
+        setPermissionUserUuid(
+          null,
+        );
+
+        setPermissions(
+          null,
+        );
+      } catch (
+        error: unknown
+      ) {
+        const apiError =
+          error as {
+            response?: {
+              data?: {
+                message?:
+                  string;
+              };
+            };
+          };
+
+        notify.error(
+          apiError.response
+            ?.data
+            ?.message ??
+            "Failed to save user permissions.",
+        );
+      }
+    };
+
+
+  const handleClosePermissions =
+    () => {
       setOpenPermissions(
         false,
       );
@@ -547,40 +651,28 @@ const groupedPermissionsQuery =
       setPermissions(
         null,
       );
-    } catch (
-      error: unknown
-    ) {
-      const apiError =
-        error as {
-          response?: {
-            data?: {
-              message?: string;
-            };
-          };
-        };
+    };
 
-      notify.error(
-        apiError.response
-          ?.data?.message ??
-          "Failed to save user permissions.",
-      );
-    }
-  };
 
   const pageLoading =
     loading;
 
+
   const backgroundFetching =
     fetching &&
     !loading;
+
 
   const permissionModalLoading =
     openPermissions &&
     (
       !permissions ||
       groupedPermissionsQuery
-        .isLoading
+        .isLoading ||
+      groupedPermissionsQuery
+        .isFetching
     );
+
 
   return (
     <>
@@ -588,6 +680,7 @@ const groupedPermissionsQuery =
         title="Users"
         subtitle="Manage login users, roles and additional permissions"
       />
+
 
       <Card>
         <div
@@ -601,8 +694,7 @@ const groupedPermissionsQuery =
             alignItems:
               "end",
 
-            gap:
-              12,
+            gap: 12,
 
             marginBottom:
               24,
@@ -633,6 +725,7 @@ const groupedPermissionsQuery =
               }
             }}
           />
+
 
           <Select
             label="Status"
@@ -694,6 +787,7 @@ const groupedPermissionsQuery =
               )
             }
           />
+
 
           <Select
             label="User Type"
@@ -764,6 +858,7 @@ const groupedPermissionsQuery =
             }
           />
 
+
           <Select
             label="Role"
             value={
@@ -792,6 +887,7 @@ const groupedPermissionsQuery =
               )
             }
           />
+
 
           <Select
             label="Sort By"
@@ -851,6 +947,7 @@ const groupedPermissionsQuery =
             }
           />
 
+
           <Select
             label="Order"
             value={
@@ -885,6 +982,7 @@ const groupedPermissionsQuery =
             }
           />
 
+
           <Button
             type="button"
             loading={
@@ -896,6 +994,7 @@ const groupedPermissionsQuery =
           >
             Search
           </Button>
+
 
           <Button
             type="button"
@@ -910,6 +1009,7 @@ const groupedPermissionsQuery =
             Reset
           </Button>
         </div>
+
 
         {backgroundFetching && (
           <div
@@ -927,6 +1027,7 @@ const groupedPermissionsQuery =
             Updating users...
           </div>
         )}
+
 
         <UserTable
           data={
@@ -946,6 +1047,7 @@ const groupedPermissionsQuery =
           }
         />
 
+
         <div
           style={{
             display:
@@ -957,8 +1059,7 @@ const groupedPermissionsQuery =
             justifyContent:
               "space-between",
 
-            gap:
-              16,
+            gap: 16,
 
             marginTop:
               20,
@@ -980,6 +1081,7 @@ const groupedPermissionsQuery =
             users
           </div>
 
+
           <div
             style={{
               display:
@@ -988,8 +1090,7 @@ const groupedPermissionsQuery =
               alignItems:
                 "center",
 
-              gap:
-                10,
+              gap: 10,
             }}
           >
             <Button
@@ -1009,6 +1110,7 @@ const groupedPermissionsQuery =
               Previous
             </Button>
 
+
             <span
               style={{
                 fontSize:
@@ -1024,6 +1126,7 @@ const groupedPermissionsQuery =
               {totalPages ||
                 1}
             </span>
+
 
             <Button
               type="button"
@@ -1046,6 +1149,7 @@ const groupedPermissionsQuery =
         </div>
       </Card>
 
+
       <UserDetailsModal
         open={
           openDetails
@@ -1067,6 +1171,7 @@ const groupedPermissionsQuery =
           );
         }}
       />
+
 
       <UserModal
         open={
@@ -1095,6 +1200,7 @@ const groupedPermissionsQuery =
         }
       />
 
+
       <UserPermissionsModal
         open={
           openPermissions
@@ -1108,19 +1214,9 @@ const groupedPermissionsQuery =
         allPermissions={
           allPermissions
         }
-        onClose={() => {
-          setOpenPermissions(
-            false,
-          );
-
-          setPermissionUserUuid(
-            null,
-          );
-
-          setPermissions(
-            null,
-          );
-        }}
+        onClose={
+          handleClosePermissions
+        }
         onSubmit={
           handleSavePermissions
         }
@@ -1128,5 +1224,6 @@ const groupedPermissionsQuery =
     </>
   );
 };
+
 
 export default UserListPage;

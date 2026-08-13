@@ -36,36 +36,20 @@ interface Props {
 
 interface PermissionGroup {
   module: string;
-
-  permissions:
-    Permission[];
+  permissions: Permission[];
 }
 
-const scopeOptions: Array<{
-  value: PermissionScope;
-  label: string;
-}> = [
-  {
-    value: "OWN",
-    label: "Own",
-  },
-  {
-    value: "TEAM",
-    label: "Team",
-  },
-  {
-    value: "ORGANIZATION_UNIT",
-    label: "Organization Unit",
-  },
-  {
-    value: "PROJECT",
-    label: "Project",
-  },
-  {
-    value: "COMPANY",
-    label: "Company",
-  },
-];
+const scopeLabels: Record<
+  PermissionScope,
+  string
+> = {
+  OWN: "Own",
+  TEAM: "Team",
+  ORGANIZATION_UNIT:
+    "Organization Unit",
+  PROJECT: "Project",
+  COMPANY: "Company",
+};
 
 const formatModuleName = (
   value: string,
@@ -83,10 +67,13 @@ const formatModuleName = (
 const formatScope = (
   scope: PermissionScope,
 ) =>
-  scopeOptions.find(
-    (option) =>
-      option.value === scope,
-  )?.label ?? scope;
+  scopeLabels[scope] ?? scope;
+
+const createGrantKey = (
+  permissionUuid: string,
+  scope: PermissionScope,
+) =>
+  `${permissionUuid}:${scope}`;
 
 const UserPermissionsModal = ({
   open,
@@ -109,7 +96,10 @@ const UserPermissionsModal = ({
   ] = useState("");
 
   /*
-   * Existing direct user grants load karo.
+   * Load existing DIRECT user grants.
+   *
+   * Same permission can exist with
+   * multiple scopes.
    */
   useEffect(() => {
     if (
@@ -138,41 +128,101 @@ const UserPermissionsModal = ({
   ]);
 
   /*
-   * Role permission lookup.
+   * Role scopes grouped by permission.
    *
-   * Role grant informational hai.
-   * Same permission direct user grant
-   * ke through bhi assign ho sakti hai.
+   * Example:
+   *
+   * employee.view
+   * - ORGANIZATION_UNIT
+   * - PROJECT
    */
-  const rolePermissionMap =
-    useMemo(
-      () =>
-        new Map(
-          (
-            permissions
-              ?.rolePermissions ??
-            []
-          ).map(
-            (permission) => [
-              permission.uuid,
-              permission,
-            ],
-          ),
-        ),
-      [
-        permissions,
-      ],
-    );
+  const roleScopeMap =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          Set<PermissionScope>
+        >();
 
-  const selectedPermissionMap =
+      for (
+        const permission
+        of permissions
+          ?.rolePermissions ??
+        []
+      ) {
+        const scopes =
+          map.get(
+            permission.uuid,
+          ) ??
+          new Set<PermissionScope>();
+
+        scopes.add(
+          permission.scope,
+        );
+
+        map.set(
+          permission.uuid,
+          scopes,
+        );
+      }
+
+      return map;
+    }, [
+      permissions,
+    ]);
+
+  /*
+   * Direct user grants grouped
+   * by permission.
+   */
+  const directScopeMap =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          Set<PermissionScope>
+        >();
+
+      for (
+        const permission
+        of selectedPermissions
+      ) {
+        const scopes =
+          map.get(
+            permission.permissionUuid,
+          ) ??
+          new Set<PermissionScope>();
+
+        scopes.add(
+          permission.scope,
+        );
+
+        map.set(
+          permission.permissionUuid,
+          scopes,
+        );
+      }
+
+      return map;
+    }, [
+      selectedPermissions,
+    ]);
+
+  /*
+   * Exact grant lookup:
+   *
+   * permissionUuid + scope
+   */
+  const selectedGrantKeys =
     useMemo(
       () =>
-        new Map(
+        new Set(
           selectedPermissions.map(
-            (permission) => [
-              permission.permissionUuid,
-              permission,
-            ],
+            (permission) =>
+              createGrantKey(
+                permission.permissionUuid,
+                permission.scope,
+              ),
           ),
         ),
       [
@@ -181,10 +231,7 @@ const UserPermissionsModal = ({
     );
 
   /*
-   * Only company permissions show karo.
-   *
-   * type optional hai backward
-   * compatibility ke liye.
+   * Only COMPANY permissions.
    */
   const groupedPermissions =
     useMemo<
@@ -199,9 +246,8 @@ const UserPermissionsModal = ({
         allPermissions.filter(
           (permission) => {
             if (
-              permission.type &&
               permission.type !==
-                "COMPANY"
+              "COMPANY"
             ) {
               return false;
             }
@@ -294,28 +340,42 @@ const UserPermissionsModal = ({
     ]);
 
   /*
-   * Checkbox represents DIRECT user grant.
+   * Toggle one exact direct grant.
    *
-   * Role permission checkbox ko block
-   * nahi karegi.
+   * Example:
+   *
+   * company.user.view
+   * +
+   * ORGANIZATION_UNIT
    */
-  const handlePermissionChange = (
+  const handleScopeToggle = (
     permissionUuid: string,
+    scope: PermissionScope,
   ) => {
+    const key =
+      createGrantKey(
+        permissionUuid,
+        scope,
+      );
+
     setSelectedPermissions(
       (previous) => {
         const exists =
           previous.some(
             (permission) =>
-              permission.permissionUuid ===
-              permissionUuid,
+              createGrantKey(
+                permission.permissionUuid,
+                permission.scope,
+              ) === key,
           );
 
         if (exists) {
           return previous.filter(
             (permission) =>
-              permission.permissionUuid !==
-              permissionUuid,
+              createGrantKey(
+                permission.permissionUuid,
+                permission.scope,
+              ) !== key,
           );
         }
 
@@ -323,102 +383,53 @@ const UserPermissionsModal = ({
           ...previous,
           {
             permissionUuid,
-
-            scope:
-              "OWN",
+            scope,
           },
         ];
       },
     );
   };
 
-  const handleScopeChange = (
+  /*
+   * Remove all direct grants
+   * for one permission.
+   */
+  const clearPermissionGrants = (
     permissionUuid: string,
-    scope: PermissionScope,
   ) => {
     setSelectedPermissions(
       (previous) =>
-        previous.map(
+        previous.filter(
           (permission) =>
-            permission.permissionUuid ===
-            permissionUuid
-              ? {
-                  ...permission,
-
-                  scope,
-                }
-              : permission,
+            permission.permissionUuid !==
+            permissionUuid,
         ),
     );
   };
 
   /*
-   * Select all = direct grants.
-   *
-   * Existing scopes preserve rahenge.
-   * New grants default OWN honge.
+   * Remove all direct grants
+   * from one module.
    */
-  const handleModuleSelectAll = (
+  const clearModuleGrants = (
     group: PermissionGroup,
   ) => {
-    const allSelected =
-      group.permissions.every(
-        (permission) =>
-          selectedPermissionMap.has(
+    const permissionUuids =
+      new Set(
+        group.permissions.map(
+          (permission) =>
             permission.uuid,
-          ),
+        ),
       );
 
     setSelectedPermissions(
-      (previous) => {
-        if (allSelected) {
-          const modulePermissionUuids =
-            new Set(
-              group.permissions.map(
-                (permission) =>
-                  permission.uuid,
-              ),
-            );
-
-          return previous.filter(
-            (permission) =>
-              !modulePermissionUuids.has(
-                permission.permissionUuid,
-              ),
-          );
-        }
-
-        const existingUuids =
-          new Set(
-            previous.map(
-              (permission) =>
-                permission.permissionUuid,
+      (previous) =>
+        previous.filter(
+          (permission) =>
+            !permissionUuids.has(
+              permission.permissionUuid,
             ),
-          );
-
-        const additions =
-          group.permissions
-            .filter(
-              (permission) =>
-                !existingUuids.has(
-                  permission.uuid,
-                ),
-            )
-            .map(
-              (permission) => ({
-                permissionUuid:
-                  permission.uuid,
-
-                scope:
-                  "OWN" as PermissionScope,
-              }),
-            );
-
-        return [
-          ...previous,
-          ...additions,
-        ];
-      },
+        ),
     );
   };
 
@@ -438,45 +449,45 @@ const UserPermissionsModal = ({
     "User";
 
   /*
-   * Effective grants scope-wise count.
-   *
-   * Same permission:
-   * ROLE OWN + USER PROJECT
-   * = 2 effective grants.
+   * Effective grant count is
+   * permission + scope based.
    */
   const effectivePermissionCount =
-    useMemo(
-      () => {
-        const grants =
-          new Set<string>();
+    useMemo(() => {
+      const grants =
+        new Set<string>();
 
-        for (
-          const permission
-          of permissions
-            ?.rolePermissions ??
-          []
-        ) {
-          grants.add(
-            `${permission.uuid}:${permission.scope}`,
-          );
-        }
+      for (
+        const permission
+        of permissions
+          ?.rolePermissions ??
+        []
+      ) {
+        grants.add(
+          createGrantKey(
+            permission.uuid,
+            permission.scope,
+          ),
+        );
+      }
 
-        for (
-          const permission
-          of selectedPermissions
-        ) {
-          grants.add(
-            `${permission.permissionUuid}:${permission.scope}`,
-          );
-        }
+      for (
+        const permission
+        of selectedPermissions
+      ) {
+        grants.add(
+          createGrantKey(
+            permission.permissionUuid,
+            permission.scope,
+          ),
+        );
+      }
 
-        return grants.size;
-      },
-      [
-        permissions,
-        selectedPermissions,
-      ],
-    );
+      return grants.size;
+    }, [
+      permissions,
+      selectedPermissions,
+    ]);
 
   return (
     <Modal
@@ -507,7 +518,8 @@ const UserPermissionsModal = ({
           <section
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               justifyContent:
                 "space-between",
               flexWrap: "wrap",
@@ -591,7 +603,7 @@ const UserPermissionsModal = ({
             }}
           >
             <SummaryCard
-              label="Role Permissions"
+              label="Role Grants"
               value={
                 permissions
                   .rolePermissions
@@ -600,7 +612,7 @@ const UserPermissionsModal = ({
             />
 
             <SummaryCard
-              label="Additional Permissions"
+              label="Additional Grants"
               value={
                 selectedPermissions.length
               }
@@ -629,6 +641,7 @@ const UserPermissionsModal = ({
             }
             style={{
               width: "100%",
+
               boxSizing:
                 "border-box",
 
@@ -695,18 +708,19 @@ const UserPermissionsModal = ({
             ) : (
               groupedPermissions.map(
                 (group) => {
-                  const moduleSelected =
-                    group.permissions
-                      .length >
-                      0 &&
-                    group.permissions.every(
+                  const moduleDirectCount =
+                    selectedPermissions.filter(
                       (
                         permission,
                       ) =>
-                        selectedPermissionMap.has(
-                          permission.uuid,
+                        group.permissions.some(
+                          (
+                            item,
+                          ) =>
+                            item.uuid ===
+                            permission.permissionUuid,
                         ),
-                    );
+                    ).length;
 
                   return (
                     <section
@@ -785,42 +799,56 @@ const UserPermissionsModal = ({
                             1
                               ? "s"
                               : ""}
+                            {" • "}
+                            {
+                              moduleDirectCount
+                            }{" "}
+                            direct grant
+                            {moduleDirectCount !==
+                            1
+                              ? "s"
+                              : ""}
                           </span>
                         </div>
 
-                        <label
-                          style={{
-                            display:
-                              "flex",
-
-                            alignItems:
-                              "center",
-
-                            gap: 8,
-
-                            cursor:
-                              loading
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
-                              moduleSelected
-                            }
+                        {moduleDirectCount >
+                          0 && (
+                          <button
+                            type="button"
                             disabled={
                               loading
                             }
-                            onChange={() =>
-                              handleModuleSelectAll(
+                            onClick={() =>
+                              clearModuleGrants(
                                 group,
                               )
                             }
-                          />
+                            style={{
+                              border:
+                                "none",
 
-                          Direct grant all
-                        </label>
+                              background:
+                                "transparent",
+
+                              color:
+                                "#dc2626",
+
+                              cursor:
+                                loading
+                                  ? "not-allowed"
+                                  : "pointer",
+
+                              fontSize:
+                                12,
+
+                              fontWeight:
+                                600,
+                            }}
+                          >
+                            Clear direct
+                            grants
+                          </button>
+                        )}
                       </div>
 
                       {/* Permission Rows */}
@@ -839,19 +867,27 @@ const UserPermissionsModal = ({
                           (
                             permission,
                           ) => {
-                            const rolePermission =
-                              rolePermissionMap.get(
+                            const roleScopes =
+                              roleScopeMap.get(
                                 permission.uuid,
-                              );
+                              ) ??
+                              new Set<PermissionScope>();
 
-                            const additionalPermission =
-                              selectedPermissionMap.get(
+                            const directScopes =
+                              directScopeMap.get(
                                 permission.uuid,
-                              );
+                              ) ??
+                              new Set<PermissionScope>();
 
-                            const additional =
-                              Boolean(
-                                additionalPermission,
+                            const additionalAllowedScopes =
+                              (
+                                permission.allowedScopes ??
+                                []
+                              ).filter(
+                                (scope) =>
+                                  !roleScopes.has(
+                                    scope,
+                                  ),
                               );
 
                             return (
@@ -860,17 +896,6 @@ const UserPermissionsModal = ({
                                   permission.uuid
                                 }
                                 style={{
-                                  display:
-                                    "grid",
-
-                                  gridTemplateColumns:
-                                    "auto minmax(0, 1fr) minmax(150px, 190px)",
-
-                                  alignItems:
-                                    "center",
-
-                                  gap: 12,
-
                                   width:
                                     "100%",
 
@@ -878,12 +903,14 @@ const UserPermissionsModal = ({
                                     "border-box",
 
                                   padding:
-                                    "12px 14px",
+                                    "14px",
 
                                   border:
-                                    additional
+                                    directScopes.size >
+                                    0
                                       ? "1px solid #86efac"
-                                      : rolePermission
+                                      : roleScopes.size >
+                                          0
                                         ? "1px solid #bfdbfe"
                                         : "1px solid #e5e7eb",
 
@@ -891,95 +918,264 @@ const UserPermissionsModal = ({
                                     10,
 
                                   background:
-                                    additional
+                                    directScopes.size >
+                                    0
                                       ? "#f0fdf4"
-                                      : rolePermission
+                                      : roleScopes.size >
+                                          0
                                         ? "#eff6ff"
                                         : "#ffffff",
                                 }}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    additional
-                                  }
-                                  disabled={
-                                    loading
-                                  }
-                                  onChange={() =>
-                                    handlePermissionChange(
-                                      permission.uuid,
-                                    )
-                                  }
-                                  title="Assign direct user permission"
-                                  style={{
-                                    width:
-                                      17,
-
-                                    height:
-                                      17,
-
-                                    margin:
-                                      0,
-
-                                    cursor:
-                                      loading
-                                        ? "not-allowed"
-                                        : "pointer",
-                                  }}
-                                />
-
                                 <div
                                   style={{
-                                    minWidth:
-                                      0,
+                                    display:
+                                      "flex",
+
+                                    justifyContent:
+                                      "space-between",
+
+                                    gap: 12,
+
+                                    alignItems:
+                                      "flex-start",
+
+                                    flexWrap:
+                                      "wrap",
                                   }}
                                 >
                                   <div
                                     style={{
-                                      color:
-                                        "#111827",
+                                      minWidth:
+                                        0,
 
-                                      fontSize:
-                                        14,
-
-                                      fontWeight:
-                                        600,
-
-                                      overflowWrap:
-                                        "anywhere",
+                                      flex: 1,
                                     }}
                                   >
-                                    {
-                                      permission.name
-                                    }
+                                    <div
+                                      style={{
+                                        color:
+                                          "#111827",
+
+                                        fontSize:
+                                          14,
+
+                                        fontWeight:
+                                          600,
+
+                                        overflowWrap:
+                                          "anywhere",
+                                      }}
+                                    >
+                                      {
+                                        permission.name
+                                      }
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        marginTop:
+                                          4,
+
+                                        color:
+                                          "#6b7280",
+
+                                        fontSize:
+                                          12,
+
+                                        overflowWrap:
+                                          "anywhere",
+                                      }}
+                                    >
+                                      {
+                                        permission.code
+                                      }
+                                    </div>
+
+                                    {permission.description && (
+                                      <div
+                                        style={{
+                                          marginTop:
+                                            4,
+
+                                          color:
+                                            "#9ca3af",
+
+                                          fontSize:
+                                            12,
+                                        }}
+                                      >
+                                        {
+                                          permission.description
+                                        }
+                                      </div>
+                                    )}
                                   </div>
 
+                                  {directScopes.size >
+                                    0 && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        loading
+                                      }
+                                      onClick={() =>
+                                        clearPermissionGrants(
+                                          permission.uuid,
+                                        )
+                                      }
+                                      style={{
+                                        border:
+                                          "none",
+
+                                        background:
+                                          "transparent",
+
+                                        color:
+                                          "#dc2626",
+
+                                        cursor:
+                                          loading
+                                            ? "not-allowed"
+                                            : "pointer",
+
+                                        fontSize:
+                                          12,
+
+                                        fontWeight:
+                                          600,
+                                      }}
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Role grants */}
+
+                                {roleScopes.size >
+                                  0 && (
                                   <div
                                     style={{
                                       marginTop:
-                                        4,
+                                        12,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        marginBottom:
+                                          6,
+
+                                        color:
+                                          "#6b7280",
+
+                                        fontSize:
+                                          11,
+
+                                        fontWeight:
+                                          600,
+
+                                        textTransform:
+                                          "uppercase",
+                                      }}
+                                    >
+                                      Role
+                                      grants
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        display:
+                                          "flex",
+
+                                        flexWrap:
+                                          "wrap",
+
+                                        gap: 6,
+                                      }}
+                                    >
+                                      {Array.from(
+                                        roleScopes,
+                                      ).map(
+                                        (
+                                          scope,
+                                        ) => (
+                                          <span
+                                            key={
+                                              scope
+                                            }
+                                            style={{
+                                              padding:
+                                                "4px 8px",
+
+                                              borderRadius:
+                                                999,
+
+                                              background:
+                                                "#dbeafe",
+
+                                              color:
+                                                "#1d4ed8",
+
+                                              fontSize:
+                                                11,
+
+                                              fontWeight:
+                                                600,
+                                            }}
+                                          >
+                                            {formatScope(
+                                              scope,
+                                            )}
+                                          </span>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Direct grants */}
+
+                                <div
+                                  style={{
+                                    marginTop:
+                                      14,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      marginBottom:
+                                        8,
 
                                       color:
                                         "#6b7280",
 
                                       fontSize:
-                                        12,
+                                        11,
 
-                                      overflowWrap:
-                                        "anywhere",
+                                      fontWeight:
+                                        600,
+
+                                      textTransform:
+                                        "uppercase",
                                     }}
                                   >
-                                    {
-                                      permission.code
-                                    }
+                                    Additional
+                                    scopes
                                   </div>
 
-                                  {permission.description && (
+                                  {additionalAllowedScopes.length ===
+                                    0 ? (
                                     <div
                                       style={{
-                                        marginTop:
-                                          4,
+                                        padding:
+                                          "10px 12px",
+
+                                        border:
+                                          "1px dashed #d1d5db",
+
+                                        borderRadius:
+                                          8,
 
                                         color:
                                           "#9ca3af",
@@ -988,147 +1184,108 @@ const UserPermissionsModal = ({
                                           12,
                                       }}
                                     >
-                                      {
-                                        permission.description
-                                      }
+                                      All available scopes are
+                                      already inherited from
+                                      the role.
+                                    </div>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        display:
+                                          "flex",
+
+                                        flexWrap:
+                                          "wrap",
+
+                                        gap: 8,
+                                      }}
+                                    >
+                                      {additionalAllowedScopes.map(
+                                        (
+                                          scope,
+                                        ) => {
+                                          const selected =
+                                            selectedGrantKeys.has(
+                                              createGrantKey(
+                                                permission.uuid,
+                                                scope,
+                                              ),
+                                            );
+
+                                         
+
+                                          return (
+                                            <label
+                                              key={
+                                                scope
+                                              }
+                                              style={{
+                                                display:
+                                                  "flex",
+
+                                                alignItems:
+                                                  "center",
+
+                                                gap: 7,
+
+                                                padding:
+                                                  "8px 10px",
+
+                                                border:
+                                                  selected
+                                                    ? "1px solid #86efac"
+                                                    : "1px solid #d1d5db",
+
+                                                borderRadius:
+                                                  8,
+
+                                                background:
+                                                  selected
+                                                    ? "#dcfce7"
+                                                    : "#ffffff",
+
+                                                color:
+                                                  "#374151",
+
+                                                cursor:
+                                                  loading
+                                                    ? "not-allowed"
+                                                    : "pointer",
+
+                                                fontSize:
+                                                  12,
+                                              }}
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={
+                                                  selected
+                                                }
+                                                disabled={
+                                                  loading
+                                                }
+                                                onChange={() =>
+                                                  handleScopeToggle(
+                                                    permission.uuid,
+                                                    scope,
+                                                  )
+                                                }
+                                              />
+
+                                              <span>
+                                                {formatScope(
+                                                  scope,
+                                                )}
+                                              </span>
+
+                                              
+                                            </label>
+                                          );
+                                        },
+                                      )}
                                     </div>
                                   )}
-
-                                  <div
-                                    style={{
-                                      display:
-                                        "flex",
-
-                                      flexWrap:
-                                        "wrap",
-
-                                      gap: 6,
-
-                                      marginTop:
-                                        8,
-                                    }}
-                                  >
-                                    {rolePermission && (
-                                      <span
-                                        style={{
-                                          padding:
-                                            "4px 8px",
-
-                                          borderRadius:
-                                            999,
-
-                                          background:
-                                            "#dbeafe",
-
-                                          color:
-                                            "#1d4ed8",
-
-                                          fontSize:
-                                            11,
-
-                                          fontWeight:
-                                            600,
-                                        }}
-                                      >
-                                        Role:{" "}
-                                        {formatScope(
-                                          rolePermission.scope,
-                                        )}
-                                      </span>
-                                    )}
-
-                                    {additionalPermission && (
-                                      <span
-                                        style={{
-                                          padding:
-                                            "4px 8px",
-
-                                          borderRadius:
-                                            999,
-
-                                          background:
-                                            "#dcfce7",
-
-                                          color:
-                                            "#15803d",
-
-                                          fontSize:
-                                            11,
-
-                                          fontWeight:
-                                            600,
-                                        }}
-                                      >
-                                        Direct grant
-                                      </span>
-                                    )}
-                                  </div>
                                 </div>
-
-                                <select
-                                  value={
-                                    additionalPermission
-                                      ?.scope ??
-                                    "OWN"
-                                  }
-                                  disabled={
-                                    !additional ||
-                                    loading
-                                  }
-                                  onChange={(
-                                    event,
-                                  ) =>
-                                    handleScopeChange(
-                                      permission.uuid,
-
-                                      event.target
-                                        .value as PermissionScope,
-                                    )
-                                  }
-                                  style={{
-                                    width:
-                                      "100%",
-
-                                    boxSizing:
-                                      "border-box",
-
-                                    padding:
-                                      "9px 10px",
-
-                                    border:
-                                      "1px solid #d1d5db",
-
-                                    borderRadius:
-                                      8,
-
-                                    background:
-                                      additional
-                                        ? "#ffffff"
-                                        : "#f3f4f6",
-
-                                    color:
-                                      "#374151",
-                                  }}
-                                >
-                                  {scopeOptions.map(
-                                    (
-                                      option,
-                                    ) => (
-                                      <option
-                                        key={
-                                          option.value
-                                        }
-                                        value={
-                                          option.value
-                                        }
-                                      >
-                                        {
-                                          option.label
-                                        }
-                                      </option>
-                                    ),
-                                  )}
-                                </select>
                               </div>
                             );
                           },
@@ -1150,8 +1307,7 @@ const UserPermissionsModal = ({
               justifyContent:
                 "flex-end",
 
-              flexWrap:
-                "wrap",
+              flexWrap: "wrap",
 
               gap: 12,
 
@@ -1188,7 +1344,6 @@ const UserPermissionsModal = ({
 
 interface SummaryCardProps {
   label: string;
-
   value: number;
 }
 

@@ -8,7 +8,6 @@ import type {
   User,
 } from "../types/user.types";
 
-
 interface Props {
   data: User[];
 
@@ -25,8 +24,19 @@ interface Props {
   onPermissions: (
     uuid: string,
   ) => void;
-}
 
+  canView?: (
+    user: User,
+  ) => boolean;
+
+  canEdit?: (
+    user: User,
+  ) => boolean;
+
+  canManagePermissions?: (
+    user: User,
+  ) => boolean;
+}
 
 const formatEnumValue = (
   value?: string | null,
@@ -46,13 +56,16 @@ const formatEnumValue = (
     .join(" ");
 };
 
-
 const UserTable = ({
   data,
   loading,
   onView,
   onEdit,
   onPermissions,
+
+  canView = () => true,
+  canEdit = () => true,
+  canManagePermissions = () => true,
 }: Props) => {
   const columns:
     Column<User>[] = [
@@ -217,54 +230,80 @@ const UserTable = ({
       key: "action",
       title: "Action",
 
-      render: (_, row) => (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              onView(
-                row.uuid,
-              )
-            }
-          >
-            View
-          </Button>
+      render: (_, row) => {
+        const showView =
+          canView(row);
 
-          <Button
-            size="sm"
-            onClick={() =>
-              onEdit(
-                row.uuid,
-              )
-            }
-          >
-            Edit
-          </Button>
+        const showEdit =
+          canEdit(row);
 
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              onPermissions(
-                row.uuid,
-              )
-            }
+        const showPermissions =
+          canManagePermissions(
+            row,
+          );
+
+        if (
+          !showView &&
+          !showEdit &&
+          !showPermissions
+        ) {
+          return "-";
+        }
+
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
           >
-            Permissions
-          </Button>
-        </div>
-      ),
+            {showView && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  onView(
+                    row.uuid,
+                  )
+                }
+              >
+                View
+              </Button>
+            )}
+
+            {showEdit && (
+              <Button
+                size="sm"
+                onClick={() =>
+                  onEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            )}
+
+            {showPermissions && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  onPermissions(
+                    row.uuid,
+                  )
+                }
+              >
+                Permissions
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
-
 
   return (
     <Table
@@ -274,6 +313,5 @@ const UserTable = ({
     />
   );
 };
-
 
 export default UserTable;
