@@ -6,6 +6,10 @@ import {
   useDocumentTitle,
 } from "@/shared/hooks/useDocumentTitle";
 
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import PageHeader from "@/shared/components/PageHeader";
@@ -25,6 +29,7 @@ import type {
   UpdateProjectCategoryDto,
 } from "../types/project-category.types";
 
+
 const initialFormData:
   ProjectCategoryFormData = {
   name: "",
@@ -35,10 +40,38 @@ const initialFormData:
   status: "ACTIVE",
 };
 
+
 const ProjectCategoryListPage = () => {
   useDocumentTitle(
     "Project Categories",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canViewProjectCategory =
+    hasPermission(
+      "company.project_category.view",
+    );
+
+  const canCreateProjectCategory =
+    hasPermission(
+      "company.project_category.create",
+    );
+
+  const canUpdateProjectCategory =
+    hasPermission(
+      "company.project_category.update",
+    );
+
+  const canDeleteProjectCategory =
+    hasPermission(
+      "company.project_category.delete",
+    );
+
 
   const {
     loading,
@@ -54,15 +87,18 @@ const ProjectCategoryListPage = () => {
     saving,
   } = useProjectCategories();
 
+
   const [
     openModal,
     setOpenModal,
   ] = useState(false);
 
+
   const [
     openDetails,
     setOpenDetails,
   ] = useState(false);
+
 
   const [
     selectedCategory,
@@ -71,12 +107,14 @@ const ProjectCategoryListPage = () => {
     ProjectCategory | null
   >(null);
 
+
   const [
     editId,
     setEditId,
   ] = useState<
     string | null
   >(null);
+
 
   const [
     formData,
@@ -85,6 +123,7 @@ const ProjectCategoryListPage = () => {
     useState<ProjectCategoryFormData>({
       ...initialFormData,
     });
+
 
   const resetForm = () => {
     setEditId(
@@ -96,14 +135,22 @@ const ProjectCategoryListPage = () => {
     });
   };
 
+
   const handleOpenCreateModal =
     () => {
+      if (
+        !canCreateProjectCategory
+      ) {
+        return;
+      }
+
       resetForm();
 
       setOpenModal(
         true,
       );
     };
+
 
   const handleCloseModal =
     () => {
@@ -113,6 +160,7 @@ const ProjectCategoryListPage = () => {
 
       resetForm();
     };
+
 
   const handleCloseDetails =
     () => {
@@ -125,8 +173,24 @@ const ProjectCategoryListPage = () => {
       );
     };
 
+
   const handleSubmit =
     async () => {
+      if (
+        editId &&
+        !canUpdateProjectCategory
+      ) {
+        return;
+      }
+
+      if (
+        !editId &&
+        !canCreateProjectCategory
+      ) {
+        return;
+      }
+
+
       try {
         const basePayload = {
           name:
@@ -157,6 +221,7 @@ const ProjectCategoryListPage = () => {
             ),
         };
 
+
         if (editId) {
           const payload:
             UpdateProjectCategoryDto = {
@@ -165,6 +230,7 @@ const ProjectCategoryListPage = () => {
             status:
               formData.status,
           };
+
 
           await update(
             editId,
@@ -176,13 +242,17 @@ const ProjectCategoryListPage = () => {
             ...basePayload,
           };
 
+
           await create(
             payload,
           );
         }
 
+
         handleCloseModal();
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to save project category:",
           error,
@@ -190,19 +260,29 @@ const ProjectCategoryListPage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateProjectCategory
+      ) {
+        return;
+      }
+
+
       try {
         const category =
           await fetchCategory(
             uuid,
           );
 
+
         setEditId(
           uuid,
         );
+
 
         setFormData({
           name:
@@ -227,10 +307,13 @@ const ProjectCategoryListPage = () => {
             category.status,
         });
 
+
         setOpenModal(
           true,
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to load project category:",
           error,
@@ -238,10 +321,18 @@ const ProjectCategoryListPage = () => {
       }
     };
 
+
   const handleView =
     async (
       uuid: string,
     ) => {
+      if (
+        !canViewProjectCategory
+      ) {
+        return;
+      }
+
+
       setSelectedCategory(
         null,
       );
@@ -250,16 +341,20 @@ const ProjectCategoryListPage = () => {
         true,
       );
 
+
       try {
         const category =
           await fetchCategory(
             uuid,
           );
 
+
         setSelectedCategory(
           category,
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to load project category details:",
           error,
@@ -271,24 +366,36 @@ const ProjectCategoryListPage = () => {
       }
     };
 
+
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteProjectCategory
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this project category?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to delete project category:",
           error,
@@ -296,21 +403,25 @@ const ProjectCategoryListPage = () => {
       }
     };
 
+
   return (
     <>
       <PageHeader
         title="Project Categories"
         subtitle="Manage project categories"
         actions={
-          <Button
-            onClick={
-              handleOpenCreateModal
-            }
-          >
-            Create Category
-          </Button>
+          canCreateProjectCategory ? (
+            <Button
+              onClick={
+                handleOpenCreateModal
+              }
+            >
+              Create Category
+            </Button>
+          ) : null
         }
       />
+
 
       <Card>
         <ProjectCategoryTable
@@ -319,6 +430,15 @@ const ProjectCategoryListPage = () => {
           }
           loading={
             loading
+          }
+          canView={
+            canViewProjectCategory
+          }
+          canEdit={
+            canUpdateProjectCategory
+          }
+          canDelete={
+            canDeleteProjectCategory
           }
           onView={
             handleView
@@ -332,54 +452,62 @@ const ProjectCategoryListPage = () => {
         />
       </Card>
 
-      <ProjectCategoryModal
-        open={
-          openModal
-        }
-        loading={
-          saving
-        }
-        title={
-          editId
-            ? "Edit Project Category"
-            : "Create Project Category"
-        }
-        isEdit={
-          Boolean(
-            editId,
-          )
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleCloseModal
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
 
-      <ProjectCategoryDetailsModal
-        open={
-          openDetails
-        }
-        loading={
-          openDetails &&
-          !selectedCategory
-        }
-        category={
-          selectedCategory
-        }
-        onClose={
-          handleCloseDetails
-        }
-      />
+      {(canCreateProjectCategory ||
+        canUpdateProjectCategory) && (
+        <ProjectCategoryModal
+          open={
+            openModal
+          }
+          loading={
+            saving
+          }
+          title={
+            editId
+              ? "Edit Project Category"
+              : "Create Project Category"
+          }
+          isEdit={
+            Boolean(
+              editId,
+            )
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleCloseModal
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
+
+
+      {canViewProjectCategory && (
+        <ProjectCategoryDetailsModal
+          open={
+            openDetails
+          }
+          loading={
+            openDetails &&
+            !selectedCategory
+          }
+          category={
+            selectedCategory
+          }
+          onClose={
+            handleCloseDetails
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default ProjectCategoryListPage;

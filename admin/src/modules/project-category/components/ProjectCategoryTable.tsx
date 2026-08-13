@@ -8,14 +8,20 @@ import type {
   ProjectCategory,
 } from "../types/project-category.types";
 
+
 interface Props {
   data: ProjectCategory[];
   loading: boolean;
+
+  canView: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
 
   onView: (uuid: string) => void;
   onEdit: (uuid: string) => void;
   onDelete: (uuid: string) => void;
 }
+
 
 const getDisplayValue = (
   value: unknown,
@@ -31,9 +37,15 @@ const getDisplayValue = (
   return String(value);
 };
 
+
 const ProjectCategoryTable = ({
   data,
   loading,
+
+  canView,
+  canEdit,
+  canDelete,
+
   onView,
   onEdit,
   onDelete,
@@ -55,7 +67,9 @@ const ProjectCategoryTable = ({
       title: "Description",
 
       render: (value) =>
-        getDisplayValue(value),
+        getDisplayValue(
+          value,
+        ),
     },
 
     {
@@ -64,7 +78,9 @@ const ProjectCategoryTable = ({
 
       render: (value) => {
         const displayValue =
-          getDisplayValue(value);
+          getDisplayValue(
+            value,
+          );
 
         const color =
           displayValue === "-"
@@ -74,8 +90,12 @@ const ProjectCategoryTable = ({
         return (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
               gap: 8,
             }}
           >
@@ -83,11 +103,16 @@ const ProjectCategoryTable = ({
               style={{
                 width: 18,
                 height: 18,
-                borderRadius: "50%",
+
+                borderRadius:
+                  "50%",
+
                 backgroundColor:
                   color,
+
                 border:
                   "1px solid #ccc",
+
                 flexShrink: 0,
               }}
             />
@@ -105,16 +130,23 @@ const ProjectCategoryTable = ({
       title: "Sort Order",
 
       render: (value) =>
-        getDisplayValue(value),
+        getDisplayValue(
+          value,
+        ),
     },
 
     {
       key: "status",
       title: "Status",
 
-      render: (_, row) => (
+      render: (
+        _,
+        row,
+      ) => (
         <Badge
-          status={row.status}
+          status={
+            row.status
+          }
         />
       ),
     },
@@ -123,53 +155,89 @@ const ProjectCategoryTable = ({
       key: "action",
       title: "Action",
 
-      render: (_, row) => (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              onView(row.uuid)
-            }
-          >
-            View
-          </Button>
+      render: (
+        _,
+        row,
+      ) => {
+        const hasAnyAction =
+          canView ||
+          canEdit ||
+          canDelete;
 
-          <Button
-            size="sm"
-            onClick={() =>
-              onEdit(row.uuid)
-            }
-          >
-            Edit
-          </Button>
+        if (!hasAnyAction) {
+          return "-";
+        }
 
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              onDelete(row.uuid)
-            }
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              gap: 8,
+            }}
           >
-            Delete
-          </Button>
-        </div>
-      ),
+            {canView && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  onView(
+                    row.uuid,
+                  )
+                }
+              >
+                View
+              </Button>
+            )}
+
+            {canEdit && (
+              <Button
+                size="sm"
+                onClick={() =>
+                  onEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            )}
+
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() =>
+                  onDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
+
   return (
     <Table
-      columns={columns}
-      data={data}
-      loading={loading}
+      columns={
+        columns
+      }
+      data={
+        data
+      }
+      loading={
+        loading
+      }
     />
   );
 };
+
 
 export default ProjectCategoryTable;

@@ -122,6 +122,10 @@ export const menu: MenuItem[] = [
         title: "Projects Categories",
         path: "/project-categories",
         icon: Boxes,
+
+         permissions: [
+          "company.project_category.view",
+        ],
       },
 
        {

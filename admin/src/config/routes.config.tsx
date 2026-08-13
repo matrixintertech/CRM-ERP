@@ -116,6 +116,15 @@ export const protectedRoutes: AppRoute[] = [
     
   },
 
+    {
+    path: "/project-categories",
+     element: (
+    <PermissionRoute permission="company.project_category.view">
+      <ProjectCategoryListPage />
+    </PermissionRoute>
+  ),
+  },
+
   {
     path: "/settings/company-profile",
     element: <CompanyProfilePage />,
@@ -166,10 +175,7 @@ export const protectedRoutes: AppRoute[] = [
     element: <RolePermissionPage />,
   },
 
-  {
-    path: "/project-categories",
-    element: <ProjectCategoryListPage />,
-  },
+
 
   {
     path: "/project-roles",
