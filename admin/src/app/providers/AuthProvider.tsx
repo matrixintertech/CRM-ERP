@@ -9,68 +9,91 @@ import type {
   ReactNode,
 } from "react";
 
-interface User {
-  id: string;
+import type {
+  UserProfile,
+} from "@/modules/profile/types/profile.types";
 
-  uuid?: string;
-
-  displayName?: string | null;
-
-  email?: string | null;
-  mobile?: string | null;
-
-  profilePhoto?: string | null;
-
-  companyId?: string | null;
-
-  userType?: string | null;
-
-  status?: string | null;
-}
 
 interface AuthContextType {
-  user: User | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
+  user:
+    UserProfile | null;
 
-  login: (token: string) => void;
+  accessToken:
+    string | null;
+
+  isAuthenticated:
+    boolean;
+
+  login: (
+    token: string,
+  ) => void;
 
   setCurrentUser: (
-    user: User,
+    user: UserProfile,
   ) => void;
 
   logout: () => void;
 }
 
+
 const AuthContext =
-  createContext<AuthContextType | null>(null);
+  createContext<AuthContextType | null>(
+    null,
+  );
+
 
 interface Props {
-  children: ReactNode;
+  children:
+    ReactNode;
 }
+
 
 export const AuthProvider = ({
   children,
 }: Props) => {
-  const [accessToken, setAccessToken] =
-    useState<string | null>(() =>
-      localStorage.getItem("accessToken"),
+  const [
+    accessToken,
+    setAccessToken,
+  ] =
+    useState<string | null>(
+      () =>
+        localStorage.getItem(
+          "accessToken",
+        ),
     );
 
-  const [user, setUser] =
-    useState<User | null>(() => {
-      const user =
-        localStorage.getItem("user");
 
-      if (!user) return null;
+  const [
+    user,
+    setUser,
+  ] =
+    useState<UserProfile | null>(
+      () => {
+        const storedUser =
+          localStorage.getItem(
+            "user",
+          );
 
-      try {
-        return JSON.parse(user);
-      } catch {
-        localStorage.removeItem("user");
-        return null;
-      }
-    });
+
+        if (!storedUser) {
+          return null;
+        }
+
+
+        try {
+          return JSON.parse(
+            storedUser,
+          ) as UserProfile;
+        } catch {
+          localStorage.removeItem(
+            "user",
+          );
+
+          return null;
+        }
+      },
+    );
+
 
   const login = (
     token: string,
@@ -80,67 +103,103 @@ export const AuthProvider = ({
       token,
     );
 
-    setAccessToken(token);
+    setAccessToken(
+      token,
+    );
   };
 
+
   const setCurrentUser = (
-    user: User,
+    currentUser:
+      UserProfile,
   ) => {
     localStorage.setItem(
       "user",
-      JSON.stringify(user),
+      JSON.stringify(
+        currentUser,
+      ),
     );
 
-    setUser(user);
+    setUser(
+      currentUser,
+    );
   };
 
-  const logout = () => {
-    localStorage.removeItem(
-      "accessToken",
+
+  const logout =
+    () => {
+      localStorage.removeItem(
+        "accessToken",
+      );
+
+      localStorage.removeItem(
+        "refreshToken",
+      );
+
+      localStorage.removeItem(
+        "user",
+      );
+
+      setAccessToken(
+        null,
+      );
+
+      setUser(
+        null,
+      );
+    };
+
+
+  const value =
+    useMemo(
+      () => ({
+        user,
+
+        accessToken,
+
+        isAuthenticated:
+          Boolean(
+            accessToken,
+          ),
+
+        login,
+
+        setCurrentUser,
+
+        logout,
+      }),
+      [
+        user,
+        accessToken,
+      ],
     );
 
-    localStorage.removeItem(
-      "refreshToken",
-    );
-
-    localStorage.removeItem("user");
-
-    setAccessToken(null);
-    setUser(null);
-  };
-
-  const value = useMemo(
-    () => ({
-      user,
-      accessToken,
-      isAuthenticated:
-        !!accessToken,
-
-      login,
-
-      setCurrentUser,
-
-      logout,
-    }),
-    [user, accessToken],
-  );
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={
+        value
+      }
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+
 export const useAuth = () => {
   const context =
-    useContext(AuthContext);
+    useContext(
+      AuthContext,
+    );
+
 
   if (!context) {
     throw new Error(
       "useAuth must be used inside AuthProvider",
     );
   }
+
 
   return context;
 };
