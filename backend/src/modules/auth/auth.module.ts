@@ -8,6 +8,10 @@ import { jwtConfig } from 'src/config/jwt.config';
 
 import { MailModule } from '../mail/mail.module';
 
+import {
+  AuthorizationModule,
+} from '../authorization/authorization.module';
+
 import { AuthController } from './controllers/auth.controller';
 
 import { AuthService } from './services/auth.service';
@@ -32,6 +36,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     PrismaModule,
 
     MailModule,
+
+    AuthorizationModule,
   ],
 
   controllers: [

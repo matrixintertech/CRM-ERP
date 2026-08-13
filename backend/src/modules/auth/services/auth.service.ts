@@ -49,6 +49,10 @@ import { MailService } from '../../mail/services/mail.service';
 
 import { Msg91WhatsAppService } from 'src/modules/mail/services/msg91-whatsapp.service';
 
+import {
+  EffectivePermissionService,
+} from '../../authorization/services/effective-permission.service';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -59,6 +63,9 @@ export class AuthService {
     private readonly mailService: MailService,
 
     private readonly msg91WhatsAppService: Msg91WhatsAppService,
+
+     private readonly effectivePermissionService:
+    EffectivePermissionService,
   ) {}
 
   private ensureUserCanLogin(user: { status: UserStatus }): void {
@@ -422,31 +429,113 @@ export class AuthService {
     });
   }
 
-  async profile(user: any) {
-    return {
-      id: user.id.toString(),
+ async profile(user: any) {
+  /*
+   * Existing centralized authorization
+   * engine se fresh effective grants lo.
+   *
+   * Company user:
+   * RolePermission + UserPermission
+   *
+   * Platform owner:
+   * PlatformRolePermission
+   */
+  const authorization =
+    await this.effectivePermissionService
+      .getAuthorization(
+        user.id,
+      );
 
-      uuid: user.uuid,
 
-      email: user.email,
+  /*
+   * Frontend ko internal database IDs
+   * ki zarurat nahi hai.
+   *
+   * UI capability checks ke liye
+   * lightweight permission snapshot.
+   */
+  const effectivePermissions = [
+    ...authorization
+      .companyPermissions
+      .map(
+        (permission) => ({
+          code:
+            permission.code,
 
-      mobile: user.mobile,
+          type:
+            permission.type,
 
-      companyId: user.companyId ? user.companyId.toString() : null,
+          scope:
+            permission.scope,
 
-      employeeId: user.employeeId ? user.employeeId.toString() : null,
+          source:
+            permission.source,
+        }),
+      ),
 
-      roleId: user.roleId ? user.roleId.toString() : null,
+    ...authorization
+      .platformPermissions
+      .map(
+        (permission) => ({
+          code:
+            permission.code,
 
-      userType: user.userType,
+          type:
+            permission.type,
 
-      displayName: user.displayName,
+          scope:
+            null,
 
-      profilePhoto: user.profilePhoto,
+          source:
+            permission.source,
+        }),
+      ),
+  ];
 
-      status: user.status,
-    };
-  }
+
+  return {
+    id:
+      user.id.toString(),
+
+    uuid:
+      user.uuid,
+
+    email:
+      user.email,
+
+    mobile:
+      user.mobile,
+
+    companyId:
+      user.companyId
+        ? user.companyId.toString()
+        : null,
+
+    employeeId:
+      user.employeeId
+        ? user.employeeId.toString()
+        : null,
+
+    roleId:
+      user.roleId
+        ? user.roleId.toString()
+        : null,
+
+    userType:
+      user.userType,
+
+    displayName:
+      user.displayName,
+
+    profilePhoto:
+      user.profilePhoto,
+
+    status:
+      user.status,
+
+    effectivePermissions,
+  };
+}
 
   async refresh(dto: RefreshTokenDto) {
     let payload: JwtPayload;
