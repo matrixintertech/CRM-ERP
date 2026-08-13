@@ -184,10 +184,6 @@ export const protectedRoutes: AppRoute[] = [
     element: <RolePermissionPage />,
   },
 
-
-
-
-
   {
     path: "/settings/profile",
     element: <ProfilePage />,
@@ -195,7 +191,11 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/settings/users",
-    element: <UserListPage />,
+    element: (
+    <PermissionRoute permission="company.user.view">
+      <UserListPage />
+    </PermissionRoute>
+  ),
   },
 
   {

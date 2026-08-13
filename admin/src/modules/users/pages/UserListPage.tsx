@@ -11,6 +11,10 @@ import {
   useDocumentTitle,
 } from "@/shared/hooks/useDocumentTitle";
 
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
@@ -88,6 +92,40 @@ const UserListPage = () => {
   useDocumentTitle(
     "All Users",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  /*
+   * User authorization.
+   */
+  const canViewUser =
+    hasPermission(
+      "company.user.view",
+    );
+
+  const canUpdateUser =
+    hasPermission(
+      "company.user.update",
+    );
+
+
+  /*
+   * Direct user permission
+   * management authorization.
+   */
+  const canViewUserPermissions =
+    hasPermission(
+      "company.user_permission.view",
+    );
+
+  const canUpdateUserPermissions =
+    hasPermission(
+      "company.user_permission.update",
+    );
 
 
   const [
@@ -178,12 +216,8 @@ const UserListPage = () => {
 
 
   /*
-   * Global permission list sirf
-   * permission modal open hone par
-   * fetch hogi.
-   *
-   * Har permission ke response me
-   * allowedScopes expected hain.
+   * Permission list tabhi fetch hogi
+   * jab direct-permission modal open ho.
    */
   const groupedPermissionsQuery =
     useQuery({
@@ -198,7 +232,8 @@ const UserListPage = () => {
         ),
 
       enabled:
-        openPermissions,
+        openPermissions &&
+        canViewUserPermissions,
 
       staleTime:
         5 * 60 * 1000,
@@ -229,15 +264,6 @@ const UserListPage = () => {
     );
 
 
-  /*
-   * Permission groups flatten karo.
-   *
-   * Permission object me:
-   *
-   * allowedScopes: PermissionScope[]
-   *
-   * expected hai.
-   */
   const allPermissions =
     useMemo(
       () =>
@@ -371,6 +397,11 @@ const UserListPage = () => {
       uuid:
         string,
     ) => {
+      if (!canViewUser) {
+        return;
+      }
+
+
       setSelectedUser(
         null,
       );
@@ -378,6 +409,7 @@ const UserListPage = () => {
       setOpenDetails(
         true,
       );
+
 
       try {
         const user =
@@ -405,9 +437,15 @@ const UserListPage = () => {
       uuid:
         string,
     ) => {
+      if (!canUpdateUser) {
+        return;
+      }
+
+
       setSelectedUser(
         null,
       );
+
 
       try {
         const user =
@@ -435,18 +473,21 @@ const UserListPage = () => {
 
 
   /*
-   * Selected user's role/direct/effective
-   * permissions fetch karo.
-   *
-   * openPermissions true hote hi
-   * grouped COMPANY permissions bhi
-   * React Query se load ho jayengi.
+   * Permission modal open karne ke
+   * liye view permission required hai.
    */
   const handlePermissions =
     async (
       uuid:
         string,
     ) => {
+      if (
+        !canViewUserPermissions
+      ) {
+        return;
+      }
+
+
       setPermissions(
         null,
       );
@@ -458,6 +499,7 @@ const UserListPage = () => {
       setOpenPermissions(
         true,
       );
+
 
       try {
         const userPermissions =
@@ -489,10 +531,16 @@ const UserListPage = () => {
       formData:
         UserFormData,
     ) => {
+      if (!canUpdateUser) {
+        return;
+      }
+
+
       const employeeUuid =
         selectedUser
           ?.employee
           ?.uuid;
+
 
       if (!employeeUuid) {
         notify.error(
@@ -502,10 +550,12 @@ const UserListPage = () => {
         return;
       }
 
+
       try {
         setAccountUpdating(
           true,
         );
+
 
         await updateEmployeeUserAccount(
           employeeUuid,
@@ -518,7 +568,9 @@ const UserListPage = () => {
           },
         );
 
+
         await refetch();
+
 
         setOpenEdit(
           false,
@@ -540,6 +592,7 @@ const UserListPage = () => {
             };
           };
 
+
         notify.error(
           apiError.response
             ?.data
@@ -556,26 +609,19 @@ const UserListPage = () => {
 
   /*
    * Multi-scope direct user grants.
-   *
-   * Same permission multiple scopes
-   * ke saath aa sakti hai:
-   *
-   * [
-   *   {
-   *     permissionUuid: "...",
-   *     scope: "ORGANIZATION_UNIT"
-   *   },
-   *   {
-   *     permissionUuid: "...",
-   *     scope: "COMPANY"
-   *   }
-   * ]
    */
   const handleSavePermissions =
     async (
       selectedPermissions:
         UserPermissionAssignment[],
     ) => {
+      if (
+        !canUpdateUserPermissions
+      ) {
+        return;
+      }
+
+
       if (
         !permissionUserUuid
       ) {
@@ -585,6 +631,7 @@ const UserListPage = () => {
 
         return;
       }
+
 
       try {
         const updatedPermissions =
@@ -596,13 +643,16 @@ const UserListPage = () => {
             },
           );
 
+
         setPermissions(
           updatedPermissions,
         );
 
+
         notify.success(
           "User permissions updated successfully.",
         );
+
 
         setOpenPermissions(
           false,
@@ -627,6 +677,7 @@ const UserListPage = () => {
               };
             };
           };
+
 
         notify.error(
           apiError.response
@@ -1036,6 +1087,15 @@ const UserListPage = () => {
           loading={
             pageLoading
           }
+          canView={
+            canViewUser
+          }
+          canEdit={
+            canUpdateUser
+          }
+          canManagePermissions={
+            canViewUserPermissions
+          }
           onView={
             handleView
           }
@@ -1150,77 +1210,83 @@ const UserListPage = () => {
       </Card>
 
 
-      <UserDetailsModal
-        open={
-          openDetails
-        }
-        loading={
-          openDetails &&
-          !selectedUser
-        }
-        user={
-          selectedUser
-        }
-        onClose={() => {
-          setOpenDetails(
-            false,
-          );
+      {canViewUser && (
+        <UserDetailsModal
+          open={
+            openDetails
+          }
+          loading={
+            openDetails &&
+            !selectedUser
+          }
+          user={
+            selectedUser
+          }
+          onClose={() => {
+            setOpenDetails(
+              false,
+            );
 
-          setSelectedUser(
-            null,
-          );
-        }}
-      />
-
-
-      <UserModal
-        open={
-          openEdit
-        }
-        loading={
-          accountUpdating
-        }
-        user={
-          selectedUser
-        }
-        roleOptions={
-          roleOptions
-        }
-        onClose={() => {
-          setOpenEdit(
-            false,
-          );
-
-          setSelectedUser(
-            null,
-          );
-        }}
-        onSubmit={
-          handleUpdateAccount
-        }
-      />
+            setSelectedUser(
+              null,
+            );
+          }}
+        />
+      )}
 
 
-      <UserPermissionsModal
-        open={
-          openPermissions
-        }
-        loading={
-          permissionModalLoading
-        }
-        permissions={
-          permissions
-        }
-        allPermissions={
-          allPermissions
-        }
-        onClose={
-          handleClosePermissions
-        }
-        onSubmit={
-          handleSavePermissions
-        }
-      />
+      {canUpdateUser && (
+        <UserModal
+          open={
+            openEdit
+          }
+          loading={
+            accountUpdating
+          }
+          user={
+            selectedUser
+          }
+          roleOptions={
+            roleOptions
+          }
+          onClose={() => {
+            setOpenEdit(
+              false,
+            );
+
+            setSelectedUser(
+              null,
+            );
+          }}
+          onSubmit={
+            handleUpdateAccount
+          }
+        />
+      )}
+
+
+      {canViewUserPermissions && (
+        <UserPermissionsModal
+          open={
+            openPermissions
+          }
+          loading={
+            permissionModalLoading
+          }
+          permissions={
+            permissions
+          }
+          allPermissions={
+            allPermissions
+          }
+          onClose={
+            handleClosePermissions
+          }
+          onSubmit={
+            handleSavePermissions
+          }
+        />
+      )}
     </>
   );
 };

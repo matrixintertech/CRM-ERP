@@ -1,5 +1,6 @@
 import Badge from "@/shared/components/Badge";
 import Button from "@/shared/components/Button";
+
 import Table, {
   type Column,
 } from "@/shared/components/Table";
@@ -8,10 +9,15 @@ import type {
   User,
 } from "../types/user.types";
 
+
 interface Props {
   data: User[];
 
   loading: boolean;
+
+  canView: boolean;
+  canEdit: boolean;
+  canManagePermissions: boolean;
 
   onView: (
     uuid: string,
@@ -24,19 +30,8 @@ interface Props {
   onPermissions: (
     uuid: string,
   ) => void;
-
-  canView?: (
-    user: User,
-  ) => boolean;
-
-  canEdit?: (
-    user: User,
-  ) => boolean;
-
-  canManagePermissions?: (
-    user: User,
-  ) => boolean;
 }
+
 
 const formatEnumValue = (
   value?: string | null,
@@ -56,16 +51,18 @@ const formatEnumValue = (
     .join(" ");
 };
 
+
 const UserTable = ({
   data,
   loading,
+
+  canView,
+  canEdit,
+  canManagePermissions,
+
   onView,
   onEdit,
   onPermissions,
-
-  canView = () => true,
-  canEdit = () => true,
-  canManagePermissions = () => true,
 }: Props) => {
   const columns:
     Column<User>[] = [
@@ -73,7 +70,10 @@ const UserTable = ({
       key: "displayName",
       title: "User",
 
-      render: (_, row) => {
+      render: (
+        _,
+        row,
+      ) => {
         const displayName =
           row.displayName ??
           row.employee?.displayName ??
@@ -84,26 +84,42 @@ const UserTable = ({
           row.employee?.avatarUrl ??
           null;
 
+
         return (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
               gap: 10,
             }}
           >
             {profilePhoto ? (
               <img
-                src={profilePhoto}
-                alt={displayName}
+                src={
+                  profilePhoto
+                }
+                alt={
+                  displayName
+                }
                 style={{
                   width: 38,
                   height: 38,
-                  borderRadius: "50%",
-                  objectFit: "cover",
+
+                  borderRadius:
+                    "50%",
+
+                  objectFit:
+                    "cover",
+
                   border:
                     "1px solid #e5e7eb",
-                  flexShrink: 0,
+
+                  flexShrink:
+                    0,
                 }}
               />
             ) : (
@@ -111,40 +127,70 @@ const UserTable = ({
                 style={{
                   width: 38,
                   height: 38,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
+
+                  borderRadius:
+                    "50%",
+
+                  display:
+                    "flex",
+
+                  alignItems:
+                    "center",
+
                   justifyContent:
                     "center",
+
                   background:
                     "#f3f4f6",
-                  color: "#374151",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  flexShrink: 0,
+
+                  color:
+                    "#374151",
+
+                  fontSize:
+                    14,
+
+                  fontWeight:
+                    700,
+
+                  flexShrink:
+                    0,
                 }}
               >
                 {displayName
-                  .charAt(0)
+                  .charAt(
+                    0,
+                  )
                   .toUpperCase()}
               </div>
             )}
 
+
             <div>
               <div
                 style={{
-                  fontWeight: 600,
-                  color: "#111827",
+                  fontWeight:
+                    600,
+
+                  color:
+                    "#111827",
                 }}
               >
-                {displayName}
+                {
+                  displayName
+                }
               </div>
+
 
               <div
                 style={{
-                  marginTop: 2,
-                  color: "#6b7280",
-                  fontSize: 12,
+                  marginTop:
+                    2,
+
+                  color:
+                    "#6b7280",
+
+                  fontSize:
+                    12,
                 }}
               >
                 {row.employee
@@ -161,31 +207,46 @@ const UserTable = ({
       key: "email",
       title: "Email",
 
-      render: (_, row) =>
-        row.email || "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.email ||
+        "-",
     },
 
     {
       key: "mobile",
       title: "Mobile",
 
-      render: (_, row) =>
-        row.mobile || "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.mobile ||
+        "-",
     },
 
     {
       key: "role",
       title: "Role",
 
-      render: (_, row) =>
-        row.role?.name || "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.role?.name ||
+        "-",
     },
 
     {
       key: "userType",
       title: "User Type",
 
-      render: (_, row) =>
+      render: (
+        _,
+        row,
+      ) =>
         formatEnumValue(
           row.userType,
         ),
@@ -195,19 +256,28 @@ const UserTable = ({
       key: "employee",
       title: "Branch",
 
-      render: (_, row) =>
+      render: (
+        _,
+        row,
+      ) =>
         row.employee
           ?.organizationUnit
-          ?.name || "-",
+          ?.name ||
+        "-",
     },
 
     {
       key: "status",
       title: "Status",
 
-      render: (_, row) => (
+      render: (
+        _,
+        row,
+      ) => (
         <Badge
-          status={row.status}
+          status={
+            row.status
+          }
         />
       ),
     },
@@ -216,7 +286,10 @@ const UserTable = ({
       key: "createdAt",
       title: "Created At",
 
-      render: (_, row) =>
+      render: (
+        _,
+        row,
+      ) =>
         row.createdAt
           ? new Date(
               row.createdAt,
@@ -230,36 +303,37 @@ const UserTable = ({
       key: "action",
       title: "Action",
 
-      render: (_, row) => {
-        const showView =
-          canView(row);
+      render: (
+        _,
+        row,
+      ) => {
+        const hasAnyAction =
+          canView ||
+          canEdit ||
+          canManagePermissions;
 
-        const showEdit =
-          canEdit(row);
 
-        const showPermissions =
-          canManagePermissions(
-            row,
-          );
-
-        if (
-          !showView &&
-          !showEdit &&
-          !showPermissions
-        ) {
+        if (!hasAnyAction) {
           return "-";
         }
+
 
         return (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
               gap: 8,
-              flexWrap: "wrap",
+
+              flexWrap:
+                "wrap",
             }}
           >
-            {showView && (
+            {canView && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -273,7 +347,8 @@ const UserTable = ({
               </Button>
             )}
 
-            {showEdit && (
+
+            {canEdit && (
               <Button
                 size="sm"
                 onClick={() =>
@@ -286,7 +361,8 @@ const UserTable = ({
               </Button>
             )}
 
-            {showPermissions && (
+
+            {canManagePermissions && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -305,13 +381,21 @@ const UserTable = ({
     },
   ];
 
+
   return (
     <Table
-      columns={columns}
-      data={data}
-      loading={loading}
+      columns={
+        columns
+      }
+      data={
+        data
+      }
+      loading={
+        loading
+      }
     />
   );
 };
+
 
 export default UserTable;

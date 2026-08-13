@@ -221,6 +221,9 @@ export const menu: MenuItem[] = [
         title: "Users",
         path: "/settings/users",
         icon: UserCog,
+         permissions: [
+          "company.user.view",
+        ],
       },
 
       {
