@@ -1,6 +1,14 @@
-import { useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
+
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -10,21 +18,37 @@ import ProjectModal from "../components/ProjectModal";
 import ProjectTable from "../components/ProjectTable";
 import ProjectWorkspaceModal from "../components/ProjectWorkspaceModal";
 
-import { useProjects } from "../hooks/useProjects";
+import {
+  useProjects,
+} from "../hooks/useProjects";
 
-import { useClients } from "../../client/hooks/useClients";
+import {
+  useClients,
+} from "../../client/hooks/useClients";
 
-import { useStates } from "../../master/state/hooks/useStates";
+import {
+  useStates,
+} from "../../master/state/hooks/useStates";
 
-import { useCities } from "../../master/city/hooks/useCities";
+import {
+  useCities,
+} from "../../master/city/hooks/useCities";
 
-import { useProjectCategories } from "../../project-category/hooks/useProjectCategory";
+import {
+  useProjectCategories,
+} from "../../project-category/hooks/useProjectCategory";
 
-import { useOrganizationUnits } from "../../organization-unit/hooks/useOrganizationUnits";
+import {
+  useOrganizationUnits,
+} from "../../organization-unit/hooks/useOrganizationUnits";
 
-import { useEmployee } from "../../employee/hooks/useEmployee";
+import {
+  useEmployee,
+} from "../../employee/hooks/useEmployee";
 
-import { useProjectRoles } from "../../project-role/hooks/useProjectRoles";
+import {
+  useProjectRoles,
+} from "../../project-role/hooks/useProjectRoles";
 
 import type {
   CreateProjectRequest,
@@ -33,265 +57,636 @@ import type {
   UpdateProjectRequest,
 } from "../types/project.types";
 
-const initialFormData: ProjectFormData = {
-  clientUuid: "",
-  categoryUuid: "",
-  organizationUnitUuid: "",
 
-  name: "",
+const initialFormData:
+  ProjectFormData = {
+    clientUuid: "",
+    categoryUuid: "",
+    organizationUnitUuid: "",
 
-  stateUuid: "",
-  cityUuid: "",
+    name: "",
 
-  address: "",
-  pincode: "",
+    stateUuid: "",
+    cityUuid: "",
 
-  startDate: "",
-  expectedEndDate: "",
+    address: "",
+    pincode: "",
 
-  remarks: "",
+    startDate: "",
+    expectedEndDate: "",
 
-  status: "ACTIVE",
-};
+    remarks: "",
+
+    status: "ACTIVE",
+  };
+
 
 const ProjectListPage = () => {
-  useDocumentTitle("All Projects");
-
-  const [openModal, setOpenModal] = useState(false);
-
-  const [openWorkspace, setOpenWorkspace] = useState(false);
-
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
-  const [editId, setEditId] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState<ProjectFormData>({
-    ...initialFormData,
-  });
-
-  const { loading, projects, fetchProject, create, update, remove, saving } =
-    useProjects();
-
-  const { dropdown: clientDropdown } = useClients();
-
-  const { dropdown: stateDropdown } = useStates();
-
-  const { dropdownCities: cityDropdown } = useCities(
-    {},
-    formData.stateUuid || undefined,
+  useDocumentTitle(
+    "All Projects",
   );
 
-  const { categories } = useProjectCategories();
 
-  const { organizationUnits } = useOrganizationUnits();
+  const {
+    hasPermission,
+  } = useAuthorization();
 
-  const { employees, loading: loadingEmployees } = useEmployee();
 
-  const { projectRoles, loading: loadingRoles } = useProjectRoles();
+  const canViewProject =
+    hasPermission(
+      "company.project.view",
+    );
+
+  const canCreateProject =
+    hasPermission(
+      "company.project.create",
+    );
+
+  const canUpdateProject =
+    hasPermission(
+      "company.project.update",
+    );
+
+  const canDeleteProject =
+    hasPermission(
+      "company.project.delete",
+    );
+
+
+  const [
+    openModal,
+    setOpenModal,
+  ] = useState(false);
+
+
+  const [
+    openWorkspace,
+    setOpenWorkspace,
+  ] = useState(false);
+
+
+  const [
+    selectedProject,
+    setSelectedProject,
+  ] = useState<
+    Project | null
+  >(null);
+
+
+  const [
+    editId,
+    setEditId,
+  ] = useState<
+    string | null
+  >(null);
+
+
+  const [
+    formData,
+    setFormData,
+  ] =
+    useState<ProjectFormData>({
+      ...initialFormData,
+    });
+
+
+  const {
+    loading,
+    projects,
+    fetchProject,
+    create,
+    update,
+    remove,
+    saving,
+  } = useProjects();
+
+
+  const {
+    dropdown:
+      clientDropdown,
+  } = useClients();
+
+
+  const {
+    dropdown:
+      stateDropdown,
+  } = useStates();
+
+
+  const {
+    dropdownCities:
+      cityDropdown,
+  } = useCities(
+    {},
+    formData.stateUuid ||
+      undefined,
+  );
+
+
+  const {
+    categories,
+  } = useProjectCategories();
+
+
+  const {
+    organizationUnits,
+  } = useOrganizationUnits();
+
+
+  const {
+    employees,
+    loading:
+      loadingEmployees,
+  } = useEmployee();
+
+
+  const {
+    projectRoles,
+    loading:
+      loadingRoles,
+  } = useProjectRoles();
+
 
   const resetForm = () => {
-    setEditId(null);
+    setEditId(
+      null,
+    );
 
     setFormData({
       ...initialFormData,
     });
   };
 
-  const handleOpenCreateModal = () => {
-    resetForm();
 
-    setOpenModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setOpenModal(false);
-
-    resetForm();
-  };
-
-  const handleStateChange = async (stateUuid: string): Promise<void> => {
-    setFormData((previous) => ({
-      ...previous,
-
-      stateUuid,
-
-      cityUuid: "",
-    }));
-  };
-
-  const getCreatePayload = (): CreateProjectRequest => ({
-    clientUuid: formData.clientUuid,
-
-    categoryUuid: formData.categoryUuid,
-
-    organizationUnitUuid: formData.organizationUnitUuid,
-
-    name: formData.name.trim(),
-
-    stateUuid: formData.stateUuid || undefined,
-
-    cityUuid: formData.cityUuid || undefined,
-
-    address: formData.address?.trim() || undefined,
-
-    pincode: formData.pincode?.trim() || undefined,
-
-    startDate: formData.startDate || undefined,
-
-    expectedEndDate: formData.expectedEndDate || undefined,
-
-    remarks: formData.remarks?.trim() || undefined,
-  });
-
-  const handleSubmit = async () => {
-    try {
-      const basePayload = getCreatePayload();
-
-      if (editId) {
-        const payload: UpdateProjectRequest = {
-          ...basePayload,
-
-          status: formData.status,
-        };
-
-        await update(editId, payload);
-      } else {
-        await create(basePayload);
+  const handleOpenCreateModal =
+    () => {
+      if (
+        !canCreateProject
+      ) {
+        return;
       }
 
-      handleCloseModal();
-    } catch (error) {
-      console.error("Failed to save project:", error);
-    }
-  };
 
-  const handleEdit = async (uuid: string) => {
-    try {
-      const project = await fetchProject(uuid);
+      resetForm();
 
-      setEditId(uuid);
+      setOpenModal(
+        true,
+      );
+    };
 
-      setFormData({
-        clientUuid: project.client?.uuid ?? "",
 
-        categoryUuid: project.category?.uuid ?? "",
+  const handleCloseModal =
+    () => {
+      setOpenModal(
+        false,
+      );
 
-        organizationUnitUuid: project.organizationUnit?.uuid ?? "",
+      resetForm();
+    };
 
-        name: project.name,
 
-        stateUuid: project.state?.uuid ?? "",
+  const handleStateChange =
+    async (
+      stateUuid: string,
+    ): Promise<void> => {
+      setFormData(
+        (
+          previous,
+        ) => ({
+          ...previous,
 
-        cityUuid: project.city?.uuid ?? "",
+          stateUuid,
 
-        address: project.address ?? "",
+          cityUuid: "",
+        }),
+      );
+    };
 
-        pincode: project.pincode ?? "",
 
-        startDate: project.startDate?.slice(0, 10) ?? "",
+  const getCreatePayload =
+    (): CreateProjectRequest => ({
+      clientUuid:
+        formData.clientUuid,
 
-        expectedEndDate: project.expectedEndDate?.slice(0, 10) ?? "",
+      categoryUuid:
+        formData.categoryUuid,
 
-        remarks: project.remarks ?? "",
+      organizationUnitUuid:
+        formData.organizationUnitUuid,
 
-        status: project.status,
-      });
+      name:
+        formData.name.trim(),
 
-      setOpenModal(true);
-    } catch (error) {
-      console.error("Failed to load project:", error);
-    }
-  };
+      stateUuid:
+        formData.stateUuid ||
+        undefined,
 
-  const handleManage = async (uuid: string) => {
-    try {
-      setSelectedProject(null);
+      cityUuid:
+        formData.cityUuid ||
+        undefined,
 
-      const project = await fetchProject(uuid);
+      address:
+        formData.address
+          ?.trim() ||
+        undefined,
 
-      setSelectedProject(project);
+      pincode:
+        formData.pincode
+          ?.trim() ||
+        undefined,
 
-      setOpenWorkspace(true);
-    } catch (error) {
-      console.error("Failed to open project workspace:", error);
-    }
-  };
+      startDate:
+        formData.startDate ||
+        undefined,
 
-  const handleCloseWorkspace = () => {
-    setOpenWorkspace(false);
+      expectedEndDate:
+        formData.expectedEndDate ||
+        undefined,
 
-    setSelectedProject(null);
-  };
-
-  const handleDelete = async (uuid: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this project?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await remove(uuid);
-    } catch (error) {
-      console.error("Failed to delete project:", error);
-    }
-  };
-
-  const clientOptions = clientDropdown.map((item) => ({
-    label: item.name,
-
-    value: item.uuid,
-  }));
-
-  const categoryOptions = categories.map((item) => ({
-    label: item.name,
-
-    value: item.uuid,
-  }));
-
-  const branchOptions = organizationUnits
-    .filter((item) => item.status === "ACTIVE")
-    .map((item) => ({
-      label: `${item.name} (${item.code})`,
-
-      value: item.uuid,
-    }));
-
-  const stateOptions = stateDropdown.map((item) => ({
-    label: item.name,
-
-    value: item.uuid,
-  }));
-
-  const cityOptions = cityDropdown.map((item) => ({
-    label: item.name,
-
-    value: item.uuid,
-  }));
-
-  const employeeOptions = employees
-    .filter((employee) => employee.status === "ACTIVE")
-    .map((employee) => {
-      const fullName = [employee.firstName, employee.lastName]
-        .filter(Boolean)
-        .join(" ");
-
-      return {
-        uuid: employee.uuid,
-
-        label: employee.displayName || fullName || employee.employeeCode || "-",
-      };
+      remarks:
+        formData.remarks
+          ?.trim() ||
+        undefined,
     });
 
-  const projectRoleOptions = projectRoles.map((role) => ({
-    uuid: role.uuid,
 
-    name: role.name,
+  const handleSubmit =
+    async () => {
+      /*
+       * Defensive frontend checks.
+       *
+       * Backend remains final
+       * authorization authority.
+       */
+      if (
+        editId &&
+        !canUpdateProject
+      ) {
+        return;
+      }
 
-    status: role.status,
-  }));
+
+      if (
+        !editId &&
+        !canCreateProject
+      ) {
+        return;
+      }
+
+
+      try {
+        const basePayload =
+          getCreatePayload();
+
+
+        if (editId) {
+          const payload:
+            UpdateProjectRequest = {
+            ...basePayload,
+
+            status:
+              formData.status,
+          };
+
+
+          await update(
+            editId,
+            payload,
+          );
+        } else {
+          await create(
+            basePayload,
+          );
+        }
+
+
+        handleCloseModal();
+      } catch (
+        error
+      ) {
+        console.error(
+          "Failed to save project:",
+          error,
+        );
+      }
+    };
+
+
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      if (
+        !canUpdateProject
+      ) {
+        return;
+      }
+
+
+      try {
+        const project =
+          await fetchProject(
+            uuid,
+          );
+
+
+        setEditId(
+          uuid,
+        );
+
+
+        setFormData({
+          clientUuid:
+            project.client
+              ?.uuid ?? "",
+
+          categoryUuid:
+            project.category
+              ?.uuid ?? "",
+
+          organizationUnitUuid:
+            project.organizationUnit
+              ?.uuid ?? "",
+
+          name:
+            project.name,
+
+          stateUuid:
+            project.state
+              ?.uuid ?? "",
+
+          cityUuid:
+            project.city
+              ?.uuid ?? "",
+
+          address:
+            project.address ??
+            "",
+
+          pincode:
+            project.pincode ??
+            "",
+
+          startDate:
+            project.startDate
+              ?.slice(
+                0,
+                10,
+              ) ?? "",
+
+          expectedEndDate:
+            project.expectedEndDate
+              ?.slice(
+                0,
+                10,
+              ) ?? "",
+
+          remarks:
+            project.remarks ??
+            "",
+
+          status:
+            project.status,
+        });
+
+
+        setOpenModal(
+          true,
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Failed to load project:",
+          error,
+        );
+      }
+    };
+
+
+  const handleManage =
+    async (
+      uuid: string,
+    ) => {
+      if (
+        !canViewProject
+      ) {
+        return;
+      }
+
+
+      try {
+        setSelectedProject(
+          null,
+        );
+
+
+        const project =
+          await fetchProject(
+            uuid,
+          );
+
+
+        setSelectedProject(
+          project,
+        );
+
+        setOpenWorkspace(
+          true,
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Failed to open project workspace:",
+          error,
+        );
+      }
+    };
+
+
+  const handleCloseWorkspace =
+    () => {
+      setOpenWorkspace(
+        false,
+      );
+
+      setSelectedProject(
+        null,
+      );
+    };
+
+
+  const handleDelete =
+    async (
+      uuid: string,
+    ) => {
+      if (
+        !canDeleteProject
+      ) {
+        return;
+      }
+
+
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this project?",
+        );
+
+
+      if (!confirmed) {
+        return;
+      }
+
+
+      try {
+        await remove(
+          uuid,
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Failed to delete project:",
+          error,
+        );
+      }
+    };
+
+
+  const clientOptions =
+    clientDropdown.map(
+      (
+        item,
+      ) => ({
+        label:
+          item.name,
+
+        value:
+          item.uuid,
+      }),
+    );
+
+
+  const categoryOptions =
+    categories.map(
+      (
+        item,
+      ) => ({
+        label:
+          item.name,
+
+        value:
+          item.uuid,
+      }),
+    );
+
+
+  const branchOptions =
+    organizationUnits
+      .filter(
+        (
+          item,
+        ) =>
+          item.status ===
+          "ACTIVE",
+      )
+      .map(
+        (
+          item,
+        ) => ({
+          label:
+            `${item.name} (${item.code})`,
+
+          value:
+            item.uuid,
+        }),
+      );
+
+
+  const stateOptions =
+    stateDropdown.map(
+      (
+        item,
+      ) => ({
+        label:
+          item.name,
+
+        value:
+          item.uuid,
+      }),
+    );
+
+
+  const cityOptions =
+    cityDropdown.map(
+      (
+        item,
+      ) => ({
+        label:
+          item.name,
+
+        value:
+          item.uuid,
+      }),
+    );
+
+
+  const employeeOptions =
+    employees
+      .filter(
+        (
+          employee,
+        ) =>
+          employee.status ===
+          "ACTIVE",
+      )
+      .map(
+        (
+          employee,
+        ) => {
+          const fullName = [
+            employee.firstName,
+            employee.lastName,
+          ]
+            .filter(
+              Boolean,
+            )
+            .join(
+              " ",
+            );
+
+
+          return {
+            uuid:
+              employee.uuid,
+
+            label:
+              employee.displayName ||
+              fullName ||
+              employee.employeeCode ||
+              "-",
+          };
+        },
+      );
+
+
+  const projectRoleOptions =
+    projectRoles.map(
+      (
+        role,
+      ) => ({
+        uuid:
+          role.uuid,
+
+        name:
+          role.name,
+
+        status:
+          role.status,
+      }),
+    );
+
 
   return (
     <>
@@ -299,49 +694,133 @@ const ProjectListPage = () => {
         title="Projects"
         subtitle="Manage company projects"
         actions={
-          <Button onClick={handleOpenCreateModal}>Create Project</Button>
+          canCreateProject ? (
+            <Button
+              onClick={
+                handleOpenCreateModal
+              }
+            >
+              Create Project
+            </Button>
+          ) : null
         }
       />
 
+
       <Card>
         <ProjectTable
-          data={projects}
-          loading={loading}
-          onManage={handleManage}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          data={
+            projects
+          }
+          loading={
+            loading
+          }
+          canManage={
+            canViewProject
+          }
+          canEdit={
+            canUpdateProject
+          }
+          canDelete={
+            canDeleteProject
+          }
+          onManage={
+            handleManage
+          }
+          onEdit={
+            handleEdit
+          }
+          onDelete={
+            handleDelete
+          }
         />
       </Card>
 
-      <ProjectModal
-        open={openModal}
-        loading={saving}
-        title={editId ? "Edit Project" : "Create Project"}
-        isEdit={Boolean(editId)}
-        formData={formData}
-        setFormData={setFormData}
-        clientOptions={clientOptions}
-        categoryOptions={categoryOptions}
-        branchOptions={branchOptions}
-        stateOptions={stateOptions}
-        cityOptions={cityOptions}
-        onStateChange={handleStateChange}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-      />
 
-      <ProjectWorkspaceModal
-        open={openWorkspace}
-        project={selectedProject}
-        employees={employeeOptions}
-        projectRoles={projectRoleOptions}
-        loadingProject={false}
-        loadingEmployees={loadingEmployees}
-        loadingRoles={loadingRoles}
-        onClose={handleCloseWorkspace}
-      />
+      {(canCreateProject ||
+        canUpdateProject) && (
+        <ProjectModal
+          open={
+            openModal
+          }
+          loading={
+            saving
+          }
+          title={
+            editId
+              ? "Edit Project"
+              : "Create Project"
+          }
+          isEdit={
+            Boolean(
+              editId,
+            )
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          clientOptions={
+            clientOptions
+          }
+          categoryOptions={
+            categoryOptions
+          }
+          branchOptions={
+            branchOptions
+          }
+          stateOptions={
+            stateOptions
+          }
+          cityOptions={
+            cityOptions
+          }
+          onStateChange={
+            handleStateChange
+          }
+          onClose={
+            handleCloseModal
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
+
+
+      {canViewProject && (
+        <ProjectWorkspaceModal
+          open={
+            openWorkspace
+          }
+          project={
+            selectedProject
+          }
+          employees={
+            employeeOptions
+          }
+          projectRoles={
+            projectRoleOptions
+          }
+          loadingProject={
+            false
+          }
+          loadingEmployees={
+            loadingEmployees
+          }
+          loadingRoles={
+            loadingRoles
+          }
+          onClose={
+            handleCloseWorkspace
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default ProjectListPage;

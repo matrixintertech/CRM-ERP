@@ -112,6 +112,9 @@ export const menu: MenuItem[] = [
         title: "Projects",
         path: "/projects",
         icon: FolderKanban,
+         permissions: [
+          "company.project.view",
+        ],
       },
 
       {

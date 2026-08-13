@@ -108,7 +108,12 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/projects",
-    element: <ProjectListPage />,
+    element: (
+    <PermissionRoute permission="company.project.view">
+      <ProjectListPage />
+    </PermissionRoute>
+  ),
+    
   },
 
   {

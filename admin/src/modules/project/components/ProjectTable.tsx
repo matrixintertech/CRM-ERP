@@ -9,9 +9,14 @@ import type {
   Project,
 } from "../types/project.types";
 
+
 interface Props {
   data: Project[];
   loading: boolean;
+
+  canManage: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
 
   onManage:
     (uuid: string) => void;
@@ -22,6 +27,7 @@ interface Props {
   onDelete:
     (uuid: string) => void;
 }
+
 
 const formatDate = (
   value: unknown,
@@ -34,9 +40,11 @@ const formatDate = (
     return "-";
   }
 
+
   const date = new Date(
     String(value),
   );
+
 
   if (
     Number.isNaN(
@@ -46,14 +54,21 @@ const formatDate = (
     return "-";
   }
 
+
   return date.toLocaleDateString(
     "en-IN",
   );
 };
 
+
 const ProjectTable = ({
   data,
   loading,
+
+  canManage,
+  canEdit,
+  canDelete,
+
   onManage,
   onEdit,
   onDelete,
@@ -74,23 +89,37 @@ const ProjectTable = ({
       key: "client",
       title: "Client",
 
-      render: (_, row) =>
-        row.client?.name ?? "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.client?.name ??
+        "-",
     },
 
     {
       key: "category",
       title: "Category",
 
-      render: (_, row) =>
-        row.category?.name ?? "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.category?.name ??
+        "-",
     },
 
     {
-      key: "organizationUnit",
-      title: "Branch",
+      key:
+        "organizationUnit",
 
-      render: (_, row) =>
+      title:
+        "Branch",
+
+      render: (
+        _,
+        row,
+      ) =>
         row.organizationUnit
           ?.name ?? "-",
     },
@@ -99,103 +128,169 @@ const ProjectTable = ({
       key: "state",
       title: "State",
 
-      render: (_, row) =>
-        row.state?.name ?? "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.state?.name ??
+        "-",
     },
 
     {
       key: "city",
       title: "City",
 
-      render: (_, row) =>
-        row.city?.name ?? "-",
+      render: (
+        _,
+        row,
+      ) =>
+        row.city?.name ??
+        "-",
     },
 
     {
-      key: "startDate",
-      title: "Start Date",
+      key:
+        "startDate",
 
-      render: (value) =>
-        formatDate(value),
+      title:
+        "Start Date",
+
+      render: (
+        value,
+      ) =>
+        formatDate(
+          value,
+        ),
     },
 
     {
-      key: "expectedEndDate",
-      title: "Expected End",
+      key:
+        "expectedEndDate",
 
-      render: (value) =>
-        formatDate(value),
+      title:
+        "Expected End",
+
+      render: (
+        value,
+      ) =>
+        formatDate(
+          value,
+        ),
     },
 
     {
       key: "status",
       title: "Status",
 
-      render: (_, row) => (
+      render: (
+        _,
+        row,
+      ) => (
         <Badge
-          status={row.status}
+          status={
+            row.status
+          }
         />
       ),
     },
 
     {
-      key: "action",
-      title: "Action",
+      key:
+        "action",
 
-      render: (_, row) => (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              onManage(
-                row.uuid,
-              )
-            }
-          >
-            Manage
-          </Button>
+      title:
+        "Action",
 
-          <Button
-            size="sm"
-            onClick={() =>
-              onEdit(
-                row.uuid,
-              )
-            }
-          >
-            Edit
-          </Button>
+      render: (
+        _,
+        row,
+      ) => {
+        const hasAnyAction =
+          canManage ||
+          canEdit ||
+          canDelete;
 
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              onDelete(
-                row.uuid,
-              )
-            }
+
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              gap: 8,
+
+              flexWrap:
+                "wrap",
+            }}
           >
-            Delete
-          </Button>
-        </div>
-      ),
+            {canManage && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  onManage(
+                    row.uuid,
+                  )
+                }
+              >
+                Manage
+              </Button>
+            )}
+
+
+            {canEdit && (
+              <Button
+                size="sm"
+                onClick={() =>
+                  onEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            )}
+
+
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() =>
+                  onDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
+
   return (
     <Table
-      columns={columns}
-      data={data}
-      loading={loading}
+      columns={
+        columns
+      }
+      data={
+        data
+      }
+      loading={
+        loading
+      }
     />
   );
 };
+
 
 export default ProjectTable;
