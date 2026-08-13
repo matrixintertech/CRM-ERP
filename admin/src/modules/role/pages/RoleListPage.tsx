@@ -66,11 +66,6 @@ const RolePage = () => {
   } = useAuthorization();
 
 
-  const canViewRole =
-    hasPermission(
-      "company.role.view",
-    );
-
   const canCreateRole =
     hasPermission(
       "company.role.create",
