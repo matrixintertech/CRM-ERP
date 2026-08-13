@@ -133,6 +133,9 @@ export const menu: MenuItem[] = [
       title: "Project Roles",
       path: "/project-roles",
       icon: UserCog,
+       permissions: [
+          "company.project_role.view",
+        ],
     },
     ],
   },
