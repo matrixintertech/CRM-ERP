@@ -11,9 +11,6 @@ import {
   getProfile,
 } from "../api/profile.api";
 
-import type {
-  UserProfile,
-} from "../types/profile.types";
 
 
 export const PROFILE_QUERY_KEY = [
