@@ -148,6 +148,10 @@ export const menu: MenuItem[] = [
         title: "Designations",
         path: "/designations",
         icon: ShieldCheck,
+
+        permissions: [
+          "company.designation.view",
+        ],
       },
       {
         id: "employees",

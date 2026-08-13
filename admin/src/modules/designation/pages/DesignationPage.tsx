@@ -7,6 +7,10 @@ import {
 } from "react-router-dom";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
   Eye,
   SquarePen,
   Trash2,
@@ -36,6 +40,7 @@ import type {
   DesignationFormData,
 } from "../types/designation.types";
 
+
 const createDefaultForm =
   (): DesignationFormData => ({
     departmentUuid: "",
@@ -44,9 +49,37 @@ const createDefaultForm =
     description: "",
   });
 
+
 const DesignationPage = () => {
   const navigate =
     useNavigate();
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canViewDesignation =
+    hasPermission(
+      "company.designation.view",
+    );
+
+  const canCreateDesignation =
+    hasPermission(
+      "company.designation.create",
+    );
+
+  const canUpdateDesignation =
+    hasPermission(
+      "company.designation.update",
+    );
+
+  const canDeleteDesignation =
+    hasPermission(
+      "company.designation.delete",
+    );
+
 
   const {
     loading,
@@ -61,14 +94,17 @@ const DesignationPage = () => {
     saving,
   } = useDesignation();
 
+
   const {
     departments,
   } = useDepartment();
+
 
   const [
     open,
     setOpen,
   ] = useState(false);
+
 
   const [
     editUuid,
@@ -77,6 +113,7 @@ const DesignationPage = () => {
     string | null
   >(null);
 
+
   const [
     formData,
     setFormData,
@@ -84,6 +121,7 @@ const DesignationPage = () => {
     useState<DesignationFormData>(
       createDefaultForm,
     );
+
 
   const resetForm = () => {
     setEditUuid(
@@ -95,14 +133,22 @@ const DesignationPage = () => {
     );
   };
 
+
   const handleOpenCreate =
     () => {
+      if (
+        !canCreateDesignation
+      ) {
+        return;
+      }
+
       resetForm();
 
       setOpen(
         true,
       );
     };
+
 
   const handleClose =
     () => {
@@ -113,8 +159,24 @@ const DesignationPage = () => {
       resetForm();
     };
 
+
   const handleSubmit =
     async () => {
+      if (
+        editUuid &&
+        !canUpdateDesignation
+      ) {
+        return;
+      }
+
+      if (
+        !editUuid &&
+        !canCreateDesignation
+      ) {
+        return;
+      }
+
+
       try {
         const payload:
           DesignationFormData = {
@@ -139,6 +201,7 @@ const DesignationPage = () => {
             undefined,
         };
 
+
         if (editUuid) {
           await update(
             editUuid,
@@ -150,8 +213,11 @@ const DesignationPage = () => {
           );
         }
 
+
         handleClose();
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -159,23 +225,34 @@ const DesignationPage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateDesignation
+      ) {
+        return;
+      }
+
+
       try {
         const designation =
           await fetchDesignation(
             uuid,
           );
 
+
         if (!designation) {
           return;
         }
 
+
         setEditUuid(
           uuid,
         );
+
 
         setFormData({
           departmentUuid:
@@ -193,41 +270,57 @@ const DesignationPage = () => {
             "",
         });
 
+
         setOpen(
           true,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteDesignation
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this designation?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const columns:
     DataTableColumn<Designation>[] = [
@@ -261,14 +354,19 @@ const DesignationPage = () => {
     },
 
     {
-      key: "name",
+      key:
+        "name",
+
       title:
         "Designation",
     },
 
     {
-      key: "code",
-      title: "Code",
+      key:
+        "code",
+
+      title:
+        "Code",
     },
 
     {
@@ -286,74 +384,112 @@ const DesignationPage = () => {
     },
 
     {
-      key: "status",
-      title: "Status",
+      key:
+        "status",
+
+      title:
+        "Status",
+
       align:
         "center",
     },
 
     {
-      key: "actions",
-      title: "Actions",
+      key:
+        "actions",
+
+      title:
+        "Actions",
+
       align:
         "center",
 
       render: (
         row,
-      ) => (
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "center",
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              navigate(
-                `/designations/${row.uuid}`,
-              )
-            }
-          >
-            <Eye
-              size={16}
-            />
-          </Button>
+      ) => {
+        const hasAnyAction =
+          canViewDesignation ||
+          canUpdateDesignation ||
+          canDeleteDesignation;
 
-          <Button
-            size="sm"
-            onClick={() =>
-              handleEdit(
-                row.uuid,
-              )
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              handleDelete(
-                row.uuid,
-              )
-            }
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              justifyContent:
+                "center",
+
+              gap: 8,
+            }}
           >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
+            {canViewDesignation && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`View ${row.name}`}
+                title="View designation"
+                onClick={() =>
+                  navigate(
+                    `/designations/${row.uuid}`,
+                  )
+                }
+              >
+                <Eye
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {canUpdateDesignation && (
+              <Button
+                size="sm"
+                aria-label={`Edit ${row.name}`}
+                title="Edit designation"
+                onClick={() =>
+                  void handleEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                <SquarePen
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {canDeleteDesignation && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={`Delete ${row.name}`}
+                title="Delete designation"
+                onClick={() =>
+                  void handleDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                <Trash2
+                  size={16}
+                />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
 
   return (
     <>
@@ -365,6 +501,7 @@ const DesignationPage = () => {
             style={{
               display:
                 "flex",
+
               gap: 12,
             }}
           >
@@ -379,16 +516,20 @@ const DesignationPage = () => {
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleOpenCreate
-              }
-            >
-              Add Designation
-            </Button>
+
+            {canCreateDesignation && (
+              <Button
+                onClick={
+                  handleOpenCreate
+                }
+              >
+                Add Designation
+              </Button>
+            )}
           </div>
         }
       />
+
 
       <Card>
         <DataTable
@@ -407,41 +548,46 @@ const DesignationPage = () => {
         />
       </Card>
 
-      <DesignationModal
-        title={
-          editUuid
-            ? "Edit Designation"
-            : "Create Designation"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        open={
-          open
-        }
-        loading={
-          saving
-        }
-        departments={
-          departments
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleClose
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
+
+      {(canCreateDesignation ||
+        canUpdateDesignation) && (
+        <DesignationModal
+          title={
+            editUuid
+              ? "Edit Designation"
+              : "Create Designation"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          departments={
+            departments
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleClose
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default DesignationPage;
