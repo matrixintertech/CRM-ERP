@@ -45,6 +45,7 @@ const moduleOptions = [
   "VENDOR",
   "PROJECT",
   "PROJECT_CATEGORY",
+  "PROJECT_ROLE",
   "TASK",
   "INVENTORY",
   "PURCHASE",
