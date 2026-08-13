@@ -429,7 +429,7 @@ export class AuthService {
     });
   }
 
- async profile(user: any) {
+async profile(user: any) {
   /*
    * Existing centralized authorization
    * engine se fresh effective grants lo.
@@ -437,7 +437,7 @@ export class AuthService {
    * Company user:
    * RolePermission + UserPermission
    *
-   * Platform owner:
+   * Platform user:
    * PlatformRolePermission
    */
   const authorization =
@@ -445,6 +445,88 @@ export class AuthService {
       .getAuthorization(
         user.id,
       );
+
+
+  /*
+   * Authorization boundary:
+   *
+   * PLATFORM
+   * → platform-level data/authorization
+   *
+   * COMPANY
+   * → tenant/company-level data
+   *
+   * Access portal:
+   *
+   * PLATFORM
+   * → platform administration UI
+   *
+   * COMPANY
+   * → internal company UI
+   *
+   * CLIENT
+   * → client portal
+   *
+   * VENDOR
+   * → vendor portal
+   */
+  let authorizationBoundary:
+    "PLATFORM" | "COMPANY";
+
+  let accessPortal:
+    | "PLATFORM"
+    | "COMPANY"
+    | "CLIENT"
+    | "VENDOR";
+
+
+  switch (user.userType) {
+    case "PLATFORM_OWNER":
+      authorizationBoundary =
+        "PLATFORM";
+
+      accessPortal =
+        "PLATFORM";
+
+      break;
+
+
+    case "COMPANY_ADMIN":
+    case "EMPLOYEE":
+      authorizationBoundary =
+        "COMPANY";
+
+      accessPortal =
+        "COMPANY";
+
+      break;
+
+
+    case "CLIENT":
+      authorizationBoundary =
+        "COMPANY";
+
+      accessPortal =
+        "CLIENT";
+
+      break;
+
+
+    case "VENDOR":
+      authorizationBoundary =
+        "COMPANY";
+
+      accessPortal =
+        "VENDOR";
+
+      break;
+
+
+    default:
+      throw new UnauthorizedException(
+        "Unsupported user access portal.",
+      );
+  }
 
 
   /*
@@ -523,6 +605,12 @@ export class AuthService {
 
     userType:
       user.userType,
+
+
+    authorizationBoundary,
+
+    accessPortal,
+
 
     displayName:
       user.displayName,

@@ -4,13 +4,16 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  useAuth,
+} from "@/app/providers/AuthProvider";
+
+import {
   notify,
 } from "@/shared/utils/notify";
 
 import {
   getProfile,
 } from "../api/profile.api";
-
 
 
 export const PROFILE_QUERY_KEY = [
@@ -61,13 +64,28 @@ export const useProfile = () => {
 
 
   /*
+   * Authentication state.
+   *
+   * Profile query sirf authenticated
+   * session me run honi chahiye.
+   */
+  const {
+    isAuthenticated,
+  } = useAuth();
+
+
+  /*
    * Global authenticated-user profile.
    *
    * React Query same query key ko
    * poore application me share karega.
    *
-   * Isme effectivePermissions bhi
-   * available hongi.
+   * Includes:
+   *
+   * - authorizationBoundary
+   * - accessPortal
+   * - effectivePermissions
+   * - displayName
    */
   const profileQuery =
     useQuery({
@@ -77,22 +95,37 @@ export const useProfile = () => {
       queryFn:
         getProfile,
 
+      /*
+       * Login ke pehle profile API
+       * request nahi chalegi.
+       *
+       * Login hone par automatically
+       * active ho jayegi.
+       */
+      enabled:
+        isAuthenticated,
+
       staleTime:
         PROFILE_STALE_TIME,
 
       retry:
         false,
 
+      /*
+       * Another browser tab me
+       * permissions change hone ke baad
+       * focus par fresh profile.
+       */
       refetchOnWindowFocus:
         "always",
     });
 
 
   /*
-   * Profile ko explicitly load karo.
+   * Profile explicitly load karo.
    *
-   * Fresh cache available hai to
-   * unnecessary API request nahi hogi.
+   * Isko authenticated flows me hi
+   * call karna chahiye.
    */
   const fetchProfile =
     async () => {
@@ -133,8 +166,12 @@ export const useProfile = () => {
   /*
    * Force fresh profile.
    *
-   * Useful when current logged-in
-   * user's role/direct permissions
+   * Useful when current user's:
+   *
+   * - role permissions
+   * - direct permissions
+   * - profile/session capabilities
+   *
    * change.
    */
   const refreshProfile =
@@ -143,7 +180,11 @@ export const useProfile = () => {
         .invalidateQueries({
           queryKey:
             PROFILE_QUERY_KEY,
+
+          exact:
+            true,
         });
+
 
       return queryClient
         .fetchQuery({
@@ -153,30 +194,53 @@ export const useProfile = () => {
           queryFn:
             getProfile,
 
+          /*
+           * Invalidated query ko
+           * fresh API se load karna hai.
+           */
           staleTime:
-            PROFILE_STALE_TIME,
+            0,
         });
     };
 
 
   /*
    * Logout/session cleanup.
+   *
+   * Old user's:
+   *
+   * - portal
+   * - permissions
+   * - profile
+   *
+   * next login me reuse nahi honge.
    */
-  const clearProfile = () => {
-    queryClient.removeQueries({
-      queryKey:
-        PROFILE_QUERY_KEY,
-    });
-  };
+  const clearProfile =
+    () => {
+      queryClient.removeQueries({
+        queryKey:
+          PROFILE_QUERY_KEY,
+
+        exact:
+          true,
+      });
+    };
 
 
   return {
+    /*
+     * Query state.
+     */
     loading:
       profileQuery.isLoading,
 
     fetching:
       profileQuery.isFetching,
 
+
+    /*
+     * Current session profile.
+     */
     profile:
       profileQuery.data ??
       null,
@@ -184,6 +248,10 @@ export const useProfile = () => {
     error:
       profileQuery.error,
 
+
+    /*
+     * Query actions.
+     */
     refetch:
       profileQuery.refetch,
 

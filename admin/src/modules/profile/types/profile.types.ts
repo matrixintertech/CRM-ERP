@@ -13,6 +13,18 @@ export type UserType =
   | "CLIENT";
 
 
+export type AuthorizationBoundary =
+  | "PLATFORM"
+  | "COMPANY";
+
+
+export type AccessPortal =
+  | "PLATFORM"
+  | "COMPANY"
+  | "CLIENT"
+  | "VENDOR";
+
+
 export type PermissionType =
   | "COMPANY"
   | "PLATFORM";
@@ -125,18 +137,53 @@ export interface UserProfile {
   userType:
     UserType;
 
+
+  /*
+   * Authorization data boundary.
+   *
+   * PLATFORM
+   * → platform-level authorization
+   *
+   * COMPANY
+   * → tenant/company-level authorization
+   */
+  authorizationBoundary:
+    AuthorizationBoundary;
+
+
+  /*
+   * Application area shown to
+   * the logged-in user.
+   *
+   * PLATFORM
+   * → platform administration
+   *
+   * COMPANY
+   * → internal company application
+   *
+   * CLIENT
+   * → client portal
+   *
+   * VENDOR
+   * → vendor portal
+   */
+  accessPortal:
+    AccessPortal;
+
+
   displayName?: string | null;
   profilePhoto?: string | null;
 
   status:
     UserStatus;
 
+
   /*
    * Logged-in user's current effective
    * authorization grants.
    *
    * ROLE + USER for company users.
-   * PLATFORM_ROLE for platform owner.
+   * PLATFORM_ROLE for platform users.
    */
   effectivePermissions:
     EffectivePermission[];

@@ -37,6 +37,7 @@ const Sidebar = ({
 }: Props) => {
   const {
     profile,
+    portal,
     hasPermission,
   } = useAuthorization();
 
@@ -44,18 +45,56 @@ const Sidebar = ({
   /*
    * Frontend navigation visibility only.
    *
+   * Portal:
+   * decides which application area
+   * user belongs to.
+   *
+   * Permission:
+   * decides what user can access
+   * inside that portal.
+   *
    * Backend guards/policies remain
-   * the final authorization authority.
+   * final authorization authority.
    */
   const canAccessItem = (
     item: MenuItem,
   ): boolean => {
     /*
-     * Existing account/category based
-     * navigation rules.
+     * Portal based application
+     * area restriction.
+     *
+     * No portals configured:
+     * shared item.
      *
      * Example:
-     * PLATFORM_OWNER-only platform menu.
+     *
+     * ["PLATFORM"]
+     * ["COMPANY"]
+     * ["CLIENT"]
+     * ["VENDOR"]
+     */
+    if (
+      item.portals &&
+      item.portals.length > 0
+    ) {
+      if (
+        !portal ||
+        !item.portals.includes(
+          portal,
+        )
+      ) {
+        return false;
+      }
+    }
+
+
+    /*
+     * Temporary legacy
+     * userType support.
+     *
+     * Menu migration complete hone
+     * ke baad is block ko remove
+     * kar denge.
      */
     if (
       item.userTypes &&
@@ -75,8 +114,8 @@ const Sidebar = ({
     /*
      * Permission based navigation.
      *
-     * If multiple permissions are
-     * configured, all are required.
+     * Multiple permissions configured
+     * hain to all required hain.
      */
     if (
       item.permissions &&
@@ -214,8 +253,9 @@ const Sidebar = ({
           {menu.map(
             (item) => {
               /*
-               * Parent itself restricted hai
-               * to usko hide karo.
+               * Parent itself portal /
+               * permission restricted hai
+               * to hide karo.
                */
               if (
                 !canAccessItem(
@@ -276,6 +316,7 @@ const Sidebar = ({
                         />
                       )}
 
+
                       <span>
                         {
                           item.title
@@ -288,8 +329,9 @@ const Sidebar = ({
 
 
               /*
-               * Permission/userType ke
-               * according children filter.
+               * Portal + permission
+               * ke according children
+               * filter karo.
                */
               const visibleChildren =
                 item.children.filter(
@@ -303,9 +345,9 @@ const Sidebar = ({
 
 
               /*
-               * Agar group ka ek bhi child
-               * visible nahi hai to parent
-               * group bhi hide karo.
+               * Group ka koi child
+               * visible nahi hai to
+               * parent bhi hide.
                */
               if (
                 visibleChildren.length ===
@@ -340,6 +382,7 @@ const Sidebar = ({
                         }
                       />
                     )}
+
 
                     <span>
                       {
@@ -398,6 +441,7 @@ const Sidebar = ({
                                 }
                               />
                             )}
+
 
                             <span>
                               {

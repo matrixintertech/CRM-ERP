@@ -7,6 +7,8 @@ import {
 } from "@/modules/profile/hooks/useProfile";
 
 import type {
+  AccessPortal,
+  AuthorizationBoundary,
   PermissionScope,
 } from "@/modules/profile/types/profile.types";
 
@@ -17,6 +19,52 @@ export const useAuthorization = () => {
     loading,
     fetching,
   } = useProfile();
+
+
+  /*
+   * Current authorization boundary.
+   *
+   * PLATFORM
+   * → platform-level authorization
+   *
+   * COMPANY
+   * → tenant/company-level authorization
+   */
+  const boundary:
+    AuthorizationBoundary | null =
+    profile?.authorizationBoundary ??
+    null;
+
+
+  /*
+   * Current application portal.
+   *
+   * PLATFORM
+   * COMPANY
+   * CLIENT
+   * VENDOR
+   */
+  const portal:
+    AccessPortal | null =
+    profile?.accessPortal ??
+    null;
+
+
+  const isPlatform =
+    portal ===
+    "PLATFORM";
+
+  const isCompany =
+    portal ===
+    "COMPANY";
+
+  const isClient =
+    portal ===
+    "CLIENT";
+
+  const isVendor =
+    portal ===
+    "VENDOR";
 
 
   /*
@@ -143,13 +191,6 @@ export const useAuthorization = () => {
 
   /*
    * Check exact company scope.
-   *
-   * Example:
-   *
-   * hasScope(
-   *   "company.department.update",
-   *   "COMPANY",
-   * )
    */
   const hasScope = (
     permissionCode: string,
@@ -171,13 +212,6 @@ export const useAuthorization = () => {
   /*
    * Get all effective scopes for
    * one company permission.
-   *
-   * Example:
-   *
-   * [
-   *   "ORGANIZATION_UNIT",
-   *   "COMPANY",
-   * ]
    */
   const getPermissionScopes = (
     permissionCode: string,
@@ -227,6 +261,39 @@ export const useAuthorization = () => {
   };
 
 
+  /*
+   * Portal helper.
+   *
+   * Sidebar/routes ke liye useful.
+   */
+  const isPortal = (
+    requiredPortal:
+      AccessPortal,
+  ): boolean => {
+    return (
+      portal ===
+      requiredPortal
+    );
+  };
+
+
+  /*
+   * Boundary helper.
+   *
+   * Backend/data-boundary specific
+   * frontend UX checks ke liye.
+   */
+  const isBoundary = (
+    requiredBoundary:
+      AuthorizationBoundary,
+  ): boolean => {
+    return (
+      boundary ===
+      requiredBoundary
+    );
+  };
+
+
   return {
     /*
      * Current session/profile.
@@ -235,6 +302,21 @@ export const useAuthorization = () => {
 
     loading,
     fetching,
+
+
+    /*
+     * Application context.
+     */
+    boundary,
+    portal,
+
+    isPlatform,
+    isCompany,
+    isClient,
+    isVendor,
+
+    isPortal,
+    isBoundary,
 
 
     /*
