@@ -63,7 +63,12 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/settings/organization-units",
-    element: <OrganizationUnitPage />,
+
+     element: (
+    <PermissionRoute permission="company.organization_unit.view">
+      <OrganizationUnitPage />
+    </PermissionRoute>
+  ),
   },
 
   {

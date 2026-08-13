@@ -238,6 +238,9 @@ export const menu: MenuItem[] = [
         title: "Organization Unit",
         path: "/settings/organization-units",
         icon: Building,
+        permissions: [
+          "company.organization_unit.view",
+        ],
       },
 
       {

@@ -7,6 +7,10 @@ import {
 } from "@/shared/hooks/useDocumentTitle";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -38,6 +42,7 @@ import type {
   OrganizationUnitFormData,
   UpdateOrganizationUnitDto,
 } from "../types/organization-unit.types";
+
 
 const createDefaultForm = (
   companyUuid?: string,
@@ -84,13 +89,42 @@ const createDefaultForm = (
     "ACTIVE",
 });
 
+
 const OrganizationUnitPage = () => {
   const navigate =
     useNavigate();
 
+
   useDocumentTitle(
     "Organization Units",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canViewOrganizationUnit =
+    hasPermission(
+      "company.organization_unit.view",
+    );
+
+  const canCreateOrganizationUnit =
+    hasPermission(
+      "company.organization_unit.create",
+    );
+
+  const canUpdateOrganizationUnit =
+    hasPermission(
+      "company.organization_unit.update",
+    );
+
+  const canDeleteOrganizationUnit =
+    hasPermission(
+      "company.organization_unit.delete",
+    );
+
 
   const {
     companyId:
@@ -98,6 +132,7 @@ const OrganizationUnitPage = () => {
   } = useParams<{
     companyId: string;
   }>();
+
 
   const {
     loading,
@@ -115,10 +150,12 @@ const OrganizationUnitPage = () => {
     companyUuid,
   });
 
+
   const [
     open,
     setOpen,
   ] = useState(false);
+
 
   const [
     editUuid,
@@ -126,6 +163,7 @@ const OrganizationUnitPage = () => {
   ] = useState<
     string | null
   >(null);
+
 
   const [
     formData,
@@ -137,6 +175,7 @@ const OrganizationUnitPage = () => {
           companyUuid,
         ),
     );
+
 
   const resetForm = () => {
     setEditUuid(
@@ -150,14 +189,23 @@ const OrganizationUnitPage = () => {
     );
   };
 
+
   const handleOpenCreate =
     () => {
+      if (
+        !canCreateOrganizationUnit
+      ) {
+        return;
+      }
+
+
       resetForm();
 
       setOpen(
         true,
       );
     };
+
 
   const handleCloseModal =
     () => {
@@ -168,8 +216,29 @@ const OrganizationUnitPage = () => {
       resetForm();
     };
 
+
   const handleSubmit =
     async () => {
+      /*
+       * Frontend UX check only.
+       * Backend remains final authority.
+       */
+      if (
+        editUuid &&
+        !canUpdateOrganizationUnit
+      ) {
+        return;
+      }
+
+
+      if (
+        !editUuid &&
+        !canCreateOrganizationUnit
+      ) {
+        return;
+      }
+
+
       try {
         if (editUuid) {
           const payload:
@@ -237,6 +306,7 @@ const OrganizationUnitPage = () => {
               formData.status ??
               "ACTIVE",
           };
+
 
           await update(
             editUuid,
@@ -307,13 +377,17 @@ const OrganizationUnitPage = () => {
               "ACTIVE",
           };
 
+
           await create(
             payload,
           );
         }
 
+
         handleCloseModal();
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to save organization unit:",
           error,
@@ -321,23 +395,34 @@ const OrganizationUnitPage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateOrganizationUnit
+      ) {
+        return;
+      }
+
+
       try {
         const unit =
           await fetchOrganizationUnit(
             uuid,
           );
 
+
         if (!unit) {
           return;
         }
 
+
         setEditUuid(
           uuid,
         );
+
 
         setFormData({
           companyUuid,
@@ -390,10 +475,13 @@ const OrganizationUnitPage = () => {
             unit.status,
         });
 
+
         setOpen(
           true,
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to load organization unit:",
           error,
@@ -401,30 +489,43 @@ const OrganizationUnitPage = () => {
       }
     };
 
+
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteOrganizationUnit
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this organization unit?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to delete organization unit:",
           error,
         );
       }
     };
+
 
   const columns:
     DataTableColumn<OrganizationUnit>[] = [
@@ -548,65 +649,90 @@ const OrganizationUnitPage = () => {
 
       render: (
         row,
-      ) => (
-        <div
-          style={{
-            display:
-              "flex",
+      ) => {
+        const hasAnyAction =
+          canViewOrganizationUnit ||
+          canUpdateOrganizationUnit ||
+          canDeleteOrganizationUnit;
 
-            justifyContent:
-              "center",
 
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            variant="secondary"
-            aria-label={`View ${row.name}`}
-            onClick={() =>
-              navigate(
-                `/companies/${companyUuid}/organization/${row.uuid}`,
-              )
-            }
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              justifyContent:
+                "center",
+
+              gap: 8,
+            }}
           >
-            <Eye
-              size={16}
-            />
-          </Button>
+            {canViewOrganizationUnit && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`View ${row.name}`}
+                title="View Organization Unit"
+                onClick={() =>
+                  navigate(
+                    `/companies/${companyUuid}/organization/${row.uuid}`,
+                  )
+                }
+              >
+                <Eye
+                  size={16}
+                />
+              </Button>
+            )}
 
-          <Button
-            size="sm"
-            aria-label={`Edit ${row.name}`}
-            onClick={() =>
-              handleEdit(
-                row.uuid,
-              )
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
 
-          <Button
-            size="sm"
-            variant="danger"
-            aria-label={`Delete ${row.name}`}
-            onClick={() =>
-              handleDelete(
-                row.uuid,
-              )
-            }
-          >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
+            {canUpdateOrganizationUnit && (
+              <Button
+                size="sm"
+                aria-label={`Edit ${row.name}`}
+                title="Edit Organization Unit"
+                onClick={() =>
+                  void handleEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                <SquarePen
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {canDeleteOrganizationUnit && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={`Delete ${row.name}`}
+                title="Delete Organization Unit"
+                onClick={() =>
+                  void handleDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                <Trash2
+                  size={16}
+                />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
 
   return (
     <>
@@ -619,8 +745,7 @@ const OrganizationUnitPage = () => {
               display:
                 "flex",
 
-              gap:
-                12,
+              gap: 12,
             }}
           >
             <Button
@@ -634,20 +759,24 @@ const OrganizationUnitPage = () => {
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleOpenCreate
-              }
-            >
-              <Plus
-                size={18}
-              />
 
-              Add Unit
-            </Button>
+            {canCreateOrganizationUnit && (
+              <Button
+                onClick={
+                  handleOpenCreate
+                }
+              >
+                <Plus
+                  size={18}
+                />
+
+                Add Unit
+              </Button>
+            )}
           </div>
         }
       />
+
 
       <Card>
         <DataTable
@@ -666,41 +795,46 @@ const OrganizationUnitPage = () => {
         />
       </Card>
 
-      <OrganizationUnitModal
-        title={
-          editUuid
-            ? "Edit Organization Unit"
-            : "Create Organization Unit"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        open={
-          open
-        }
-        loading={
-          saving
-        }
-        organizationUnits={
-          organizationUnits
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleCloseModal
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
+
+      {(canCreateOrganizationUnit ||
+        canUpdateOrganizationUnit) && (
+        <OrganizationUnitModal
+          title={
+            editUuid
+              ? "Edit Organization Unit"
+              : "Create Organization Unit"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          organizationUnits={
+            organizationUnits
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleCloseModal
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default OrganizationUnitPage;
