@@ -14,7 +14,7 @@ interface User {
 
   uuid?: string;
 
-  displayName: string;
+  displayName?: string | null;
 
   email?: string | null;
   mobile?: string | null;
