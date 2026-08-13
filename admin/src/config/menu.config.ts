@@ -248,6 +248,9 @@ export const menu: MenuItem[] = [
         title: "Roles",
         path: "/settings/roles",
         icon: ShieldCheck,
+         permissions: [
+          "company.role.view",
+        ],
       },
 
       {

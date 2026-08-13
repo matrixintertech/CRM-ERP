@@ -11,6 +11,10 @@ import {
 } from "@/shared/hooks/useDocumentTitle";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
   KeyRound,
   SquarePen,
   Trash2,
@@ -37,6 +41,7 @@ import type {
   UpdateRoleDto,
 } from "../types/role.types";
 
+
 const createDefaultForm =
   (): RoleFormData => ({
     name: "",
@@ -45,13 +50,50 @@ const createDefaultForm =
     status: "ACTIVE",
   });
 
+
 const RolePage = () => {
   const navigate =
     useNavigate();
 
+
   useDocumentTitle(
     "User Roles",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canViewRole =
+    hasPermission(
+      "company.role.view",
+    );
+
+  const canCreateRole =
+    hasPermission(
+      "company.role.create",
+    );
+
+  const canUpdateRole =
+    hasPermission(
+      "company.role.update",
+    );
+
+  const canDeleteRole =
+    hasPermission(
+      "company.role.delete",
+    );
+
+
+  /*
+   * Role permission assignment
+   * role bundle ko modify karta hai.
+   */
+  const canManageRolePermissions =
+    canUpdateRole;
+
 
   const {
     loading,
@@ -66,10 +108,12 @@ const RolePage = () => {
     saving,
   } = useRole();
 
+
   const [
     open,
     setOpen,
   ] = useState(false);
+
 
   const [
     editUuid,
@@ -78,6 +122,7 @@ const RolePage = () => {
     string | null
   >(null);
 
+
   const [
     formData,
     setFormData,
@@ -85,6 +130,7 @@ const RolePage = () => {
     useState<RoleFormData>(
       createDefaultForm,
     );
+
 
   const resetForm = () => {
     setEditUuid(
@@ -96,6 +142,7 @@ const RolePage = () => {
     );
   };
 
+
   const handleClose =
     () => {
       setOpen(
@@ -105,8 +152,16 @@ const RolePage = () => {
       resetForm();
     };
 
+
   const handleCreateOpen =
     () => {
+      if (
+        !canCreateRole
+      ) {
+        return;
+      }
+
+
       resetForm();
 
       setOpen(
@@ -114,8 +169,25 @@ const RolePage = () => {
       );
     };
 
+
   const handleSubmit =
     async () => {
+      if (
+        editUuid &&
+        !canUpdateRole
+      ) {
+        return;
+      }
+
+
+      if (
+        !editUuid &&
+        !canCreateRole
+      ) {
+        return;
+      }
+
+
       try {
         if (editUuid) {
           const payload:
@@ -136,6 +208,7 @@ const RolePage = () => {
             status:
               formData.status,
           };
+
 
           await update(
             editUuid,
@@ -161,8 +234,11 @@ const RolePage = () => {
           });
         }
 
+
         handleClose();
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
@@ -170,23 +246,34 @@ const RolePage = () => {
       }
     };
 
+
   const handleEdit =
     async (
       uuid: string,
     ) => {
+      if (
+        !canUpdateRole
+      ) {
+        return;
+      }
+
+
       try {
         const role =
           await fetchRole(
             uuid,
           );
 
+
         if (!role) {
           return;
         }
 
+
         setEditUuid(
           uuid,
         );
+
 
         setFormData({
           name:
@@ -203,47 +290,81 @@ const RolePage = () => {
             role.status,
         });
 
+
         setOpen(
           true,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
+
+  const handleManagePermissions =
+    (
+      uuid: string,
+    ) => {
+      if (
+        !canManageRolePermissions
+      ) {
+        return;
+      }
+
+
+      navigate(
+        `/settings/roles/${uuid}/permissions`,
+      );
+    };
+
 
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDeleteRole
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this role?",
         );
 
+
       if (!confirmed) {
         return;
       }
+
 
       try {
         await remove(
           uuid,
         );
-      } catch (error: any) {
+      } catch (
+        error: any
+      ) {
         console.error(
           error?.response?.data ??
             error,
         );
       }
     };
+
 
   const columns:
     DataTableColumn<Role>[] = [
     {
       key:
         "name",
+
       title:
         "Role",
     },
@@ -251,6 +372,7 @@ const RolePage = () => {
     {
       key:
         "code",
+
       title:
         "Code",
     },
@@ -258,6 +380,7 @@ const RolePage = () => {
     {
       key:
         "description",
+
       title:
         "Description",
 
@@ -271,8 +394,10 @@ const RolePage = () => {
     {
       key:
         "employees",
+
       title:
         "Employees",
+
       align:
         "center",
 
@@ -287,8 +412,10 @@ const RolePage = () => {
     {
       key:
         "isSystem",
+
       title:
         "Type",
+
       align:
         "center",
 
@@ -303,8 +430,10 @@ const RolePage = () => {
     {
       key:
         "status",
+
       title:
         "Status",
+
       align:
         "center",
     },
@@ -312,73 +441,107 @@ const RolePage = () => {
     {
       key:
         "actions",
+
       title:
         "Actions",
+
       align:
         "center",
 
       render: (
         row,
-      ) => (
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "center",
-            gap: 8,
-          }}
-        >
-          <Button
-            size="sm"
-            aria-label="Assign permissions"
-            onClick={() =>
-              navigate(
-                `/settings/roles/${row.uuid}/permissions`,
-              )
-            }
-          >
-            <KeyRound
-              size={16}
-            />
-          </Button>
+      ) => {
+        const showEdit =
+          canUpdateRole &&
+          !row.isSystem;
 
-          <Button
-            size="sm"
-            disabled={
-              row.isSystem
-            }
-            onClick={() =>
-              handleEdit(
-                row.uuid,
-              )
-            }
-          >
-            <SquarePen
-              size={16}
-            />
-          </Button>
+        const showDelete =
+          canDeleteRole &&
+          !row.isSystem;
 
-          <Button
-            size="sm"
-            variant="danger"
-            disabled={
-              row.isSystem
-            }
-            onClick={() =>
-              handleDelete(
-                row.uuid,
-              )
-            }
+
+        const hasAnyAction =
+          canManageRolePermissions ||
+          showEdit ||
+          showDelete;
+
+
+        if (!hasAnyAction) {
+          return "-";
+        }
+
+
+        return (
+          <div
+            style={{
+              display:
+                "flex",
+
+              justifyContent:
+                "center",
+
+              gap: 8,
+            }}
           >
-            <Trash2
-              size={16}
-            />
-          </Button>
-        </div>
-      ),
+            {canManageRolePermissions && (
+              <Button
+                size="sm"
+                aria-label={`Assign permissions to ${row.name}`}
+                title="Assign Permissions"
+                onClick={() =>
+                  handleManagePermissions(
+                    row.uuid,
+                  )
+                }
+              >
+                <KeyRound
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {showEdit && (
+              <Button
+                size="sm"
+                aria-label={`Edit ${row.name}`}
+                title="Edit Role"
+                onClick={() =>
+                  void handleEdit(
+                    row.uuid,
+                  )
+                }
+              >
+                <SquarePen
+                  size={16}
+                />
+              </Button>
+            )}
+
+
+            {showDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={`Delete ${row.name}`}
+                title="Delete Role"
+                onClick={() =>
+                  void handleDelete(
+                    row.uuid,
+                  )
+                }
+              >
+                <Trash2
+                  size={16}
+                />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
 
   return (
     <>
@@ -390,6 +553,7 @@ const RolePage = () => {
             style={{
               display:
                 "flex",
+
               gap: 12,
             }}
           >
@@ -404,16 +568,20 @@ const RolePage = () => {
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleCreateOpen
-              }
-            >
-              Add Role
-            </Button>
+
+            {canCreateRole && (
+              <Button
+                onClick={
+                  handleCreateOpen
+                }
+              >
+                Add Role
+              </Button>
+            )}
           </div>
         }
       />
+
 
       <Card>
         <DataTable
@@ -432,38 +600,43 @@ const RolePage = () => {
         />
       </Card>
 
-      <RoleModal
-        title={
-          editUuid
-            ? "Edit Role"
-            : "Create Role"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        open={
-          open
-        }
-        loading={
-          saving
-        }
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleClose
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
+
+      {(canCreateRole ||
+        canUpdateRole) && (
+        <RoleModal
+          title={
+            editUuid
+              ? "Edit Role"
+              : "Create Role"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleClose
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default RolePage;

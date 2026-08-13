@@ -181,12 +181,21 @@ export const protectedRoutes: AppRoute[] = [
 
   {
     path: "/settings/roles",
-    element: <RoleListPage />,
+     element: (
+    <PermissionRoute permission="company.role.view">
+      <RoleListPage />
+    </PermissionRoute>
+  ),
   },
 
   {
     path: "/settings/roles/:uuid/permissions",
-    element: <RolePermissionPage />,
+     element: (
+    <PermissionRoute permission="company.role.view">
+      <RolePermissionPage />
+    </PermissionRoute>
+  ),
+    
   },
 
   {
