@@ -10,14 +10,21 @@ const BASE_URL =
 
 
 interface CompanyGroupedPermissionsResponse {
-  permissionGroups: PermissionGroup[];
+  permissionGroups:
+    PermissionGroup[];
 }
 
 
 export const getCompanyGroupedPermissions =
   async (): Promise<PermissionGroup[]> => {
     const { data } =
-      await api.get(
+      await api.get<{
+        data?:
+          CompanyGroupedPermissionsResponse;
+
+        permissionGroups?:
+          PermissionGroup[];
+      }>(
         `${BASE_URL}/grouped`,
       );
 
