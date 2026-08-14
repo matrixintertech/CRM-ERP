@@ -105,27 +105,35 @@ export const protectedRoutes:
    */
 
   {
-    path:
-      "/companies",
+  path:
+    "/companies",
 
-    element: (
-      <PortalRoute portal="PLATFORM">
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.company.view"
+      >
         <CompanyListPage />
-      </PortalRoute>
-    ),
-  },
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
 
 
-  {
-    path:
-      "/companies/create",
+{
+  path:
+    "/companies/create",
 
-    element: (
-      <PortalRoute portal="PLATFORM">
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.company.create"
+      >
         <CompanyCreatePage />
-      </PortalRoute>
-    ),
-  },
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
 
 
   /*
@@ -156,28 +164,36 @@ export const protectedRoutes:
   },
 
 
-  {
-    path:
-      "/modules",
+{
+  path:
+    "/modules",
 
-    element: (
-      <PortalRoute portal="PLATFORM">
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.module.view"
+      >
         <ModuleListPage />
-      </PortalRoute>
-    ),
-  },
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
 
 
-  {
-    path:
-      "/subscription-plans",
+{
+  path:
+    "/subscription-plans",
 
-    element: (
-      <PortalRoute portal="PLATFORM">
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.subscription_plan.view"
+      >
         <SubscriptionPlanListPage />
-      </PortalRoute>
-    ),
-  },
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
 
 
   {
