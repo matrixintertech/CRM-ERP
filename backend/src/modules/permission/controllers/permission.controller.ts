@@ -54,7 +54,7 @@ import {
 @ApiBearerAuth("access-token")
 @UseGuards(
   JwtAuthGuard,
-  PermissionGuard,
+ 
 )
 @Controller("platform/permissions")
 export class PermissionController {
@@ -119,9 +119,9 @@ export class PermissionController {
    * pehle rakho.
    */
   @Get("grouped")
-  @RequirePermission(
-    "platform.permission.view",
-  )
+  // @RequirePermission(
+  //   "platform.permission.view",
+  // )
   @ApiOperation({
     summary:
       "Get Grouped Permissions",
