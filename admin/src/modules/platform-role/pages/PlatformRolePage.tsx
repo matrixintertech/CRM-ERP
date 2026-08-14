@@ -11,6 +11,10 @@ import {
   useDocumentTitle,
 } from "@/shared/hooks/useDocumentTitle";
 
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
@@ -35,10 +39,48 @@ import type {
   PlatformRoleStatus,
 } from "../types/platform-role.types";
 
+
 const PlatformRolePage = () => {
   useDocumentTitle(
     "Platform Roles",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canCreate =
+    hasPermission(
+      "platform.platform_role.create",
+    );
+
+  const canUpdate =
+    hasPermission(
+      "platform.platform_role.update",
+    );
+
+  const canDelete =
+    hasPermission(
+      "platform.platform_role.delete",
+    );
+
+  const canViewPermissionCatalog =
+    hasPermission(
+      "platform.permission.view",
+    );
+
+  /*
+   * Permission assignment role ko
+   * modify karta hai.
+   *
+   * Catalog bhi read karna required hai.
+   */
+  const canManagePermissions =
+    canUpdate &&
+    canViewPermissionCatalog;
+
 
   const [
     searchValue,
@@ -57,9 +99,11 @@ const PlatformRolePage = () => {
     setQuery,
   ] = useState<{
     search?: string;
+
     status?:
       PlatformRoleStatus;
   }>({});
+
 
   const {
     roles,
@@ -83,13 +127,18 @@ const PlatformRolePage = () => {
     query,
   );
 
+
   /*
    * PLATFORM permissions only.
+   *
+   * Permission catalog tabhi load
+   * hoga jab current user role
+   * permissions manage kar sakta hai.
    */
   const groupedPermissionsQuery =
     useQuery({
       queryKey: [
-        "grouped-permissions",
+        "platform-grouped-permissions",
         "PLATFORM",
       ],
 
@@ -98,9 +147,13 @@ const PlatformRolePage = () => {
           "PLATFORM",
         ),
 
+      enabled:
+        canManagePermissions,
+
       staleTime:
         5 * 60 * 1000,
     });
+
 
   const allPermissions =
     useMemo(
@@ -117,6 +170,7 @@ const PlatformRolePage = () => {
       ],
     );
 
+
   /*
    * Create/Edit modal state.
    */
@@ -131,6 +185,7 @@ const PlatformRolePage = () => {
   ] = useState<
     PlatformRole | null
   >(null);
+
 
   /*
    * Permission modal state.
@@ -154,6 +209,7 @@ const PlatformRolePage = () => {
     PlatformRolePermissionsResponse | null
   >(null);
 
+
   /*
    * Search/filter.
    */
@@ -169,6 +225,7 @@ const PlatformRolePage = () => {
     });
   };
 
+
   const handleReset = () => {
     setSearchValue(
       "",
@@ -181,10 +238,15 @@ const PlatformRolePage = () => {
     setQuery({});
   };
 
+
   /*
    * Create role.
    */
   const handleCreate = () => {
+    if (!canCreate) {
+      return;
+    }
+
     setSelectedRole(
       null,
     );
@@ -194,6 +256,7 @@ const PlatformRolePage = () => {
     );
   };
 
+
   /*
    * Edit role.
    */
@@ -201,6 +264,10 @@ const PlatformRolePage = () => {
     async (
       uuid: string,
     ) => {
+      if (!canUpdate) {
+        return;
+      }
+
       setSelectedRole(
         null,
       );
@@ -225,6 +292,7 @@ const PlatformRolePage = () => {
       }
     };
 
+
   /*
    * Create/update submit.
    */
@@ -233,20 +301,26 @@ const PlatformRolePage = () => {
       formData:
         PlatformRoleFormData,
     ) => {
-      if (
-        selectedRole
-      ) {
+      if (selectedRole) {
+        if (!canUpdate) {
+          return;
+        }
+
         await updateRole(
           selectedRole.uuid,
           {
             name:
-              formData.name,
+              formData.name
+                .trim(),
 
             code:
-              formData.code,
+              formData.code
+                .trim()
+                .toUpperCase(),
 
             description:
-              formData.description ||
+              formData.description
+                ?.trim() ||
               undefined,
 
             status:
@@ -254,19 +328,24 @@ const PlatformRolePage = () => {
           },
         );
       } else {
+        if (!canCreate) {
+          return;
+        }
+
         await createRole({
           name:
-            formData.name,
+            formData.name
+              .trim(),
 
           code:
-            formData.code,
+            formData.code
+              .trim()
+              .toUpperCase(),
 
           description:
-            formData.description ||
+            formData.description
+              ?.trim() ||
             undefined,
-
-          isSystem:
-            false,
         });
       }
 
@@ -279,6 +358,7 @@ const PlatformRolePage = () => {
       );
     };
 
+
   /*
    * Soft delete.
    */
@@ -288,6 +368,7 @@ const PlatformRolePage = () => {
         PlatformRole,
     ) => {
       if (
+        !canDelete ||
         role.isSystem
       ) {
         return;
@@ -298,9 +379,7 @@ const PlatformRolePage = () => {
           `Delete platform role "${role.name}"?`,
         );
 
-      if (
-        !confirmed
-      ) {
+      if (!confirmed) {
         return;
       }
 
@@ -309,6 +388,7 @@ const PlatformRolePage = () => {
       );
     };
 
+
   /*
    * Open permissions.
    */
@@ -316,6 +396,12 @@ const PlatformRolePage = () => {
     async (
       uuid: string,
     ) => {
+      if (
+        !canManagePermissions
+      ) {
+        return;
+      }
+
       setPermissionRoleUuid(
         uuid,
       );
@@ -352,10 +438,12 @@ const PlatformRolePage = () => {
       }
     };
 
+
   /*
    * Save permissions.
    *
-   * No scope for PlatformRole.
+   * PlatformRolePermission
+   * has no scope.
    */
   const handleSavePermissions =
     async (
@@ -363,7 +451,8 @@ const PlatformRolePage = () => {
         string[],
     ) => {
       if (
-        !permissionRoleUuid
+        !permissionRoleUuid ||
+        !canManagePermissions
       ) {
         return;
       }
@@ -393,9 +482,11 @@ const PlatformRolePage = () => {
       );
     };
 
+
   const roleModalLoading =
     creating ||
     updating;
+
 
   const permissionModalLoading =
     savingPermissions ||
@@ -408,9 +499,28 @@ const PlatformRolePage = () => {
       )
     );
 
+
   const backgroundFetching =
     fetching &&
     !loading;
+
+
+  /*
+   * Actions column tabhi dikhani hai
+   * jab current user ke paas at least
+   * ek role-management action ho.
+   */
+  const hasRoleActions =
+    canManagePermissions ||
+    canUpdate ||
+    canDelete;
+
+
+  const tableColumnCount =
+    hasRoleActions
+      ? 6
+      : 5;
+
 
   return (
     <>
@@ -418,16 +528,19 @@ const PlatformRolePage = () => {
         title="Platform Roles"
         subtitle="Manage platform-level roles and permissions"
         actions={
-          <Button
-            type="button"
-            onClick={
-              handleCreate
-            }
-          >
-            Add Platform Role
-          </Button>
+          canCreate ? (
+            <Button
+              type="button"
+              onClick={
+                handleCreate
+              }
+            >
+              Add Platform Role
+            </Button>
+          ) : undefined
         }
       />
+
 
       <Card>
         {/* Filters */}
@@ -544,6 +657,7 @@ const PlatformRolePage = () => {
           </Button>
         </div>
 
+
         {backgroundFetching && (
           <div
             style={{
@@ -560,6 +674,7 @@ const PlatformRolePage = () => {
             Updating platform roles...
           </div>
         )}
+
 
         {/* Role Table */}
 
@@ -620,16 +735,18 @@ const PlatformRolePage = () => {
                   Users
                 </th>
 
-                <th
-                  style={{
-                    ...headerCellStyle,
+                {hasRoleActions && (
+                  <th
+                    style={{
+                      ...headerCellStyle,
 
-                    textAlign:
-                      "right",
-                  }}
-                >
-                  Actions
-                </th>
+                      textAlign:
+                        "right",
+                    }}
+                  >
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -638,7 +755,7 @@ const PlatformRolePage = () => {
                 <tr>
                   <td
                     colSpan={
-                      6
+                      tableColumnCount
                     }
                     style={
                       emptyCellStyle
@@ -652,7 +769,7 @@ const PlatformRolePage = () => {
                 <tr>
                   <td
                     colSpan={
-                      6
+                      tableColumnCount
                     }
                     style={
                       emptyCellStyle
@@ -811,74 +928,82 @@ const PlatformRolePage = () => {
                         }
                       </td>
 
-                      <td
-                        style={{
-                          ...bodyCellStyle,
 
-                          textAlign:
-                            "right",
-                        }}
-                      >
-                        <div
+                      {hasRoleActions && (
+                        <td
                           style={{
-                            display:
-                              "flex",
+                            ...bodyCellStyle,
 
-                            justifyContent:
-                              "flex-end",
-
-                            flexWrap:
-                              "wrap",
-
-                            gap:
-                              8,
+                            textAlign:
+                              "right",
                           }}
                         >
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() =>
-                              handlePermissions(
-                                role.uuid,
-                              )
-                            }
-                          >
-                            Permissions
-                          </Button>
+                          <div
+                            style={{
+                              display:
+                                "flex",
 
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() =>
-                              handleEdit(
-                                role.uuid,
-                              )
-                            }
-                          >
-                            Edit
-                          </Button>
+                              justifyContent:
+                                "flex-end",
 
-                          {!role.isSystem && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="danger"
-                              disabled={
-                                deleting
-                              }
-                              onClick={() =>
-                                handleDelete(
-                                  role,
-                                )
-                              }
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </div>
-                      </td>
+                              flexWrap:
+                                "wrap",
+
+                              gap:
+                                8,
+                            }}
+                          >
+                            {canManagePermissions && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  handlePermissions(
+                                    role.uuid,
+                                  )
+                                }
+                              >
+                                Permissions
+                              </Button>
+                            )}
+
+                            {canUpdate && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  handleEdit(
+                                    role.uuid,
+                                  )
+                                }
+                              >
+                                Edit
+                              </Button>
+                            )}
+
+                            {canDelete &&
+                              !role.isSystem && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="danger"
+                                  disabled={
+                                    deleting
+                                  }
+                                  onClick={() =>
+                                    handleDelete(
+                                      role,
+                                    )
+                                  }
+                                >
+                                  Delete
+                                </Button>
+                              )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ),
                 )
@@ -888,67 +1013,75 @@ const PlatformRolePage = () => {
         </div>
       </Card>
 
+
       {/* Create / Edit */}
 
-      <PlatformRoleModal
-        open={
-          openRoleModal
-        }
-        loading={
-          roleModalLoading
-        }
-        role={
-          selectedRole
-        }
-        onClose={() => {
-          setOpenRoleModal(
-            false,
-          );
+      {(canCreate ||
+        canUpdate) && (
+        <PlatformRoleModal
+          open={
+            openRoleModal
+          }
+          loading={
+            roleModalLoading
+          }
+          role={
+            selectedRole
+          }
+          onClose={() => {
+            setOpenRoleModal(
+              false,
+            );
 
-          setSelectedRole(
-            null,
-          );
-        }}
-        onSubmit={
-          handleRoleSubmit
-        }
-      />
+            setSelectedRole(
+              null,
+            );
+          }}
+          onSubmit={
+            handleRoleSubmit
+          }
+        />
+      )}
+
 
       {/* Permissions */}
 
-      <PlatformRolePermissionModal
-        open={
-          openPermissionModal
-        }
-        loading={
-          permissionModalLoading
-        }
-        rolePermissions={
-          rolePermissions
-        }
-        allPermissions={
-          allPermissions
-        }
-        onClose={() => {
-          setOpenPermissionModal(
-            false,
-          );
+      {canManagePermissions && (
+        <PlatformRolePermissionModal
+          open={
+            openPermissionModal
+          }
+          loading={
+            permissionModalLoading
+          }
+          rolePermissions={
+            rolePermissions
+          }
+          allPermissions={
+            allPermissions
+          }
+          onClose={() => {
+            setOpenPermissionModal(
+              false,
+            );
 
-          setPermissionRoleUuid(
-            null,
-          );
+            setPermissionRoleUuid(
+              null,
+            );
 
-          setRolePermissions(
-            null,
-          );
-        }}
-        onSubmit={
-          handleSavePermissions
-        }
-      />
+            setRolePermissions(
+              null,
+            );
+          }}
+          onSubmit={
+            handleSavePermissions
+          }
+        />
+      )}
     </>
   );
 };
+
 
 const headerCellStyle = {
   padding:
@@ -976,6 +1109,7 @@ const headerCellStyle = {
     "nowrap" as const,
 };
 
+
 const bodyCellStyle = {
   padding:
     "14px",
@@ -993,6 +1127,7 @@ const bodyCellStyle = {
     "middle" as const,
 };
 
+
 const emptyCellStyle = {
   padding:
     "32px 16px",
@@ -1003,5 +1138,6 @@ const emptyCellStyle = {
   textAlign:
     "center" as const,
 };
+
 
 export default PlatformRolePage;
