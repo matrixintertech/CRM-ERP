@@ -238,7 +238,11 @@ export const protectedRoutes:
 
     element: (
       <PortalRoute portal="PLATFORM">
-        <PermissionPage />
+        <PermissionRoute
+          permission="platform.permission.view"
+         >
+       <PermissionPage />
+      </PermissionRoute>
       </PortalRoute>
     ),
   },

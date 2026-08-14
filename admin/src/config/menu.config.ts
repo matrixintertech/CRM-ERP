@@ -563,6 +563,10 @@ export const menu:
 
         portals:
           PLATFORM_PORTAL,
+        
+        permissions: [
+          "platform.permission.view",
+        ],
       },
 
 

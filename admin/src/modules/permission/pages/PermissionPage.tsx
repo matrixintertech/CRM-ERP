@@ -16,6 +16,10 @@ import {
   useDocumentTitle,
 } from "@/shared/hooks/useDocumentTitle";
 
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
 import DataTable from "@/shared/components/DataTable/DataTable";
@@ -44,121 +48,213 @@ import type {
   SortOrder,
 } from "../types/permission.types";
 
+
 const createDefaultForm =
   (): PermissionFormData => ({
-    module: "DASHBOARD",
+    module:
+      "DASHBOARD",
 
-    type: "COMPANY",
+    type:
+      "COMPANY",
 
-    name: "",
+    name:
+      "",
 
-    code: "",
+    code:
+      "",
 
-    description: "",
+    description:
+      "",
 
-    status: "ACTIVE",
+    status:
+      "ACTIVE",
 
     allowedScopes: [
       "COMPANY",
     ],
   });
 
+
 const typeOptions = [
   {
-    label: "All Types",
-    value: "",
+    label:
+      "All Types",
+
+    value:
+      "",
   },
+
   {
-    label: "Company",
-    value: "COMPANY",
+    label:
+      "Company",
+
+    value:
+      "COMPANY",
   },
+
   {
-    label: "Platform",
-    value: "PLATFORM",
+    label:
+      "Platform",
+
+    value:
+      "PLATFORM",
   },
 ];
+
 
 const statusOptions = [
   {
-    label: "All Status",
-    value: "",
+    label:
+      "All Status",
+
+    value:
+      "",
   },
+
   {
-    label: "Active",
-    value: "ACTIVE",
+    label:
+      "Active",
+
+    value:
+      "ACTIVE",
   },
+
   {
-    label: "Inactive",
-    value: "INACTIVE",
+    label:
+      "Inactive",
+
+    value:
+      "INACTIVE",
   },
 ];
+
 
 const sortOptions = [
   {
-    label: "Permission Name",
-    value: "name",
+    label:
+      "Permission Name",
+
+    value:
+      "name",
   },
+
   {
-    label: "Module",
-    value: "module",
+    label:
+      "Module",
+
+    value:
+      "module",
   },
+
   {
-    label: "Code",
-    value: "code",
+    label:
+      "Code",
+
+    value:
+      "code",
   },
+
   {
-    label: "Status",
-    value: "status",
+    label:
+      "Status",
+
+    value:
+      "status",
   },
 ];
 
+
 const sortOrderOptions = [
   {
-    label: "Ascending",
-    value: "asc",
+    label:
+      "Ascending",
+
+    value:
+      "asc",
   },
+
   {
-    label: "Descending",
-    value: "desc",
+    label:
+      "Descending",
+
+    value:
+      "desc",
   },
 ];
+
 
 const PermissionPage = () => {
   const navigate =
     useNavigate();
 
+
   useDocumentTitle(
     "All Permissions",
   );
+
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canCreate =
+    hasPermission(
+      "platform.permission.create",
+    );
+
+  const canUpdate =
+    hasPermission(
+      "platform.permission.update",
+    );
+
+  const canDelete =
+    hasPermission(
+      "platform.permission.delete",
+    );
+
+
+  const hasActions =
+    canUpdate ||
+    canDelete;
+
 
   const [
     open,
     setOpen,
   ] = useState(false);
 
+
   const [
     editUuid,
     setEditUuid,
-  ] = useState<string | null>(
+  ] = useState<
+    string | null
+  >(
     null,
   );
+
 
   const [
     formData,
     setFormData,
-  ] = useState<PermissionFormData>(
-    createDefaultForm,
-  );
+  ] =
+    useState<PermissionFormData>(
+      createDefaultForm,
+    );
+
 
   const [
     search,
     setSearch,
   ] = useState("");
 
+
   const [
     debouncedSearch,
     setDebouncedSearch,
   ] = useState("");
+
 
   const [
     typeFilter,
@@ -167,12 +263,14 @@ const PermissionPage = () => {
     PermissionType | ""
   >("");
 
+
   const [
     moduleFilter,
     setModuleFilter,
   ] = useState<
     PermissionModule | ""
   >("");
+
 
   const [
     statusFilter,
@@ -181,43 +279,59 @@ const PermissionPage = () => {
     PermissionStatus | ""
   >("");
 
+
   const [
     sortBy,
     setSortBy,
-  ] = useState<PermissionSortField>(
-    "name",
-  );
+  ] =
+    useState<PermissionSortField>(
+      "name",
+    );
+
 
   const [
     sortOrder,
     setSortOrder,
-  ] = useState<SortOrder>(
-    "asc",
-  );
+  ] =
+    useState<SortOrder>(
+      "asc",
+    );
+
 
   const [
     page,
     setPage,
   ] = useState(1);
 
-  const pageSize = 10;
+
+  const pageSize =
+    10;
+
 
   useEffect(() => {
     const timeout =
-      window.setTimeout(() => {
-        setDebouncedSearch(
-          search.trim(),
-        );
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            search.trim(),
+          );
 
-        setPage(1);
-      }, 300);
+          setPage(
+            1,
+          );
+        },
+        300,
+      );
 
     return () => {
       window.clearTimeout(
         timeout,
       );
     };
-  }, [search]);
+  }, [
+    search,
+  ]);
+
 
   const {
     loading,
@@ -263,9 +377,11 @@ const PermissionPage = () => {
     sortOrder,
   });
 
+
   const totalPages =
     pagination?.totalPages ??
     1;
+
 
   useEffect(() => {
     if (
@@ -281,10 +397,14 @@ const PermissionPage = () => {
     totalPages,
   ]);
 
+
   const moduleOptions = [
     {
-      label: "All Modules",
-      value: "",
+      label:
+        "All Modules",
+
+      value:
+        "",
     },
 
     ...permissionModules.map(
@@ -298,7 +418,9 @@ const PermissionPage = () => {
             .toLowerCase()
             .replace(
               /\b\w/g,
-              (character) =>
+              (
+                character,
+              ) =>
                 character.toUpperCase(),
             ),
 
@@ -308,47 +430,84 @@ const PermissionPage = () => {
     ),
   ];
 
+
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
 
     setFormData(
       createDefaultForm(),
     );
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
 
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-
-    resetForm();
-  };
-
-  const handleSubmit =
-  async () => {
-    try {
-      const allowedScopes =
-        formData.type === "PLATFORM"
-          ? []
-          : formData.allowedScopes ?? [];
-
+  const handleOpenCreate =
+    () => {
       if (
-        formData.type === "COMPANY" &&
-        allowedScopes.length === 0
+        !canCreate
       ) {
-        console.error(
-          "Select at least one allowed scope.",
-        );
-
         return;
       }
 
-      const payload:
-        PermissionFormData = {
+      resetForm();
+
+      setOpen(
+        true,
+      );
+    };
+
+
+  const handleClose = () => {
+    setOpen(
+      false,
+    );
+
+    resetForm();
+  };
+
+
+  const handleSubmit =
+    async () => {
+      if (
+        editUuid &&
+        !canUpdate
+      ) {
+        return;
+      }
+
+      if (
+        !editUuid &&
+        !canCreate
+      ) {
+        return;
+      }
+
+      try {
+        const allowedScopes =
+          formData.type ===
+          "PLATFORM"
+            ? []
+            : formData.allowedScopes ??
+              [];
+
+
+        if (
+          formData.type ===
+            "COMPANY" &&
+          allowedScopes.length ===
+            0
+        ) {
+          console.error(
+            "Select at least one allowed scope.",
+          );
+
+          return;
+        }
+
+
+        const payload:
+          PermissionFormData = {
           module:
             formData.module,
 
@@ -376,91 +535,112 @@ const PermissionPage = () => {
             "ACTIVE",
         };
 
-      console.log(
-        "Permission payload:",
-        payload,
-      );
 
-      if (editUuid) {
-        await update(
-          editUuid,
-          payload,
-        );
-      } else {
-        await create(
-          payload,
+        if (editUuid) {
+          await update(
+            editUuid,
+            payload,
+          );
+        } else {
+          await create(
+            payload,
+          );
+        }
+
+
+        handleClose();
+      } catch (error) {
+        console.error(
+          "Failed to save permission:",
+          error,
         );
       }
+    };
 
-      handleClose();
-    } catch (error) {
-      console.error(
-        "Failed to save permission:",
-        error,
-      );
-    }
-  };
 
-const handleEdit =
-  async (
-    uuid: string,
-  ) => {
-    try {
-      const permission =
-        await fetchPermission(
+  const handleEdit =
+    async (
+      uuid: string,
+    ) => {
+      if (
+        !canUpdate
+      ) {
+        return;
+      }
+
+      try {
+        const permission =
+          await fetchPermission(
+            uuid,
+          );
+
+
+        setEditUuid(
           uuid,
         );
 
-      setEditUuid(
-        uuid,
-      );
 
-      setFormData({
-        module:
-          permission.module,
+        setFormData({
+          module:
+            permission.module,
 
-        type:
-          permission.type,
+          type:
+            permission.type,
 
-        name:
-          permission.name,
+          name:
+            permission.name,
 
-        code:
-          permission.code,
+          code:
+            permission.code,
 
-        allowedScopes:
-          permission.allowedScopes ??
-          [],
+          allowedScopes:
+            permission.allowedScopes ??
+            [],
 
-        description:
-          permission.description ??
-          "",
+          description:
+            permission.description ??
+            "",
 
-        status:
-          permission.status,
-      });
+          status:
+            permission.status,
+        });
 
-      setOpen(true);
-    } catch (error) {
-      console.error(
-        "Failed to load permission:",
-        error,
-      );
-    }
-  };
+
+        setOpen(
+          true,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load permission:",
+          error,
+        );
+      }
+    };
+
 
   const handleDelete =
     async (
       uuid: string,
     ) => {
+      if (
+        !canDelete
+      ) {
+        return;
+      }
+
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this permission?",
         );
 
-      if (!confirmed) {
+
+      if (
+        !confirmed
+      ) {
         return;
       }
+
 
       try {
         await remove(
@@ -474,6 +654,7 @@ const handleEdit =
       }
     };
 
+
   const handleTypeChange = (
     value: string,
   ) => {
@@ -483,14 +664,21 @@ const handleEdit =
         | "",
     );
 
-    /*
-     * Type change hone par old module filter
-     * invalid ho sakta hai.
-     */
-    setModuleFilter("");
 
-    setPage(1);
+    /*
+     * Type change hone par
+     * old module filter invalid
+     * ho sakta hai.
+     */
+    setModuleFilter(
+      "",
+    );
+
+    setPage(
+      1,
+    );
   };
+
 
   const handleModuleChange = (
     value: string,
@@ -501,8 +689,11 @@ const handleEdit =
         | "",
     );
 
-    setPage(1);
+    setPage(
+      1,
+    );
   };
+
 
   const handleStatusChange = (
     value: string,
@@ -513,8 +704,11 @@ const handleEdit =
         | "",
     );
 
-    setPage(1);
+    setPage(
+      1,
+    );
   };
+
 
   const handleSortChange = (
     value: string,
@@ -524,123 +718,184 @@ const handleEdit =
         PermissionSortField,
     );
 
-    setPage(1);
+    setPage(
+      1,
+    );
   };
+
 
   const handleSortOrderChange = (
     value: string,
   ) => {
     setSortOrder(
-      value as SortOrder,
+      value as
+        SortOrder,
     );
 
-    setPage(1);
+    setPage(
+      1,
+    );
   };
+
 
   const columns:
     DataTableColumn<Permission>[] = [
       {
-        key: "module",
-        title: "Module",
+        key:
+          "module",
 
-        render: (row) =>
-          row.module
-            .replaceAll(
-              "_",
-              " ",
-            )
-            .toLowerCase()
-            .replace(
-              /\b\w/g,
-              (character) =>
-                character.toUpperCase(),
-            ),
+        title:
+          "Module",
+
+        render:
+          (row) =>
+            row.module
+              .replaceAll(
+                "_",
+                " ",
+              )
+              .toLowerCase()
+              .replace(
+                /\b\w/g,
+                (
+                  character,
+                ) =>
+                  character.toUpperCase(),
+              ),
       },
 
       {
-        key: "type",
-        title: "Type",
-        align: "center",
+        key:
+          "type",
 
-        render: (row) =>
-          row.type === "PLATFORM"
-            ? "Platform"
-            : "Company",
+        title:
+          "Type",
+
+        align:
+          "center",
+
+        render:
+          (row) =>
+            row.type ===
+            "PLATFORM"
+              ? "Platform"
+              : "Company",
       },
 
       {
-        key: "name",
-        title: "Permission",
+        key:
+          "name",
+
+        title:
+          "Permission",
       },
 
       {
-        key: "code",
-        title: "Code",
+        key:
+          "code",
+
+        title:
+          "Code",
       },
 
       {
-        key: "description",
-        title: "Description",
+        key:
+          "description",
 
-        render: (row) =>
-          row.description ||
-          "-",
+        title:
+          "Description",
+
+        render:
+          (row) =>
+            row.description ||
+            "-",
       },
 
       {
-        key: "status",
-        title: "Status",
-        align: "center",
+        key:
+          "status",
+
+        title:
+          "Status",
+
+        align:
+          "center",
       },
 
-      {
-        key: "actions",
-        title: "Actions",
-        align: "center",
+      ...(hasActions
+        ? [
+            {
+              key:
+                "actions",
 
-        render: (row) => (
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "center",
-              gap: 8,
-            }}
-          >
-            <Button
-              size="sm"
-              aria-label={`Edit ${row.name}`}
-              title="Edit permission"
-              onClick={() =>
-                void handleEdit(
-                  row.uuid,
-                )
-              }
-            >
-              <SquarePen
-                size={16}
-              />
-            </Button>
+              title:
+                "Actions",
 
-            <Button
-              size="sm"
-              variant="danger"
-              aria-label={`Delete ${row.name}`}
-              title="Delete permission"
-              onClick={() =>
-                void handleDelete(
-                  row.uuid,
-                )
-              }
-            >
-              <Trash2
-                size={16}
-              />
-            </Button>
-          </div>
-        ),
-      },
+              align:
+                "center" as const,
+
+              render:
+                (
+                  row:
+                    Permission,
+                ) => (
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      justifyContent:
+                        "center",
+
+                      gap: 8,
+                    }}
+                  >
+                    {canUpdate && (
+                      <Button
+                        size="sm"
+                        aria-label={`Edit ${row.name}`}
+                        title="Edit permission"
+                        onClick={() =>
+                          void handleEdit(
+                            row.uuid,
+                          )
+                        }
+                      >
+                        <SquarePen
+                          size={
+                            16
+                          }
+                        />
+                      </Button>
+                    )}
+
+
+                    {canDelete && (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        aria-label={`Delete ${row.name}`}
+                        title="Delete permission"
+                        onClick={() =>
+                          void handleDelete(
+                            row.uuid,
+                          )
+                        }
+                      >
+                        <Trash2
+                          size={
+                            16
+                          }
+                        />
+                      </Button>
+                    )}
+                  </div>
+                ),
+            } as DataTableColumn<Permission>,
+          ]
+        : []),
     ];
+
 
   return (
     <>
@@ -650,7 +905,9 @@ const handleEdit =
         actions={
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
+
               gap: 12,
             }}
           >
@@ -663,37 +920,55 @@ const handleEdit =
               Back
             </Button>
 
-            <Button
-              onClick={
-                handleOpenCreate
-              }
-            >
-              Add Permission
-            </Button>
+
+            {canCreate && (
+              <Button
+                onClick={
+                  handleOpenCreate
+                }
+              >
+                Add Permission
+              </Button>
+            )}
           </div>
         }
       />
 
+
       <Card>
         <div
           style={{
-            display: "grid",
+            display:
+              "grid",
+
             gridTemplateColumns:
               "minmax(220px, 1fr) repeat(5, minmax(140px, 180px))",
-            gap: 12,
-            marginBottom: 20,
-            alignItems: "center",
+
+            gap:
+              12,
+
+            marginBottom:
+              20,
+
+            alignItems:
+              "center",
           }}
         >
           <SearchInput
             placeholder="Search permission..."
-            value={search}
-            onChange={(event) =>
+            value={
+              search
+            }
+            onChange={(
+              event,
+            ) =>
               setSearch(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <Select
             value={
@@ -705,12 +980,16 @@ const handleEdit =
             options={
               typeOptions
             }
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               handleTypeChange(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <Select
             value={
@@ -722,12 +1001,16 @@ const handleEdit =
             options={
               moduleOptions
             }
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               handleModuleChange(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <Select
             value={
@@ -739,12 +1022,16 @@ const handleEdit =
             options={
               statusOptions
             }
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               handleStatusChange(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <Select
             value={
@@ -756,12 +1043,16 @@ const handleEdit =
             options={
               sortOptions
             }
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               handleSortChange(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <Select
             value={
@@ -773,39 +1064,54 @@ const handleEdit =
             options={
               sortOrderOptions
             }
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               handleSortOrderChange(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
         </div>
+
 
         <DataTable
           loading={
             loading ||
             fetching
           }
-          data={permissions}
-          columns={columns}
+          data={
+            permissions
+          }
+          columns={
+            columns
+          }
           keyField="uuid"
           showSerialNumber
           serialNumberStart={
             (
-              (pagination?.page ?? page) -
+              (
+                pagination
+                  ?.page ??
+                page
+              ) -
               1
             ) *
             (
-              pagination?.limit ??
+              pagination
+                ?.limit ??
               pageSize
             )
           }
           emptyMessage="No permissions found."
         />
 
+
         <Pagination
           page={
-            pagination?.page ??
+            pagination
+              ?.page ??
             page
           }
           totalPages={
@@ -829,34 +1135,43 @@ const handleEdit =
         />
       </Card>
 
-      <PermissionModal
-        title={
-          editUuid
-            ? "Edit Permission"
-            : "Create Permission"
-        }
-        isEdit={
-          Boolean(
-            editUuid,
-          )
-        }
-        open={open}
-        loading={saving}
-        formData={
-          formData
-        }
-        setFormData={
-          setFormData
-        }
-        onClose={
-          handleClose
-        }
-        onSubmit={
-          handleSubmit
-        }
-      />
+
+      {(canCreate ||
+        canUpdate) && (
+        <PermissionModal
+          title={
+            editUuid
+              ? "Edit Permission"
+              : "Create Permission"
+          }
+          isEdit={
+            Boolean(
+              editUuid,
+            )
+          }
+          open={
+            open
+          }
+          loading={
+            saving
+          }
+          formData={
+            formData
+          }
+          setFormData={
+            setFormData
+          }
+          onClose={
+            handleClose
+          }
+          onSubmit={
+            handleSubmit
+          }
+        />
+      )}
     </>
   );
 };
+
 
 export default PermissionPage;
