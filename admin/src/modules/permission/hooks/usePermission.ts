@@ -38,15 +38,15 @@ interface ApiErrorResponse {
 }
 
 
-const PERMISSIONS_QUERY_KEY = [
-  "permissions",
+export const PLATFORM_PERMISSIONS_QUERY_KEY = [
+  "platform-permissions",
 ] as const;
 
-const GROUPED_PERMISSIONS_QUERY_KEY = [
-  "grouped-permissions",
+export const PLATFORM_GROUPED_PERMISSIONS_QUERY_KEY = [
+  "platform-grouped-permissions",
 ] as const;
 
-const PLATFORM_ROLE_PERMISSIONS_QUERY_KEY = [
+export const PLATFORM_ROLE_PERMISSIONS_QUERY_KEY = [
   "platform-role-permissions",
 ] as const;
 
@@ -106,7 +106,7 @@ export const usePermission = (
   const permissionsQuery =
     useQuery({
       queryKey: [
-        ...PERMISSIONS_QUERY_KEY,
+        ...PLATFORM_PERMISSIONS_QUERY_KEY,
         params,
       ],
 
@@ -123,7 +123,7 @@ export const usePermission = (
   const groupedPermissionsQuery =
     useQuery({
       queryKey: [
-        ...GROUPED_PERMISSIONS_QUERY_KEY,
+        ...PLATFORM_GROUPED_PERMISSIONS_QUERY_KEY,
         params.type ??
           "ALL",
       ],
@@ -145,7 +145,7 @@ export const usePermission = (
       try {
         return await queryClient.fetchQuery({
           queryKey: [
-            "permission",
+            "platform-permission",
             uuid,
           ],
 
@@ -190,12 +190,12 @@ export const usePermission = (
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey:
-              PERMISSIONS_QUERY_KEY,
+              PLATFORM_PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
             queryKey:
-              GROUPED_PERMISSIONS_QUERY_KEY,
+              PLATFORM_GROUPED_PERMISSIONS_QUERY_KEY,
           }),
         ]);
       },
@@ -235,7 +235,7 @@ export const usePermission = (
       ) => {
         queryClient.setQueryData(
           [
-            "permission",
+            "platform-permission",
             variables.uuid,
           ],
           permission,
@@ -248,16 +248,16 @@ export const usePermission = (
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey:
-              PERMISSIONS_QUERY_KEY,
+              PLATFORM_PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
             queryKey:
-              GROUPED_PERMISSIONS_QUERY_KEY,
+              PLATFORM_GROUPED_PERMISSIONS_QUERY_KEY,
           }),
 
           /*
-           * PlatformRole permission pages
+           * Platform Role permissions
            * may contain this permission.
            */
           queryClient.invalidateQueries({
@@ -266,9 +266,10 @@ export const usePermission = (
           }),
 
           /*
-           * If current user's assigned
-           * permission changed status/code,
-           * effectivePermissions must refresh.
+           * Permission status/code/type
+           * change current logged-in user's
+           * effective permissions ko affect
+           * kar sakta hai.
            */
           queryClient.invalidateQueries({
             queryKey:
@@ -303,12 +304,12 @@ export const usePermission = (
         ),
 
       onSuccess: async (
-        _data,
+        _permission,
         uuid,
       ) => {
         queryClient.removeQueries({
           queryKey: [
-            "permission",
+            "platform-permission",
             uuid,
           ],
 
@@ -323,12 +324,12 @@ export const usePermission = (
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey:
-              PERMISSIONS_QUERY_KEY,
+              PLATFORM_PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
             queryKey:
-              GROUPED_PERMISSIONS_QUERY_KEY,
+              PLATFORM_GROUPED_PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
@@ -336,10 +337,6 @@ export const usePermission = (
               PLATFORM_ROLE_PERMISSIONS_QUERY_KEY,
           }),
 
-          /*
-           * Deleted/inactive permission
-           * may currently belong to user role.
-           */
           queryClient.invalidateQueries({
             queryKey:
               PROFILE_QUERY_KEY,

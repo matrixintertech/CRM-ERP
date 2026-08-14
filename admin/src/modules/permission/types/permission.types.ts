@@ -24,6 +24,7 @@ export type PermissionModule =
   | "BRANCH"
   | "ROLE"
   | "USER"
+  | "PERMISSION"
   | "DEPARTMENT"
   | "DESIGNATION"
   | "EMPLOYEE"
@@ -44,7 +45,6 @@ export type PermissionModule =
   | "PLATFORM_ROLE"
   | "PLATFORM_USER"
   | "PLATFORM_PERMISSION";
-
 
 export type PermissionSortField =
   | "name"

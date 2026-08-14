@@ -41,6 +41,7 @@ const companyModules: PermissionModule[] = [
   "BRANCH",
   "ROLE",
   "USER",
+  "PERMISSION",
   "DEPARTMENT",
   "DESIGNATION",
   "EMPLOYEE",

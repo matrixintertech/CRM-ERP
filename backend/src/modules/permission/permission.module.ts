@@ -13,6 +13,10 @@ import {
 } from "./controllers/permission.controller";
 
 import {
+  CompanyPermissionController,
+} from "./controllers/company-permission.controller";
+
+import {
   PermissionService,
 } from "./services/permission.service";
 
@@ -24,12 +28,12 @@ import {
 @Module({
   imports: [
     PrismaModule,
-
     AuthorizationModule,
   ],
 
   controllers: [
     PermissionController,
+    CompanyPermissionController,
   ],
 
   providers: [

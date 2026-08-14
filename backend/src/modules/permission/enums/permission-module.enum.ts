@@ -7,6 +7,7 @@ export enum PermissionModule {
 
   ROLE = "ROLE",
   USER = "USER",
+  PERMISSION = "PERMISSION",
 
   DEPARTMENT = "DEPARTMENT",
   DESIGNATION = "DESIGNATION",
