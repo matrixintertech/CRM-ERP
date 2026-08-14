@@ -48,10 +48,9 @@ async create(
       .toUpperCase();
 
   const existingCode =
-    await this.platformRoleRepository
-      .findByCode(
-        code,
-      );
+    await this.platformRoleRepository.findByCode(
+      code,
+    );
 
   if (existingCode) {
     throw new ConflictException(
@@ -60,10 +59,9 @@ async create(
   }
 
   const existingName =
-    await this.platformRoleRepository
-      .findByName(
-        name,
-      );
+    await this.platformRoleRepository.findByName(
+      name,
+    );
 
   if (existingName) {
     throw new ConflictException(
@@ -73,24 +71,22 @@ async create(
 
   try {
     const role =
-      await this.platformRoleRepository
-        .create({
-          name,
+      await this.platformRoleRepository.create({
+        name,
 
-          code,
+        code,
 
-          description:
-            dto.description
-              ?.trim() ||
-            null,
+        description:
+          dto.description?.trim() ||
+          null,
 
-          isSystem:
-            dto.isSystem ??
-            false,
+        // System roles should be created
+        // through seed/internal bootstrap only.
+        isSystem: false,
 
-          status:
-            Status.ACTIVE,
-        });
+        status:
+          Status.ACTIVE,
+      });
 
     return {
       message:
@@ -102,34 +98,8 @@ async create(
     if (
       error instanceof
         Prisma.PrismaClientKnownRequestError &&
-      error.code ===
-        "P2002"
+      error.code === "P2002"
     ) {
-      const target =
-        error.meta?.target;
-
-      if (
-        Array.isArray(target) &&
-        target.includes(
-          "code",
-        )
-      ) {
-        throw new ConflictException(
-          "Platform role code already exists.",
-        );
-      }
-
-      if (
-        Array.isArray(target) &&
-        target.includes(
-          "name",
-        )
-      ) {
-        throw new ConflictException(
-          "Platform role name already exists.",
-        );
-      }
-
       throw new ConflictException(
         "Platform role already exists.",
       );

@@ -11,6 +11,14 @@ import {
 import { notify } from "@/shared/utils/notify";
 
 import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
+import {
+  PROFILE_QUERY_KEY,
+} from "@/modules/profile/hooks/useProfile";
+
+import {
   createPlatformUser,
   deletePlatformUser,
   getPlatformUserByUuid,
@@ -24,14 +32,17 @@ import type {
   UpdatePlatformUserDto,
 } from "../types/platform-user.types";
 
+
 interface ApiErrorResponse {
   message?: string;
   errors?: string | string[];
 }
 
+
 const PLATFORM_USERS_QUERY_KEY = [
   "platform-users",
 ] as const;
+
 
 const getErrorMessage = (
   error: unknown,
@@ -64,25 +75,35 @@ const getErrorMessage = (
   return fallback;
 };
 
+
 export const usePlatformUsers = () => {
   const queryClient =
     useQueryClient();
 
+  const {
+    profile,
+  } = useAuthorization();
+
   const [
     selectedUserUuid,
     setSelectedUserUuid,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
-  const usersQuery = useQuery({
-    queryKey:
-      PLATFORM_USERS_QUERY_KEY,
 
-    queryFn:
-      getPlatformUsers,
+  const usersQuery =
+    useQuery({
+      queryKey:
+        PLATFORM_USERS_QUERY_KEY,
 
-    staleTime:
-      5 * 60 * 1000,
-  });
+      queryFn:
+        getPlatformUsers,
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
 
   const selectedUserQuery =
     useQuery({
@@ -97,16 +118,20 @@ export const usePlatformUsers = () => {
         ),
 
       enabled:
-        Boolean(selectedUserUuid),
+        Boolean(
+          selectedUserUuid,
+        ),
 
       staleTime:
         5 * 60 * 1000,
     });
 
+
   const createMutation =
     useMutation({
       mutationFn: (
-        payload: CreatePlatformUserDto,
+        payload:
+          CreatePlatformUserDto,
       ) =>
         createPlatformUser(
           payload,
@@ -123,7 +148,9 @@ export const usePlatformUsers = () => {
         });
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         console.error(
           "Failed to create platform user:",
           error,
@@ -138,6 +165,7 @@ export const usePlatformUsers = () => {
       },
     });
 
+
   const updateMutation =
     useMutation({
       mutationFn: ({
@@ -145,7 +173,8 @@ export const usePlatformUsers = () => {
         payload,
       }: {
         uuid: string;
-        payload: UpdatePlatformUserDto;
+        payload:
+          UpdatePlatformUserDto;
       }) =>
         updatePlatformUser(
           uuid,
@@ -160,7 +189,7 @@ export const usePlatformUsers = () => {
           "Platform user updated successfully.",
         );
 
-        await Promise.all([
+        const invalidations: Promise<unknown>[] = [
           queryClient.invalidateQueries({
             queryKey:
               PLATFORM_USERS_QUERY_KEY,
@@ -172,10 +201,43 @@ export const usePlatformUsers = () => {
               variables.uuid,
             ],
           }),
-        ]);
+        ];
+
+
+        /*
+         * If logged-in platform user
+         * updated their own account,
+         * refresh auth/profile snapshot.
+         *
+         * Important when:
+         * - displayName changes
+         * - platformRole changes
+         * - effective permissions change
+         */
+        if (
+          profile?.uuid ===
+          variables.uuid
+        ) {
+          invalidations.push(
+            queryClient.invalidateQueries({
+              queryKey:
+                PROFILE_QUERY_KEY,
+
+              exact:
+                true,
+            }),
+          );
+        }
+
+
+        await Promise.all(
+          invalidations,
+        );
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         console.error(
           "Failed to update platform user:",
           error,
@@ -189,6 +251,7 @@ export const usePlatformUsers = () => {
         );
       },
     });
+
 
   const deleteMutation =
     useMutation({
@@ -215,7 +278,8 @@ export const usePlatformUsers = () => {
         });
 
         if (
-          selectedUserUuid === uuid
+          selectedUserUuid ===
+          uuid
         ) {
           setSelectedUserUuid(
             null,
@@ -228,7 +292,9 @@ export const usePlatformUsers = () => {
         });
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         console.error(
           "Failed to delete platform user:",
           error,
@@ -242,6 +308,7 @@ export const usePlatformUsers = () => {
         );
       },
     });
+
 
   const fetchUsers =
     async (): Promise<
@@ -258,7 +325,9 @@ export const usePlatformUsers = () => {
           staleTime:
             5 * 60 * 1000,
         });
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to load platform users:",
           error,
@@ -275,51 +344,60 @@ export const usePlatformUsers = () => {
       }
     };
 
-  const fetchUser = async (
-    uuid: string,
-  ): Promise<PlatformUser> => {
-    try {
-      const data =
-        await queryClient.fetchQuery({
-          queryKey: [
-            "platform-user",
-            uuid,
-          ],
 
-          queryFn: () =>
-            getPlatformUserByUuid(
+  const fetchUser =
+    async (
+      uuid: string,
+    ): Promise<PlatformUser> => {
+      try {
+        const data =
+          await queryClient.fetchQuery({
+            queryKey: [
+              "platform-user",
               uuid,
-            ),
+            ],
 
-          staleTime:
-            5 * 60 * 1000,
-        });
+            queryFn: () =>
+              getPlatformUserByUuid(
+                uuid,
+              ),
 
-      setSelectedUserUuid(
-        uuid,
-      );
+            staleTime:
+              5 * 60 * 1000,
+          });
 
-      return data;
-    } catch (error) {
-      console.error(
-        "Failed to load platform user:",
-        error,
-      );
+        setSelectedUserUuid(
+          uuid,
+        );
 
-      notify.error(
-        getErrorMessage(
+        return data;
+      } catch (
+        error
+      ) {
+        console.error(
+          "Failed to load platform user:",
           error,
-          "Failed to load platform user.",
-        ),
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to load platform user.",
+          ),
+        );
+
+        throw error;
+      }
+    };
+
+
+  const clearSelectedUser =
+    () => {
+      setSelectedUserUuid(
+        null,
       );
+    };
 
-      throw error;
-    }
-  };
-
-  const clearSelectedUser = () => {
-    setSelectedUserUuid(null);
-  };
 
   return {
     users:
@@ -355,7 +433,8 @@ export const usePlatformUsers = () => {
 
     update: (
       uuid: string,
-      payload: UpdatePlatformUserDto,
+      payload:
+        UpdatePlatformUserDto,
     ) =>
       updateMutation.mutateAsync({
         uuid,

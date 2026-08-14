@@ -14,6 +14,7 @@ import {
   MinLength,
 } from "class-validator";
 
+
 export class UpdatePlatformRoleDto {
   @ApiPropertyOptional({
     example: "Operations Admin",
@@ -24,6 +25,7 @@ export class UpdatePlatformRoleDto {
   @MaxLength(100)
   name?: string;
 
+
   @ApiPropertyOptional({
     example: "OPERATIONS_ADMIN",
   })
@@ -33,6 +35,7 @@ export class UpdatePlatformRoleDto {
   @MaxLength(100)
   code?: string;
 
+
   @ApiPropertyOptional({
     example:
       "Platform operations role.",
@@ -41,6 +44,7 @@ export class UpdatePlatformRoleDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
 
   @ApiPropertyOptional({
     enum: Status,

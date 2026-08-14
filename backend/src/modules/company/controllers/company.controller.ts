@@ -1,145 +1,112 @@
 import {
   Body,
   Controller,
-  Post,Get, Query, Param,Patch, Delete,UseGuards,Req 
-} from '@nestjs/common';
+  Get,
+  Patch,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 
 import {
-  ApiOperation,ApiBearerAuth,
+  ApiBearerAuth,
+  ApiOperation,
   ApiTags,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
-import { UserType } from '@prisma/client';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { UserTypeGuard } from '../../auth/guards/user-type.guard';
+import {
+  JwtAuthGuard,
+} from "../../auth/guards/jwt-auth.guard";
 
-import { CompanyService } from '../services/company.service';
-import { CreateCompanyDto } from '../dto/create-company.dto';
-import { GetCompaniesDto } from '../dto/get-companies.dto';
-import { UpdateCompanyDto } from '../dto/update-company.dto';
-import { CreateCompanyAdminDto } from '../dto/create-company-admin.dto';
-import { UpdateCompanyProfileDto } from '../dto/update-company-profile.dto';
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
 
-import { UserTypes } from '../../auth/decorators/user-types.decorator';
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
 
-import { CompanyAdminService } from '../services/company-admin.service';
+import {
+  CompanyService,
+} from "../services/company.service";
 
-@ApiTags('Company')
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard,  UserTypeGuard)
-@Controller('companies')
+import {
+  UpdateCompanyProfileDto,
+} from "../dto/update-company-profile.dto";
+
+
+@ApiTags("Company Profile")
+@ApiBearerAuth("access-token")
+@UseGuards(
+  JwtAuthGuard,
+  PermissionGuard,
+)
+@Controller("companies")
 export class CompanyController {
   constructor(
-    private readonly companyService: CompanyService,
-     private readonly companyAdminService: CompanyAdminService,
+    private readonly companyService:
+      CompanyService,
   ) {}
 
 
-@UserTypes(UserType.PLATFORM_OWNER)
+  /*
+   * Logged-in tenant/company ka
+   * own company profile.
+   *
+   * PLATFORM users ke liye nahi.
+   */
+  @Get("profile")
+  @RequirePermission(
+    "company.company_profile.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get logged-in company profile",
+  })
+  async getProfile(
+    @Req()
+    req: Request,
+  ) {
+    const user =
+      (req as any).user;
 
 
-  @Get()
-@ApiOperation({
-  summary: 'Company List',
-})
-findAll(
-  @Query()
-  dto: GetCompaniesDto,
-) {
-  return this.companyService.findAll(
-    dto,
-  );
-}
-
-@Get('profile')
-async getProfile(
-  @Req() req: Request,
-) {
-  const user = (req as any).user;
-
-  return this.companyService.getProfile(
-    BigInt(user.companyId),
-  );
-}
-
-@Patch('profile')
-async updateProfile(
-  @Req() req: Request,
-
-  @Body()
-  dto: UpdateCompanyProfileDto,
-) {
-  const user = (req as any).user;
-
-  return this.companyService.updateProfile(
-    BigInt(user.companyId),
-    dto,
-  );
-}
+    return this.companyService.getProfile(
+      BigInt(
+        user.companyId,
+      ),
+    );
+  }
 
 
-@Get(':id')
-@ApiOperation({
-  summary: 'Get Company Details',
-})
-findById(
-  @Param('id')
-  id: string,
-) {
-  return this.companyService.findById(
-    BigInt(id),
-  );
-}
+  /*
+   * Logged-in tenant/company ka
+   * own profile update.
+   */
+  @Patch("profile")
+  @RequirePermission(
+    "company.company_profile.update",
+  )
+  @ApiOperation({
+    summary:
+      "Update logged-in company profile",
+  })
+  async updateProfile(
+    @Req()
+    req: Request,
+
+    @Body()
+    dto:
+      UpdateCompanyProfileDto,
+  ) {
+    const user =
+      (req as any).user;
 
 
-@Patch(':id')
-@ApiOperation({
-  summary: 'Update Company',
-})
-update(
-  @Param('id')
-  id: string,
-
-  @Body()
-  dto: UpdateCompanyDto,
-) {
-  return this.companyService.update(
-    BigInt(id),
-    dto,
-  );
-}
-
-@Delete(':id')
-@ApiOperation({
-  summary: 'Delete Company',
-})
-delete(
-  @Param('id')
-  id: string,
-) {
-  return this.companyService.delete(
-    BigInt(id),
-  );
-}
-
-
-@Post(':companyId/admin')
-@ApiOperation({
-  summary: 'Create Company Admin',
-})
-createCompanyAdmin(
-  @Param('companyId')
-  companyId: string,
-
-  @Body()
-  dto: CreateCompanyAdminDto,
-) {
-  return this.companyAdminService.create(
-    BigInt(companyId),
-    dto,
-  );
-}
-
-
-
+    return this.companyService.updateProfile(
+      BigInt(
+        user.companyId,
+      ),
+      dto,
+    );
+  }
 }

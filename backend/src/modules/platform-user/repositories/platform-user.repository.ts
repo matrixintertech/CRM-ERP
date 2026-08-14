@@ -1,12 +1,22 @@
 import { Injectable } from '@nestjs/common';
 
-import { Prisma, UserStatus, UserType } from '@prisma/client';
+import {
+  Prisma,
+  UserStatus,
+  UserType,
+} from '@prisma/client';
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from 'src/database/prisma.service';
+
 
 @Injectable()
 export class PlatformUserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
 
   private readonly select = {
     id: true,
@@ -20,6 +30,20 @@ export class PlatformUserRepository {
     userType: true,
     status: true,
 
+    platformRoleId: true,
+
+    platformRole: {
+      select: {
+        id: true,
+        uuid: true,
+        name: true,
+        code: true,
+        description: true,
+        isSystem: true,
+        status: true,
+      },
+    },
+
     emailVerified: true,
     mobileVerified: true,
 
@@ -30,20 +54,27 @@ export class PlatformUserRepository {
     updatedAt: true,
   } satisfies Prisma.UserSelect;
 
-  async create(data: Prisma.UserCreateInput) {
+
+  async create(
+    data: Prisma.UserCreateInput,
+  ) {
     return this.prisma.user.create({
       data,
+
       select: this.select,
     });
   }
 
+
   async findAll() {
     return this.prisma.user.findMany({
       where: {
-        userType: UserType.PLATFORM_OWNER,
+        userType:
+          UserType.PLATFORM_OWNER,
 
         companyId: null,
         employeeId: null,
+
         deletedAt: null,
       },
 
@@ -55,15 +86,20 @@ export class PlatformUserRepository {
     });
   }
 
-  async findByUuid(uuid: string) {
+
+  async findByUuid(
+    uuid: string,
+  ) {
     return this.prisma.user.findFirst({
       where: {
         uuid,
 
-        userType: UserType.PLATFORM_OWNER,
+        userType:
+          UserType.PLATFORM_OWNER,
 
         companyId: null,
         employeeId: null,
+
         deletedAt: null,
       },
 
@@ -71,7 +107,10 @@ export class PlatformUserRepository {
     });
   }
 
-  async findByEmail(email: string) {
+
+  async findByEmail(
+    email: string,
+  ) {
     return this.prisma.user.findFirst({
       where: {
         email,
@@ -85,7 +124,10 @@ export class PlatformUserRepository {
     });
   }
 
-  async findByMobile(mobile: string) {
+
+  async findByMobile(
+    mobile: string,
+  ) {
     return this.prisma.user.findFirst({
       where: {
         mobile,
@@ -99,7 +141,11 @@ export class PlatformUserRepository {
     });
   }
 
-  async update(uuid: string, data: Prisma.UserUpdateInput) {
+
+  async update(
+    uuid: string,
+    data: Prisma.UserUpdateInput,
+  ) {
     return this.prisma.user.update({
       where: {
         uuid,
@@ -111,16 +157,21 @@ export class PlatformUserRepository {
     });
   }
 
-  async softDelete(uuid: string) {
+
+  async softDelete(
+    uuid: string,
+  ) {
     return this.prisma.user.update({
       where: {
         uuid,
       },
 
       data: {
-        status: UserStatus.INACTIVE,
+        status:
+          UserStatus.INACTIVE,
 
-        deletedAt: new Date(),
+        deletedAt:
+          new Date(),
       },
 
       select: this.select,

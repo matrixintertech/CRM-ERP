@@ -7,6 +7,10 @@ import {
 } from "src/database/prisma.module";
 
 import {
+  AuthorizationModule,
+} from "../authorization/authorization.module";
+
+import {
   PlatformRoleController,
 } from "./controllers/platform-role.controller";
 
@@ -18,9 +22,11 @@ import {
   PlatformRoleRepository,
 } from "./repositories/platform-role.repository";
 
+
 @Module({
   imports: [
     PrismaModule,
+    AuthorizationModule,
   ],
 
   controllers: [

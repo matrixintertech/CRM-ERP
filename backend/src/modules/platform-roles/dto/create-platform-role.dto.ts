@@ -4,12 +4,12 @@ import {
 } from "@nestjs/swagger";
 
 import {
-  IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from "class-validator";
+
 
 export class CreatePlatformRoleDto {
   @ApiProperty({
@@ -20,6 +20,7 @@ export class CreatePlatformRoleDto {
   @MaxLength(100)
   name: string;
 
+
   @ApiProperty({
     example: "OPERATIONS_ADMIN",
   })
@@ -27,6 +28,7 @@ export class CreatePlatformRoleDto {
   @MinLength(2)
   @MaxLength(100)
   code: string;
+
 
   @ApiPropertyOptional({
     example:
@@ -36,11 +38,4 @@ export class CreatePlatformRoleDto {
   @IsString()
   @MaxLength(500)
   description?: string;
-
-  @ApiPropertyOptional({
-    default: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isSystem?: boolean;
 }

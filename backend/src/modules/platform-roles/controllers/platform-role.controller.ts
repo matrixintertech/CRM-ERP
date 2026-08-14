@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -10,7 +9,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from "@nestjs/common";
 
@@ -23,17 +21,20 @@ import {
 } from "@nestjs/swagger";
 
 import {
-  AuthGuard,
-} from "@nestjs/passport";
-
-import type {
-  Request,
-} from "express";
+  Status,
+} from "@prisma/client";
 
 import {
-  Status,
-  UserType,
-} from "@prisma/client";
+  JwtAuthGuard,
+} from "../../auth/guards/jwt-auth.guard";
+
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
+
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
 
 import {
   PlatformRoleService,
@@ -51,18 +52,6 @@ import {
   AssignPlatformRolePermissionsDto,
 } from "../dto/assign-platform-role-permissions.dto";
 
-interface AuthenticatedUser {
-  sub: string;
-
-  userType:
-    UserType;
-}
-
-interface AuthenticatedRequest
-  extends Request {
-  user?:
-    AuthenticatedUser;
-}
 
 @ApiTags(
   "Platform Roles",
@@ -71,10 +60,11 @@ interface AuthenticatedRequest
   "access-token",
 )
 @UseGuards(
-  AuthGuard("jwt"),
+  JwtAuthGuard,
+  PermissionGuard,
 )
 @Controller(
-  "platform-roles",
+  "platform/roles",
 )
 export class PlatformRoleController {
   constructor(
@@ -82,37 +72,36 @@ export class PlatformRoleController {
       PlatformRoleService,
   ) {}
 
+
   /*
    * Create platform role.
    */
   @Post()
+  @RequirePermission(
+    "platform.platform_role.create",
+  )
   @ApiOperation({
     summary:
       "Create Platform Role",
   })
   create(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Body()
     dto:
       CreatePlatformRoleDto,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.create(
+      dto,
     );
-
-    return this.platformRoleService
-      .create(
-        dto,
-      );
   }
+
 
   /*
    * Get all platform roles.
    */
   @Get()
+  @RequirePermission(
+    "platform.platform_role.view",
+  )
   @ApiOperation({
     summary:
       "Get Platform Roles",
@@ -138,10 +127,6 @@ export class PlatformRoleController {
       String,
   })
   findAll(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Query(
       "status",
     )
@@ -154,52 +139,46 @@ export class PlatformRoleController {
     search?:
       string,
   ) {
-    this.ensurePlatformOwner(
-      req,
-    );
+    return this.platformRoleService.findAll({
+      status,
 
-    return this.platformRoleService
-      .findAll({
-        status,
-
-        search,
-      });
+      search,
+    });
   }
+
 
   /*
    * Active platform roles dropdown.
+   *
+   * Platform user create/update form
+   * ke liye use hoga.
    *
    * Static route ko :uuid se pehle rakho.
    */
   @Get(
     "dropdown",
   )
+  @RequirePermission(
+    "platform.platform_role.view",
+  )
   @ApiOperation({
     summary:
       "Get Platform Role Dropdown",
   })
-  findDropdown(
-    @Req()
-    req:
-      AuthenticatedRequest,
-  ) {
-    this.ensurePlatformOwner(
-      req,
-    );
-
-    return this.platformRoleService
-      .findDropdown();
+  findDropdown() {
+    return this.platformRoleService.findDropdown();
   }
+
 
   /*
    * Get permissions assigned
    * to a platform role.
-   *
-   * Nested route ko :uuid details
-   * route se pehle rakho.
    */
   @Get(
     ":uuid/permissions",
+  )
+  @RequirePermission(
+    "platform.platform_role.view",
   )
   @ApiOperation({
     summary:
@@ -213,10 +192,6 @@ export class PlatformRoleController {
       String,
   })
   findPermissions(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Param(
       "uuid",
       ParseUUIDPipe,
@@ -224,22 +199,21 @@ export class PlatformRoleController {
     uuid:
       string,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.findPermissions(
+      uuid,
     );
-
-    return this.platformRoleService
-      .findPermissions(
-        uuid,
-      );
   }
 
+
   /*
-   * Replace PLATFORM permissions
-   * assigned to role.
+   * Replace permissions assigned
+   * to platform role.
    */
   @Put(
     ":uuid/permissions",
+  )
+  @RequirePermission(
+    "platform.platform_role.update",
   )
   @ApiOperation({
     summary:
@@ -253,10 +227,6 @@ export class PlatformRoleController {
       String,
   })
   assignPermissions(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Param(
       "uuid",
       ParseUUIDPipe,
@@ -268,22 +238,21 @@ export class PlatformRoleController {
     dto:
       AssignPlatformRolePermissionsDto,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.assignPermissions(
+      uuid,
+      dto,
     );
-
-    return this.platformRoleService
-      .assignPermissions(
-        uuid,
-        dto,
-      );
   }
+
 
   /*
    * Get one platform role.
    */
   @Get(
     ":uuid",
+  )
+  @RequirePermission(
+    "platform.platform_role.view",
   )
   @ApiOperation({
     summary:
@@ -297,10 +266,6 @@ export class PlatformRoleController {
       String,
   })
   findByUuid(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Param(
       "uuid",
       ParseUUIDPipe,
@@ -308,21 +273,20 @@ export class PlatformRoleController {
     uuid:
       string,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.findByUuid(
+      uuid,
     );
-
-    return this.platformRoleService
-      .findByUuid(
-        uuid,
-      );
   }
+
 
   /*
    * Update platform role.
    */
   @Patch(
     ":uuid",
+  )
+  @RequirePermission(
+    "platform.platform_role.update",
   )
   @ApiOperation({
     summary:
@@ -336,10 +300,6 @@ export class PlatformRoleController {
       String,
   })
   update(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Param(
       "uuid",
       ParseUUIDPipe,
@@ -351,22 +311,21 @@ export class PlatformRoleController {
     dto:
       UpdatePlatformRoleDto,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.update(
+      uuid,
+      dto,
     );
-
-    return this.platformRoleService
-      .update(
-        uuid,
-        dto,
-      );
   }
+
 
   /*
    * Soft delete platform role.
    */
   @Delete(
     ":uuid",
+  )
+  @RequirePermission(
+    "platform.platform_role.delete",
   )
   @ApiOperation({
     summary:
@@ -380,10 +339,6 @@ export class PlatformRoleController {
       String,
   })
   remove(
-    @Req()
-    req:
-      AuthenticatedRequest,
-
     @Param(
       "uuid",
       ParseUUIDPipe,
@@ -391,43 +346,8 @@ export class PlatformRoleController {
     uuid:
       string,
   ) {
-    this.ensurePlatformOwner(
-      req,
+    return this.platformRoleService.remove(
+      uuid,
     );
-
-    return this.platformRoleService
-      .remove(
-        uuid,
-      );
-  }
-
-  /*
-   * Temporary platform boundary.
-   *
-   * Later:
-   * @RequirePermission(...)
-   * PlatformPermissionGuard
-   * se replace karenge.
-   */
-  private ensurePlatformOwner(
-    req:
-      AuthenticatedRequest,
-  ): void {
-    if (
-      !req.user
-    ) {
-      throw new ForbiddenException(
-        "Authenticated user not found.",
-      );
-    }
-
-    if (
-      req.user.userType !==
-      UserType.PLATFORM_OWNER
-    ) {
-      throw new ForbiddenException(
-        "Platform access is required.",
-      );
-    }
   }
 }

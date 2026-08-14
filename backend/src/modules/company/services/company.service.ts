@@ -240,11 +240,18 @@ async delete(
 }
 
 
-async getProfile(companyId: bigint) {
-  const company = await this.companyRepository.findProfile(companyId);
+async getProfile(
+  companyId: bigint,
+) {
+  const company =
+    await this.companyRepository.findProfile(
+      companyId,
+    );
 
   if (!company) {
-    throw new NotFoundException("Company not found.");
+    throw new NotFoundException(
+      "Company not found.",
+    );
   }
 
   return company;
@@ -255,10 +262,15 @@ async updateProfile(
   companyId: bigint,
   dto: UpdateCompanyProfileDto,
 ) {
-  const company = await this.companyRepository.findProfile(companyId);
+  const company =
+    await this.companyRepository.findProfile(
+      companyId,
+    );
 
   if (!company) {
-    throw new NotFoundException("Company not found.");
+    throw new NotFoundException(
+      "Company not found.",
+    );
   }
 
   return this.companyRepository.updateProfile(
@@ -266,7 +278,6 @@ async updateProfile(
     dto,
   );
 }
-
 
 
 
