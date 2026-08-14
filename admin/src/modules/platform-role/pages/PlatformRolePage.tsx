@@ -66,22 +66,20 @@ const PlatformRolePage = () => {
       "platform.platform_role.delete",
     );
 
-// const canViewPermissionCatalog =
-//   hasPermission(
-//     "platform.permission.view",
-//   );
+  const canViewPermissionCatalog =
+    hasPermission(
+      "platform.permission.view",
+    );
 
-/*
- * Platform role permissions manage
- * karna role update operation hai.
- *
- * platform.permission.view accidentally
- * remove hone par bhi role permission
- * management accessible rehna chahiye,
- * warna self-lockout ho sakta hai.
- */
-const canManagePermissions =
-  canUpdate
+  /*
+   * Permission assignment role ko
+   * modify karta hai.
+   *
+   * Catalog bhi read karna required hai.
+   */
+  const canManagePermissions =
+    canUpdate &&
+    canViewPermissionCatalog;
 
 
   const [
