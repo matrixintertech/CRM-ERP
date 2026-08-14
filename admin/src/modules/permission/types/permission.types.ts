@@ -2,9 +2,11 @@ export type PermissionStatus =
   | "ACTIVE"
   | "INACTIVE";
 
+
 export type PermissionType =
   | "PLATFORM"
   | "COMPANY";
+
 
 export type PermissionScope =
   | "OWN"
@@ -13,7 +15,9 @@ export type PermissionScope =
   | "PROJECT"
   | "COMPANY";
 
+
 export type PermissionModule =
+  // Shared / Company modules
   | "DASHBOARD"
   | "COMPANY"
   | "ORGANIZATION"
@@ -33,7 +37,14 @@ export type PermissionModule =
   | "PURCHASE"
   | "FINANCE"
   | "REPORT"
-  | "SETTINGS";
+  | "SETTINGS"
+
+  // Platform modules
+  | "PLATFORM_COMPANY"
+  | "PLATFORM_ROLE"
+  | "PLATFORM_USER"
+  | "PLATFORM_PERMISSION";
+
 
 export type PermissionSortField =
   | "name"
@@ -41,9 +52,11 @@ export type PermissionSortField =
   | "code"
   | "status";
 
+
 export type SortOrder =
   | "asc"
   | "desc";
+
 
 /*
  * Default scope for newly-created
@@ -53,6 +66,7 @@ export const DEFAULT_COMPANY_PERMISSION_SCOPES:
   PermissionScope[] = [
     "COMPANY",
   ];
+
 
 export interface Permission {
   id: string;
@@ -96,6 +110,7 @@ export interface Permission {
     string;
 }
 
+
 export interface CreatePermissionDto {
   module:
     PermissionModule;
@@ -128,11 +143,14 @@ export interface CreatePermissionDto {
     PermissionStatus;
 }
 
+
 export interface UpdatePermissionDto
   extends Partial<CreatePermissionDto> {}
 
+
 export type PermissionFormData =
   CreatePermissionDto;
+
 
 export interface PermissionGroup {
   module:
@@ -141,6 +159,7 @@ export interface PermissionGroup {
   permissions:
     Permission[];
 }
+
 
 export interface GetPermissionsParams {
   page?:
@@ -168,6 +187,7 @@ export interface GetPermissionsParams {
     SortOrder;
 }
 
+
 export interface PermissionPagination {
   page:
     number;
@@ -182,6 +202,7 @@ export interface PermissionPagination {
     number;
 }
 
+
 export interface PermissionFilters {
   modules:
     PermissionModule[];
@@ -189,6 +210,7 @@ export interface PermissionFilters {
   types:
     PermissionType[];
 }
+
 
 export interface PermissionListResponse {
   permissions:

@@ -12,6 +12,7 @@ import type {
 
 import styles from "./PermissionForm.module.css";
 
+
 interface Props {
   formData: PermissionFormData;
 
@@ -19,6 +20,7 @@ interface Props {
     React.SetStateAction<PermissionFormData>
   >;
 }
+
 
 const typeOptions = [
   {
@@ -31,7 +33,8 @@ const typeOptions = [
   },
 ];
 
-const moduleOptions = [
+
+const companyModules: PermissionModule[] = [
   "DASHBOARD",
   "COMPANY",
   "ORGANIZATION",
@@ -52,18 +55,54 @@ const moduleOptions = [
   "FINANCE",
   "REPORT",
   "SETTINGS",
-].map((module) => ({
-  label: module
+];
+
+
+const platformModules: PermissionModule[] = [
+  "PLATFORM_COMPANY",
+  "PLATFORM_ROLE",
+  "PLATFORM_USER",
+  "PLATFORM_PERMISSION",
+];
+
+
+const formatModuleLabel = (
+  module: PermissionModule,
+) =>
+  module
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(
       /\b\w/g,
       (character) =>
         character.toUpperCase(),
-    ),
+    );
 
-  value: module,
-}));
+
+const toModuleOptions = (
+  modules: PermissionModule[],
+) =>
+  modules.map((module) => ({
+    label:
+      formatModuleLabel(
+        module,
+      ),
+
+    value:
+      module,
+  }));
+
+
+const companyModuleOptions =
+  toModuleOptions(
+    companyModules,
+  );
+
+const platformModuleOptions =
+  toModuleOptions(
+    platformModules,
+  );
+
 
 const statusOptions = [
   {
@@ -75,6 +114,7 @@ const statusOptions = [
     value: "INACTIVE",
   },
 ];
+
 
 const scopeOptions: {
   label: string;
@@ -90,7 +130,8 @@ const scopeOptions: {
   },
   {
     label: "Organization Unit",
-    value: "ORGANIZATION_UNIT",
+    value:
+      "ORGANIZATION_UNIT",
   },
   {
     label: "Project",
@@ -102,17 +143,71 @@ const scopeOptions: {
   },
 ];
 
+
+/*
+ * Permission code prefix depends
+ * on authorization boundary/module.
+ */
+const getPermissionCodePrefix = (
+  type: PermissionType,
+  module: PermissionModule,
+): string => {
+  if (
+    type === "PLATFORM"
+  ) {
+    switch (module) {
+      case "PLATFORM_COMPANY":
+        return "platform.company.";
+
+      case "PLATFORM_ROLE":
+        return "platform.platform_role.";
+
+      case "PLATFORM_USER":
+        return "platform.user.";
+
+      case "PLATFORM_PERMISSION":
+        return "platform.permission.";
+
+      default:
+        return "platform.";
+    }
+  }
+
+  return `company.${module
+    .toLowerCase()}.`;
+};
+
+
 const PermissionForm = ({
   formData,
   setFormData,
 }: Props) => {
+  const moduleOptions =
+    formData.type ===
+    "PLATFORM"
+      ? platformModuleOptions
+      : companyModuleOptions;
+
+
   const handleTypeChange = (
     type: PermissionType,
   ) => {
     setFormData(
       (previous) => {
         const currentScopes =
-          previous.allowedScopes ?? [];
+          previous.allowedScopes ??
+          [];
+
+        const validModules =
+          type === "PLATFORM"
+            ? platformModules
+            : companyModules;
+
+        const currentModuleIsValid =
+          validModules.includes(
+            previous.module,
+          );
+
 
         return {
           ...previous,
@@ -120,39 +215,93 @@ const PermissionForm = ({
           type,
 
           /*
+           * Selected module dusre
+           * permission boundary ka hai
+           * to reset kar do.
+           */
+          module:
+            currentModuleIsValid
+              ? previous.module
+              : ("" as PermissionModule),
+
+          /*
+           * Module reset hua to old
+           * permission code bhi clear.
+           */
+          code:
+            currentModuleIsValid
+              ? previous.code
+              : "",
+
+          /*
            * PLATFORM permissions
-           * scope-less hote hain.
+           * scope-less hain.
            *
-           * COMPANY par switch karte waqt
-           * agar koi scope selected nahi hai
-           * to COMPANY default select hoga.
+           * COMPANY par switch karte
+           * waqt default COMPANY scope.
            */
           allowedScopes:
             type === "PLATFORM"
               ? []
-              : currentScopes.length > 0
+              : currentScopes.length >
+                  0
                 ? currentScopes
-                : ["COMPANY"],
+                : [
+                    "COMPANY",
+                  ],
         };
       },
     );
   };
 
+
   const handleModuleChange = (
     module: PermissionModule,
   ) => {
     setFormData(
-      (previous) => ({
-        ...previous,
+      (previous) => {
+        const oldPrefix =
+          previous.module
+            ? getPermissionCodePrefix(
+                previous.type,
+                previous.module,
+              )
+            : "";
 
-        module,
+        const newPrefix =
+          getPermissionCodePrefix(
+            previous.type,
+            module,
+          );
 
-        code:
-          previous.code ||
-          `${module.toLowerCase()}.`,
-      }),
+        /*
+         * Agar code empty hai ya sirf
+         * old auto-generated prefix hai,
+         * to new prefix set karo.
+         *
+         * User ne manually action/code
+         * type kar diya hai to overwrite
+         * nahi karenge.
+         */
+        const shouldReplaceCode =
+          !previous.code ||
+          previous.code ===
+            oldPrefix;
+
+        return {
+          ...previous,
+
+          module,
+
+          code:
+            shouldReplaceCode
+              ? newPrefix
+              : previous.code,
+        };
+      },
     );
   };
+
 
   const handleScopeChange = (
     scope: PermissionScope,
@@ -160,7 +309,8 @@ const PermissionForm = ({
     setFormData(
       (previous) => {
         const currentScopes =
-          previous.allowedScopes ?? [];
+          previous.allowedScopes ??
+          [];
 
         const exists =
           currentScopes.includes(
@@ -188,15 +338,28 @@ const PermissionForm = ({
     );
   };
 
+
   return (
-    <div className={styles.form}>
+    <div
+      className={
+        styles.form
+      }
+    >
       <Select
         label="Permission Type"
         name="type"
-        showPlaceholder={false}
-        value={formData.type}
-        options={typeOptions}
-        onChange={(event) =>
+        showPlaceholder={
+          false
+        }
+        value={
+          formData.type
+        }
+        options={
+          typeOptions
+        }
+        onChange={(
+          event,
+        ) =>
           handleTypeChange(
             event.target
               .value as PermissionType,
@@ -204,13 +367,20 @@ const PermissionForm = ({
         }
       />
 
+
       <Select
         label="Module"
         name="module"
         placeholder="Select module"
-        value={formData.module}
-        options={moduleOptions}
-        onChange={(event) =>
+        value={
+          formData.module
+        }
+        options={
+          moduleOptions
+        }
+        onChange={(
+          event,
+        ) =>
           handleModuleChange(
             event.target
               .value as PermissionModule,
@@ -218,14 +388,26 @@ const PermissionForm = ({
         }
       />
 
+
       <Input
         label="Permission Name"
         name="name"
-        placeholder="Example: View Project Categories"
-        value={formData.name}
-        onChange={(event) =>
+        placeholder={
+          formData.type ===
+          "PLATFORM"
+            ? "Example: View Platform Companies"
+            : "Example: View Project Categories"
+        }
+        value={
+          formData.name
+        }
+        onChange={(
+          event,
+        ) =>
           setFormData(
-            (previous) => ({
+            (
+              previous,
+            ) => ({
               ...previous,
 
               name:
@@ -235,14 +417,26 @@ const PermissionForm = ({
         }
       />
 
+
       <Input
         label="Permission Code"
         name="code"
-        placeholder="Example: company.project_category.view"
-        value={formData.code}
-        onChange={(event) =>
+        placeholder={
+          formData.type ===
+          "PLATFORM"
+            ? "Example: platform.company.view"
+            : "Example: company.project_category.view"
+        }
+        value={
+          formData.code
+        }
+        onChange={(
+          event,
+        ) =>
           setFormData(
-            (previous) => ({
+            (
+              previous,
+            ) => ({
               ...previous,
 
               code:
@@ -256,6 +450,7 @@ const PermissionForm = ({
           )
         }
       />
+
 
       {formData.type ===
         "COMPANY" && (
@@ -272,8 +467,10 @@ const PermissionForm = ({
 
           <div
             style={{
-              display: "flex",
-              flexWrap: "wrap",
+              display:
+                "flex",
+              flexWrap:
+                "wrap",
               gap: 12,
             }}
           >
@@ -338,11 +535,13 @@ const PermissionForm = ({
                 marginTop: 6,
               }}
             >
-              Select at least one scope.
+              Select at least one
+              scope.
             </div>
           )}
         </div>
       )}
+
 
       <Textarea
         label="Description"
@@ -352,9 +551,13 @@ const PermissionForm = ({
           formData.description ??
           ""
         }
-        onChange={(event) =>
+        onChange={(
+          event,
+        ) =>
           setFormData(
-            (previous) => ({
+            (
+              previous,
+            ) => ({
               ...previous,
 
               description:
@@ -364,18 +567,27 @@ const PermissionForm = ({
         }
       />
 
+
       <Select
         label="Status"
         name="status"
-        showPlaceholder={false}
+        showPlaceholder={
+          false
+        }
         value={
           formData.status ??
           "ACTIVE"
         }
-        options={statusOptions}
-        onChange={(event) =>
+        options={
+          statusOptions
+        }
+        onChange={(
+          event,
+        ) =>
           setFormData(
-            (previous) => ({
+            (
+              previous,
+            ) => ({
               ...previous,
 
               status:
@@ -388,5 +600,6 @@ const PermissionForm = ({
     </div>
   );
 };
+
 
 export default PermissionForm;

@@ -16,15 +16,20 @@ import type {
   PlatformUserFormData,
 } from "../types/platform-user.types";
 
+
 const initialFormData: PlatformUserFormData = {
   displayName: "",
   email: "",
   mobile: "",
+  platformRoleUuid: "",
   status: "ACTIVE",
 };
 
+
 const PlatformUserPage = () => {
-  useDocumentTitle("Platform Users");
+  useDocumentTitle(
+    "Platform Users",
+  );
 
   const {
     users,
@@ -43,6 +48,7 @@ const PlatformUserPage = () => {
     clearSelectedUser,
   } = usePlatformUsers();
 
+
   const [
     openModal,
     setOpenModal,
@@ -56,43 +62,67 @@ const PlatformUserPage = () => {
   const [
     editUuid,
     setEditUuid,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   const [
     formData,
     setFormData,
-  ] = useState<PlatformUserFormData>({
-    ...initialFormData,
-  });
+  ] =
+    useState<PlatformUserFormData>({
+      ...initialFormData,
+    });
+
 
   const resetForm = () => {
-    setEditUuid(null);
+    setEditUuid(
+      null,
+    );
 
     setFormData({
       ...initialFormData,
     });
   };
 
+
   const handleOpenCreate = () => {
     resetForm();
 
-    setOpenModal(true);
+    setOpenModal(
+      true,
+    );
   };
 
+
   const handleCloseModal = () => {
-    setOpenModal(false);
+    setOpenModal(
+      false,
+    );
 
     resetForm();
   };
 
+
   const handleCloseDetails = () => {
-    setOpenDetails(false);
+    setOpenDetails(
+      false,
+    );
 
     clearSelectedUser();
   };
 
+
   const handleSubmit = async () => {
     try {
+      const platformRoleUuid =
+        formData.platformRoleUuid.trim();
+
+      if (!platformRoleUuid) {
+        return;
+      }
+
+
       const payload = {
         displayName:
           formData.displayName.trim(),
@@ -105,7 +135,10 @@ const PlatformUserPage = () => {
         mobile:
           formData.mobile.trim() ||
           undefined,
+
+        platformRoleUuid,
       };
+
 
       if (editUuid) {
         await update(
@@ -123,6 +156,7 @@ const PlatformUserPage = () => {
         );
       }
 
+
       handleCloseModal();
     } catch (error) {
       console.error(
@@ -132,13 +166,16 @@ const PlatformUserPage = () => {
     }
   };
 
+
   const handleView = async (
     uuid: string,
   ) => {
     try {
       clearSelectedUser();
 
-      setOpenDetails(true);
+      setOpenDetails(
+        true,
+      );
 
       await fetchUser(
         uuid,
@@ -149,9 +186,12 @@ const PlatformUserPage = () => {
         error,
       );
 
-      setOpenDetails(false);
+      setOpenDetails(
+        false,
+      );
     }
   };
+
 
   const handleEdit = async (
     uuid: string,
@@ -162,25 +202,37 @@ const PlatformUserPage = () => {
           uuid,
         );
 
+
       setEditUuid(
         uuid,
       );
 
+
       setFormData({
         displayName:
-          user.displayName ?? "",
+          user.displayName ??
+          "",
 
         email:
-          user.email ?? "",
+          user.email ??
+          "",
 
         mobile:
-          user.mobile ?? "",
+          user.mobile ??
+          "",
+
+        platformRoleUuid:
+          user.platformRole?.uuid ??
+          "",
 
         status:
           user.status,
       });
 
-      setOpenModal(true);
+
+      setOpenModal(
+        true,
+      );
     } catch (error) {
       console.error(
         "Failed to load platform user:",
@@ -188,6 +240,7 @@ const PlatformUserPage = () => {
       );
     }
   };
+
 
   const handleDelete = async (
     uuid: string,
@@ -201,6 +254,7 @@ const PlatformUserPage = () => {
       return;
     }
 
+
     try {
       await remove(
         uuid,
@@ -212,6 +266,7 @@ const PlatformUserPage = () => {
       );
     }
   };
+
 
   return (
     <>
@@ -229,6 +284,7 @@ const PlatformUserPage = () => {
         }
       />
 
+
       <Card>
         <PlatformUserTable
           data={users}
@@ -239,6 +295,7 @@ const PlatformUserPage = () => {
         />
       </Card>
 
+
       <PlatformUserModal
         open={openModal}
         loading={saving}
@@ -248,9 +305,13 @@ const PlatformUserPage = () => {
             : "Create Platform User"
         }
         isEdit={
-          Boolean(editUuid)
+          Boolean(
+            editUuid,
+          )
         }
-        formData={formData}
+        formData={
+          formData
+        }
         setFormData={
           setFormData
         }
@@ -261,6 +322,7 @@ const PlatformUserPage = () => {
           handleSubmit
         }
       />
+
 
       <PlatformUserDetailsModal
         open={openDetails}
@@ -277,5 +339,6 @@ const PlatformUserPage = () => {
     </>
   );
 };
+
 
 export default PlatformUserPage;
