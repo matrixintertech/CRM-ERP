@@ -64,6 +64,8 @@ const platformModules: PermissionModule[] = [
   "PLATFORM_ROLE",
   "PLATFORM_USER",
   "PLATFORM_PERMISSION",
+  "PLATFORM_MODULE",
+  "PLATFORM_SUBSCRIPTION_PLAN",
 ];
 
 

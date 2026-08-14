@@ -44,7 +44,9 @@ export type PermissionModule =
   | "PLATFORM_COMPANY"
   | "PLATFORM_ROLE"
   | "PLATFORM_USER"
-  | "PLATFORM_PERMISSION";
+  | "PLATFORM_PERMISSION"
+  | "PLATFORM_MODULE"
+  | "PLATFORM_SUBSCRIPTION_PLAN";
 
 export type PermissionSortField =
   | "name"
