@@ -26,8 +26,8 @@ import Input from "@/shared/components/Input";
 import RolePermissionGroup from "../components/RolePermissionGroup";
 
 import {
-  usePermission,
-} from "../../permission/hooks/usePermission";
+  useCompanyPermissions,
+} from "../../permission/hooks/useCompanyPermissions";
 
 import {
   useRole,
@@ -63,14 +63,12 @@ const RolePermissionPage = () => {
    * Company roles should only see
    * COMPANY permissions.
    */
-  const {
-    loading:
-      permissionLoading,
+const {
+  loading:
+    permissionLoading,
 
-    groupedPermissions,
-  } = usePermission({
-    type: "COMPANY",
-  });
+  groupedPermissions,
+} = useCompanyPermissions();
 
   const {
     fetchRolePermissions,
