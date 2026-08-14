@@ -66,10 +66,10 @@ const PlatformRolePage = () => {
       "platform.platform_role.delete",
     );
 
-const canViewPermissionCatalog =
-  hasPermission(
-    "platform.permission.view",
-  );
+// const canViewPermissionCatalog =
+//   hasPermission(
+//     "platform.permission.view",
+//   );
 
 /*
  * Platform role permissions manage
