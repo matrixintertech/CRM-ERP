@@ -38,13 +38,15 @@ export class PermissionService {
   /*
    * Platform-specific permission modules.
    */
-  private readonly platformModules =
-    new Set<string>([
-      'PLATFORM_COMPANY',
-      'PLATFORM_ROLE',
-      'PLATFORM_USER',
-      'PLATFORM_PERMISSION',
-    ]);
+private readonly platformModules =
+  new Set<string>([
+    "PLATFORM_COMPANY",
+    "PLATFORM_ROLE",
+    "PLATFORM_USER",
+    "PLATFORM_PERMISSION",
+    "PLATFORM_MODULE",
+    "PLATFORM_SUBSCRIPTION_PLAN",
+  ]);
 
 
   /*
