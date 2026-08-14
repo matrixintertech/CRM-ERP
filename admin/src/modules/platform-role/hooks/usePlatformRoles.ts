@@ -9,6 +9,10 @@ import {
 } from "@/shared/utils/notify";
 
 import {
+  PROFILE_QUERY_KEY,
+} from "@/modules/profile/hooks/useProfile";
+
+import {
   assignPlatformRolePermissions,
   createPlatformRole,
   deletePlatformRole,
@@ -25,6 +29,7 @@ import type {
   UpdatePlatformRoleDto,
 } from "../types/platform-role.types";
 
+
 interface ApiErrorResponse {
   message?: string;
 
@@ -32,6 +37,16 @@ interface ApiErrorResponse {
     | string
     | string[];
 }
+
+
+const PLATFORM_ROLES_QUERY_KEY = [
+  "platform-roles",
+] as const;
+
+const PLATFORM_ROLE_DROPDOWN_QUERY_KEY = [
+  "platform-role-dropdown",
+] as const;
+
 
 const getErrorMessage = (
   error: unknown,
@@ -76,12 +91,14 @@ const getErrorMessage = (
   return fallbackMessage;
 };
 
+
 export interface PlatformRoleQueryParams {
   status?:
     PlatformRoleStatus;
 
   search?: string;
 }
+
 
 export const usePlatformRoles = (
   params:
@@ -90,10 +107,11 @@ export const usePlatformRoles = (
   const queryClient =
     useQueryClient();
 
+
   const rolesQuery =
     useQuery({
       queryKey: [
-        "platform-roles",
+        ...PLATFORM_ROLES_QUERY_KEY,
         params,
       ],
 
@@ -106,26 +124,26 @@ export const usePlatformRoles = (
         5 * 60 * 1000,
     });
 
+
   const fetchRole =
     async (
       uuid: string,
     ) => {
       try {
-        return await queryClient
-          .fetchQuery({
-            queryKey: [
-              "platform-role",
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "platform-role",
+            uuid,
+          ],
+
+          queryFn: () =>
+            getPlatformRoleByUuid(
               uuid,
-            ],
+            ),
 
-            queryFn: () =>
-              getPlatformRoleByUuid(
-                uuid,
-              ),
-
-            staleTime:
-              5 * 60 * 1000,
-          });
+          staleTime:
+            5 * 60 * 1000,
+        });
       } catch (
         error
       ) {
@@ -140,26 +158,26 @@ export const usePlatformRoles = (
       }
     };
 
+
   const fetchPermissions =
     async (
       uuid: string,
     ) => {
       try {
-        return await queryClient
-          .fetchQuery({
-            queryKey: [
-              "platform-role-permissions",
+        return await queryClient.fetchQuery({
+          queryKey: [
+            "platform-role-permissions",
+            uuid,
+          ],
+
+          queryFn: () =>
+            getPlatformRolePermissions(
               uuid,
-            ],
+            ),
 
-            queryFn: () =>
-              getPlatformRolePermissions(
-                uuid,
-              ),
-
-            staleTime:
-              5 * 60 * 1000,
-          });
+          staleTime:
+            5 * 60 * 1000,
+        });
       } catch (
         error
       ) {
@@ -173,6 +191,7 @@ export const usePlatformRoles = (
         throw error;
       }
     };
+
 
   const createMutation =
     useMutation({
@@ -189,12 +208,17 @@ export const usePlatformRoles = (
           "Platform role created successfully.",
         );
 
-        await queryClient
-          .invalidateQueries({
-            queryKey: [
-              "platform-roles",
-            ],
-          });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLES_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLE_DROPDOWN_QUERY_KEY,
+          }),
+        ]);
       },
 
       onError: (
@@ -208,6 +232,7 @@ export const usePlatformRoles = (
         );
       },
     });
+
 
   const updateMutation =
     useMutation({
@@ -240,12 +265,30 @@ export const usePlatformRoles = (
           "Platform role updated successfully.",
         );
 
-        await queryClient
-          .invalidateQueries({
-            queryKey: [
-              "platform-roles",
-            ],
-          });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLES_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLE_DROPDOWN_QUERY_KEY,
+          }),
+
+          /*
+           * Current logged-in user's
+           * platform role may have changed
+           * status/name or other role data.
+           */
+          queryClient.invalidateQueries({
+            queryKey:
+              PROFILE_QUERY_KEY,
+
+            exact:
+              true,
+          }),
+        ]);
       },
 
       onError: (
@@ -260,6 +303,7 @@ export const usePlatformRoles = (
       },
     });
 
+
   const deleteMutation =
     useMutation({
       mutationFn: (
@@ -270,17 +314,45 @@ export const usePlatformRoles = (
           uuid,
         ),
 
-      onSuccess: async () => {
+      onSuccess: async (
+        _response,
+        uuid,
+      ) => {
+        queryClient.removeQueries({
+          queryKey: [
+            "platform-role",
+            uuid,
+          ],
+
+          exact:
+            true,
+        });
+
+        queryClient.removeQueries({
+          queryKey: [
+            "platform-role-permissions",
+            uuid,
+          ],
+
+          exact:
+            true,
+        });
+
         notify.success(
           "Platform role deleted successfully.",
         );
 
-        await queryClient
-          .invalidateQueries({
-            queryKey: [
-              "platform-roles",
-            ],
-          });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLES_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLE_DROPDOWN_QUERY_KEY,
+          }),
+        ]);
       },
 
       onError: (
@@ -294,6 +366,7 @@ export const usePlatformRoles = (
         );
       },
     });
+
 
   const permissionsMutation =
     useMutation({
@@ -311,7 +384,7 @@ export const usePlatformRoles = (
           payload,
         ),
 
-      onSuccess: (
+      onSuccess: async (
         response,
         variables,
       ) => {
@@ -326,6 +399,30 @@ export const usePlatformRoles = (
         notify.success(
           "Platform role permissions updated successfully.",
         );
+
+        /*
+         * Important:
+         *
+         * Current logged-in user may belong
+         * to the role whose permissions were
+         * just changed.
+         *
+         * Refresh effectivePermissions.
+         */
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLES_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey:
+              PROFILE_QUERY_KEY,
+
+            exact:
+              true,
+          }),
+        ]);
       },
 
       onError: (
@@ -339,6 +436,7 @@ export const usePlatformRoles = (
         );
       },
     });
+
 
   return {
     roles:
@@ -365,56 +463,48 @@ export const usePlatformRoles = (
       payload:
         CreatePlatformRoleDto,
     ) =>
-      createMutation
-        .mutateAsync(
-          payload,
-        ),
+      createMutation.mutateAsync(
+        payload,
+      ),
 
     updateRole: (
       uuid: string,
       payload:
         UpdatePlatformRoleDto,
     ) =>
-      updateMutation
-        .mutateAsync({
-          uuid,
-          payload,
-        }),
+      updateMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
 
     deleteRole: (
       uuid:
         string,
     ) =>
-      deleteMutation
-        .mutateAsync(
-          uuid,
-        ),
+      deleteMutation.mutateAsync(
+        uuid,
+      ),
 
     savePermissions: (
       uuid: string,
       payload:
         AssignPlatformRolePermissionsDto,
     ) =>
-      permissionsMutation
-        .mutateAsync({
-          uuid,
-          payload,
-        }),
+      permissionsMutation.mutateAsync({
+        uuid,
+        payload,
+      }),
 
     creating:
-      createMutation
-        .isPending,
+      createMutation.isPending,
 
     updating:
-      updateMutation
-        .isPending,
+      updateMutation.isPending,
 
     deleting:
-      deleteMutation
-        .isPending,
+      deleteMutation.isPending,
 
     savingPermissions:
-      permissionsMutation
-        .isPending,
+      permissionsMutation.isPending,
   };
 };

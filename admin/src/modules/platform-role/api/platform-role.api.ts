@@ -9,26 +9,25 @@ import type {
   UpdatePlatformRoleDto,
 } from "../types/platform-role.types";
 
+
 interface ApiResponse<T> {
   success: boolean;
-
   statusCode: number;
-
   message: string;
-
   data: T;
-
   timestamp: string;
-
   path: string;
 }
 
-export interface GetPlatformRolesParams {
-  status?:
-    PlatformRoleStatus;
 
+export interface GetPlatformRolesParams {
+  status?: PlatformRoleStatus;
   search?: string;
 }
+
+
+const BASE_URL = "/platform/roles";
+
 
 export const getPlatformRoles =
   async (
@@ -39,12 +38,10 @@ export const getPlatformRoles =
       await api.get<
         ApiResponse<{
           message: string;
-
-          roles:
-            PlatformRole[];
+          roles: PlatformRole[];
         }>
       >(
-        "/platform-roles",
+        BASE_URL,
         {
           params,
         },
@@ -52,6 +49,7 @@ export const getPlatformRoles =
 
     return data.data.roles;
   };
+
 
 export const getPlatformRoleByUuid =
   async (
@@ -61,24 +59,21 @@ export const getPlatformRoleByUuid =
       await api.get<
         ApiResponse<{
           message: string;
-
-          role:
-            PlatformRole;
+          role: PlatformRole;
         }>
       >(
-        `/platform-roles/${uuid}`,
+        `${BASE_URL}/${uuid}`,
       );
 
     return data.data.role;
   };
 
+
 export const getPlatformRoleDropdown =
   async (): Promise<
     Array<{
       uuid: string;
-
       name: string;
-
       code: string;
     }>
   > => {
@@ -89,18 +84,17 @@ export const getPlatformRoleDropdown =
 
           roles: Array<{
             uuid: string;
-
             name: string;
-
             code: string;
           }>;
         }>
       >(
-        "/platform-roles/dropdown",
+        `${BASE_URL}/dropdown`,
       );
 
     return data.data.roles;
   };
+
 
 export const createPlatformRole =
   async (
@@ -111,22 +105,20 @@ export const createPlatformRole =
       await api.post<
         ApiResponse<{
           message: string;
-
-          role:
-            PlatformRole;
+          role: PlatformRole;
         }>
       >(
-        "/platform-roles",
+        BASE_URL,
         payload,
       );
 
     return data.data.role;
   };
 
+
 export const updatePlatformRole =
   async (
     uuid: string,
-
     payload:
       UpdatePlatformRoleDto,
   ): Promise<PlatformRole> => {
@@ -134,26 +126,26 @@ export const updatePlatformRole =
       await api.patch<
         ApiResponse<{
           message: string;
-
-          role:
-            PlatformRole;
+          role: PlatformRole;
         }>
       >(
-        `/platform-roles/${uuid}`,
+        `${BASE_URL}/${uuid}`,
         payload,
       );
 
     return data.data.role;
   };
 
+
 export const deletePlatformRole =
   async (
     uuid: string,
   ): Promise<void> => {
     await api.delete(
-      `/platform-roles/${uuid}`,
+      `${BASE_URL}/${uuid}`,
     );
   };
+
 
 export const getPlatformRolePermissions =
   async (
@@ -165,16 +157,16 @@ export const getPlatformRolePermissions =
           PlatformRolePermissionsResponse
         >
       >(
-        `/platform-roles/${uuid}/permissions`,
+        `${BASE_URL}/${uuid}/permissions`,
       );
 
     return data.data;
   };
 
+
 export const assignPlatformRolePermissions =
   async (
     uuid: string,
-
     payload:
       AssignPlatformRolePermissionsDto,
   ): Promise<PlatformRolePermissionsResponse> => {
@@ -184,7 +176,7 @@ export const assignPlatformRolePermissions =
           PlatformRolePermissionsResponse
         >
       >(
-        `/platform-roles/${uuid}/permissions`,
+        `${BASE_URL}/${uuid}/permissions`,
         payload,
       );
 
