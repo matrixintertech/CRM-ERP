@@ -63,9 +63,9 @@ export class PlatformUserController {
 
 
   @Post()
-  @RequirePermission(
-    'platform.user.create',
-  )
+  // @RequirePermission(
+  //   'platform.user.create',
+  // )
   @ApiOperation({
     summary: 'Create Platform User',
   })
@@ -89,9 +89,9 @@ export class PlatformUserController {
 
 
   @Get()
-  @RequirePermission(
-    'platform.user.view',
-  )
+  // @RequirePermission(
+  //   'platform.user.view',
+  // )
   @ApiOperation({
     summary:
       'Get All Platform Users',
@@ -112,9 +112,9 @@ export class PlatformUserController {
 
 
   @Get(':uuid')
-  @RequirePermission(
-    'platform.user.view',
-  )
+  // @RequirePermission(
+  //   'platform.user.view',
+  // )
   @ApiOperation({
     summary:
       'Get Platform User By UUID',
@@ -138,9 +138,9 @@ export class PlatformUserController {
 
 
   @Patch(':uuid')
-  @RequirePermission(
-    'platform.user.update',
-  )
+  // @RequirePermission(
+  //   'platform.user.update',
+  // )
   @ApiOperation({
     summary:
       'Update Platform User',
