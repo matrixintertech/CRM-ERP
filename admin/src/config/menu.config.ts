@@ -121,6 +121,10 @@ export const menu:
 
     portals:
       PLATFORM_PORTAL,
+
+     permissions: [
+          "platform.company.view",
+        ],
   },
 
 
@@ -139,6 +143,10 @@ export const menu:
 
     portals:
       PLATFORM_PORTAL,
+
+    permissions: [
+          "platform.module.view",
+        ],
   },
 
 
