@@ -4,7 +4,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { notify } from "@/shared/utils/notify";
+import {
+  notify,
+} from "@/shared/utils/notify";
 
 import {
   createModule,
@@ -18,158 +20,212 @@ import type {
   ModuleFormData,
 } from "../types/module.types";
 
-const MODULES_QUERY_KEY = [
-  "modules",
+
+export const PLATFORM_MODULES_QUERY_KEY = [
+  "platform-modules",
 ] as const;
+
+
+interface ApiErrorResponse {
+  message?: string;
+
+  errors?:
+    | string
+    | string[];
+}
+
 
 const getErrorMessage = (
   error: unknown,
-  fallbackMessage = "Something went wrong.",
-) => {
-  const apiError = error as {
-    response?: {
-      data?: {
-        message?: string;
-        errors?: string[];
+  fallbackMessage =
+    "Something went wrong.",
+): string => {
+  const apiError =
+    error as {
+      response?: {
+        data?: ApiErrorResponse;
       };
     };
-  };
 
   const errors =
-    apiError.response?.data?.errors;
+    apiError.response?.data
+      ?.errors;
 
   if (
-    Array.isArray(errors) &&
+    Array.isArray(
+      errors,
+    ) &&
     errors.length > 0
   ) {
-    return errors.join("\n");
+    return errors.join(
+      "\n",
+    );
+  }
+
+  if (
+    typeof errors ===
+    "string"
+  ) {
+    return errors;
   }
 
   return (
-    apiError.response?.data?.message ??
+    apiError.response?.data
+      ?.message ??
     fallbackMessage
   );
 };
+
 
 export const useModule = () => {
   const queryClient =
     useQueryClient();
 
-  const modulesQuery = useQuery({
-    queryKey: MODULES_QUERY_KEY,
 
-    queryFn: getModules,
+  const modulesQuery =
+    useQuery({
+      queryKey:
+        PLATFORM_MODULES_QUERY_KEY,
 
-    staleTime: 5 * 60 * 1000,
-  });
+      queryFn:
+        getModules,
 
-  const createMutation = useMutation({
-    mutationFn: (
-      payload: ModuleFormData,
-    ) =>
-      createModule(payload),
+      staleTime:
+        5 * 60 * 1000,
+    });
 
-    onSuccess: async (response) => {
-      notify.success(
-        response?.message ??
-          "Module created successfully.",
-      );
 
-      await queryClient.invalidateQueries({
-        queryKey: MODULES_QUERY_KEY,
-      });
-    },
-
-    onError: (error) => {
-      console.error(
-        "Failed to create module:",
-        error,
-      );
-
-      notify.error(
-        getErrorMessage(
-          error,
-          "Failed to create module.",
+  const createMutation =
+    useMutation({
+      mutationFn: (
+        payload:
+          ModuleFormData,
+      ) =>
+        createModule(
+          payload,
         ),
-      );
-    },
-  });
 
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Partial<ModuleFormData>;
-    }) =>
-      updateModule(
+      onSuccess: async () => {
+        notify.success(
+          "Module created successfully.",
+        );
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            PLATFORM_MODULES_QUERY_KEY,
+        });
+      },
+
+      onError: (
+        error,
+      ) => {
+        console.error(
+          "Failed to create module:",
+          error,
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to create module.",
+          ),
+        );
+      },
+    });
+
+
+  const updateMutation =
+    useMutation({
+      mutationFn: ({
         id,
         payload,
-      ),
+      }: {
+        id: string;
 
-    onSuccess: async (response) => {
-      notify.success(
-        response?.message ??
+        payload:
+          Partial<ModuleFormData>;
+      }) =>
+        updateModule(
+          id,
+          payload,
+        ),
+
+      onSuccess: async () => {
+        notify.success(
           "Module updated successfully.",
-      );
+        );
 
-      await queryClient.invalidateQueries({
-        queryKey: MODULES_QUERY_KEY,
-      });
-    },
+        await queryClient.invalidateQueries({
+          queryKey:
+            PLATFORM_MODULES_QUERY_KEY,
+        });
+      },
 
-    onError: (error) => {
-      console.error(
-        "Failed to update module:",
+      onError: (
         error,
-      );
-
-      notify.error(
-        getErrorMessage(
+      ) => {
+        console.error(
+          "Failed to update module:",
           error,
-          "Failed to update module.",
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to update module.",
+          ),
+        );
+      },
+    });
+
+
+  const deleteMutation =
+    useMutation({
+      mutationFn: (
+        id: string,
+      ) =>
+        deleteModule(
+          id,
         ),
-      );
-    },
-  });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      deleteModule(id),
+      onSuccess: async (
+        response,
+      ) => {
+        notify.success(
+          response?.message ??
+            "Module deleted successfully.",
+        );
 
-    onSuccess: async (response) => {
-      notify.success(
-        response?.message ??
-          "Module deleted successfully.",
-      );
+        await queryClient.invalidateQueries({
+          queryKey:
+            PLATFORM_MODULES_QUERY_KEY,
+        });
+      },
 
-      await queryClient.invalidateQueries({
-        queryKey: MODULES_QUERY_KEY,
-      });
-    },
-
-    onError: (error) => {
-      console.error(
-        "Failed to delete module:",
+      onError: (
         error,
-      );
-
-      notify.error(
-        getErrorMessage(
+      ) => {
+        console.error(
+          "Failed to delete module:",
           error,
-          "Failed to delete module.",
-        ),
-      );
-    },
-  });
+        );
+
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to delete module.",
+          ),
+        );
+      },
+    });
+
 
   const fetchModules =
     async (): Promise<Module[]> => {
       try {
         return await queryClient.fetchQuery({
           queryKey:
-            MODULES_QUERY_KEY,
+            PLATFORM_MODULES_QUERY_KEY,
 
           queryFn:
             getModules,
@@ -177,7 +233,9 @@ export const useModule = () => {
           staleTime:
             5 * 60 * 1000,
         });
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Failed to fetch modules:",
           error,
@@ -194,9 +252,11 @@ export const useModule = () => {
       }
     };
 
+
   return {
     modules:
-      modulesQuery.data ?? [],
+      modulesQuery.data ??
+      [],
 
     loading:
       modulesQuery.isLoading,
@@ -217,7 +277,8 @@ export const useModule = () => {
 
     update: (
       id: string,
-      payload: Partial<ModuleFormData>,
+      payload:
+        Partial<ModuleFormData>,
     ) =>
       updateMutation.mutateAsync({
         id,
