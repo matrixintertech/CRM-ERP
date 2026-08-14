@@ -1,31 +1,68 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from "@nestjs/common";
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from "src/database/prisma.service";
+
 
 @Injectable()
 export class SubscriptionPlanModuleRepository {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {}
 
-async createMany(
-  subscriptionPlanId: bigint,
-  moduleIds: string[],
-) {
-  if (moduleIds.length === 0) {
-    return {
-      count: 0,
-    };
+
+  private normalizeModuleIds(
+    moduleIds: string[],
+  ): bigint[] {
+    return [
+      ...new Set(
+        moduleIds,
+      ),
+    ].map(
+      (moduleId) =>
+        BigInt(moduleId),
+    );
   }
 
-  return this.prisma.subscriptionPlanModule.createMany({
-    data: moduleIds.map((moduleId) => ({
-      subscriptionPlanId,
-      moduleId: BigInt(moduleId),
-    })),
-    skipDuplicates: true,
-  });
-}
+
+  async createMany(
+    subscriptionPlanId: bigint,
+    moduleIds: string[],
+  ) {
+    const normalizedModuleIds =
+      this.normalizeModuleIds(
+        moduleIds,
+      );
+
+    if (
+      normalizedModuleIds.length ===
+      0
+    ) {
+      return {
+        count: 0,
+      };
+    }
+
+    return this.prisma.subscriptionPlanModule.createMany({
+      data:
+        normalizedModuleIds.map(
+          (
+            moduleId,
+          ) => ({
+            subscriptionPlanId,
+            moduleId,
+          }),
+        ),
+
+      skipDuplicates:
+        true,
+    });
+  }
+
 
   async deleteByPlanId(
     subscriptionPlanId: bigint,
@@ -37,72 +74,131 @@ async createMany(
     });
   }
 
+
   async findByPlanId(
     subscriptionPlanId: bigint,
   ) {
     return this.prisma.subscriptionPlanModule.findMany({
       where: {
         subscriptionPlanId,
+
+        /*
+         * Existing inactive module mapping
+         * ko details me visible rehne dete hain.
+         *
+         * Deleted module expose nahi hoga.
+         *
+         * New assignment ke liye ACTIVE check
+         * ModuleRepository.findByIds() me hota hai.
+         */
         module: {
-          deletedAt: null,
+          deletedAt:
+            null,
         },
       },
 
       select: {
-        id: true,
-        createdAt: true,
+        id:
+          true,
+
+        createdAt:
+          true,
 
         module: {
           select: {
-            id: true,
-            uuid: true,
-            name: true,
-            code: true,
-            icon: true,
-            route: true,
-            sortOrder: true,
-            isMenu: true,
-            isVisible: true,
-            isSystem: true,
-            status: true,
+            id:
+              true,
+
+            uuid:
+              true,
+
+            name:
+              true,
+
+            code:
+              true,
+
+            icon:
+              true,
+
+            route:
+              true,
+
+            sortOrder:
+              true,
+
+            isMenu:
+              true,
+
+            isVisible:
+              true,
+
+            isSystem:
+              true,
+
+            status:
+              true,
           },
         },
       },
 
       orderBy: {
         module: {
-          sortOrder: 'asc',
+          sortOrder:
+            "asc",
         },
       },
     });
   }
 
+
   async replaceModules(
-  subscriptionPlanId: bigint,
-  moduleIds: string[],
-) {
-  return this.prisma.$transaction(
-    async (transaction) => {
-      await transaction.subscriptionPlanModule.deleteMany({
-        where: {
-          subscriptionPlanId,
-        },
-      });
+    subscriptionPlanId: bigint,
+    moduleIds: string[],
+  ) {
+    const normalizedModuleIds =
+      this.normalizeModuleIds(
+        moduleIds,
+      );
 
-      if (moduleIds.length === 0) {
-        return {
-          count: 0,
-        };
-      }
+    return this.prisma.$transaction(
+      async (
+        transaction,
+      ) => {
+        await transaction.subscriptionPlanModule.deleteMany({
+          where: {
+            subscriptionPlanId,
+          },
+        });
 
-      return transaction.subscriptionPlanModule.createMany({
-        data: moduleIds.map((moduleId) => ({
-          subscriptionPlanId,
-          moduleId: BigInt(moduleId),
-        })),
-        skipDuplicates: true,
-      });
-    },
-  );
-}
+        /*
+         * [] means intentionally
+         * remove all modules.
+         */
+        if (
+          normalizedModuleIds.length ===
+          0
+        ) {
+          return {
+            count: 0,
+          };
+        }
+
+        return transaction.subscriptionPlanModule.createMany({
+          data:
+            normalizedModuleIds.map(
+              (
+                moduleId,
+              ) => ({
+                subscriptionPlanId,
+                moduleId,
+              }),
+            ),
+
+          skipDuplicates:
+            true,
+        });
+      },
+    );
+  }
 }

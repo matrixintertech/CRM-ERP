@@ -1,24 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from "@nestjs/common";
+
 import {
   Prisma,
   SubscriptionPlan,
-} from '@prisma/client';
+} from "@prisma/client";
 
-import { PrismaService } from 'src/database/prisma.service';
+import {
+  PrismaService,
+} from "src/database/prisma.service";
+
 
 @Injectable()
 export class SubscriptionPlanRepository {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
   ) {}
 
+
   async create(
-    data: Prisma.SubscriptionPlanCreateInput,
+    data:
+      Prisma.SubscriptionPlanCreateInput,
   ): Promise<SubscriptionPlan> {
     return this.prisma.subscriptionPlan.create({
       data,
     });
   }
+
 
   async findById(
     id: bigint,
@@ -31,6 +41,7 @@ export class SubscriptionPlanRepository {
     });
   }
 
+
   async findByUuid(
     uuid: string,
   ): Promise<SubscriptionPlan | null> {
@@ -42,17 +53,32 @@ export class SubscriptionPlanRepository {
     });
   }
 
+
+  /*
+   * Deleted records ko bhi check karte hain.
+   *
+   * Agar code DB level par unique hai,
+   * soft-deleted record ka same code
+   * dobara create nahi hona chahiye.
+   */
   async findByCode(
     code: string,
   ): Promise<SubscriptionPlan | null> {
     return this.prisma.subscriptionPlan.findFirst({
       where: {
         code,
-        deletedAt: null,
       },
     });
   }
 
+
+  /*
+   * Update ke time current plan ko
+   * exclude karke duplicate code check.
+   *
+   * Soft-deleted records bhi intentionally
+   * included hain.
+   */
   async findByCodeExceptId(
     code: string,
     id: bigint,
@@ -60,7 +86,7 @@ export class SubscriptionPlanRepository {
     return this.prisma.subscriptionPlan.findFirst({
       where: {
         code,
-        deletedAt: null,
+
         id: {
           not: id,
         },
@@ -68,13 +94,17 @@ export class SubscriptionPlanRepository {
     });
   }
 
+
   async findAll(
     skip: number,
     take: number,
     search?: string,
   ) {
     return this.prisma.subscriptionPlan.findMany({
-      where: this.buildWhere(search),
+      where:
+        this.buildWhere(
+          search,
+        ),
 
       select: {
         id: true,
@@ -98,18 +128,23 @@ export class SubscriptionPlanRepository {
 
         _count: {
           select: {
-            subscriptionPlanModules: true,
-            companySubscriptions: true,
+            subscriptionPlanModules:
+              true,
+
+            companySubscriptions:
+              true,
           },
         },
       },
 
       orderBy: [
         {
-          sortOrder: 'asc',
+          sortOrder:
+            "asc",
         },
         {
-          createdAt: 'desc',
+          createdAt:
+            "desc",
         },
       ],
 
@@ -118,25 +153,33 @@ export class SubscriptionPlanRepository {
     });
   }
 
+
   async count(
     search?: string,
   ): Promise<number> {
     return this.prisma.subscriptionPlan.count({
-      where: this.buildWhere(search),
+      where:
+        this.buildWhere(
+          search,
+        ),
     });
   }
 
+
   async update(
     id: bigint,
-    data: Prisma.SubscriptionPlanUpdateInput,
+    data:
+      Prisma.SubscriptionPlanUpdateInput,
   ): Promise<SubscriptionPlan> {
     return this.prisma.subscriptionPlan.update({
       where: {
         id,
       },
+
       data,
     });
   }
+
 
   async softDelete(
     id: bigint,
@@ -145,33 +188,47 @@ export class SubscriptionPlanRepository {
       where: {
         id,
       },
+
       data: {
-        deletedAt: new Date(),
-        status: 'INACTIVE',
+        deletedAt:
+          new Date(),
+
+        status:
+          "INACTIVE",
       },
     });
   }
 
+
   private buildWhere(
     search?: string,
   ): Prisma.SubscriptionPlanWhereInput {
-    const normalizedSearch = search?.trim();
+    const normalizedSearch =
+      search
+        ?.trim();
 
     return {
-      deletedAt: null,
+      deletedAt:
+        null,
 
       ...(normalizedSearch && {
         OR: [
           {
             name: {
-              contains: normalizedSearch,
-              mode: 'insensitive',
+              contains:
+                normalizedSearch,
+
+              mode:
+                "insensitive",
             },
           },
           {
             code: {
-              contains: normalizedSearch,
-              mode: 'insensitive',
+              contains:
+                normalizedSearch,
+
+              mode:
+                "insensitive",
             },
           },
         ],

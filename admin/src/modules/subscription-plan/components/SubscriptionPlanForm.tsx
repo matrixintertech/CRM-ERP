@@ -1,53 +1,73 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import type {
+  ChangeEvent,
+  FormEvent,
+} from "react";
 
 import Input from "@/shared/components/Input";
 import Textarea from "@/shared/components/Textarea";
 import Select from "@/shared/components/Select";
 import Checkbox from "@/shared/components/Checkbox";
 
+import {
+  useModule,
+} from "@/modules/module/hooks/useModules";
+
 import type {
-  SubscriptionPlan,
+  Module,
+} from "@/modules/module/types/module.types";
+
+import type {
   SubscriptionPlanFormData,
 } from "../types/subscription-plan.types";
 
-import { useModule } from "@/modules/module/hooks/useModules";
-
-import type { Module } from "@/modules/module/types/module.types";
-
 import styles from "./SubscriptionPlanForm.module.css";
 
+
 interface Props {
-  initialValues?: Partial<SubscriptionPlan>;
+  initialValues?:
+    Partial<SubscriptionPlanFormData>;
 
   onSubmit: (
-    values: SubscriptionPlanFormData,
+    values:
+      SubscriptionPlanFormData,
   ) => void | Promise<void>;
 }
 
-const defaultValues: SubscriptionPlanFormData = {
+
+const defaultValues:
+  SubscriptionPlanFormData = {
   name: "",
-
   code: "",
-
   description: "",
 
   planType: "PAID",
 
-  billingCycle: "MONTHLY",
+  billingCycle:
+    "MONTHLY",
 
   price: 0,
 
   trialDays: 0,
 
-  durationInDays: undefined,
+  durationInDays:
+    undefined,
 
-  maxUsers: undefined,
+  maxUsers:
+    undefined,
 
-  maxBranches: undefined,
+  maxBranches:
+    undefined,
 
-  maxProjects: undefined,
+  maxProjects:
+    undefined,
 
-  sortOrder: 1,
+  sortOrder: 0,
 
   isPublic: true,
 
@@ -56,403 +76,703 @@ const defaultValues: SubscriptionPlanFormData = {
   moduleIds: [],
 };
 
+
+const optionalNumberFields =
+  new Set([
+    "durationInDays",
+    "maxUsers",
+    "maxBranches",
+    "maxProjects",
+  ]);
+
+
+const requiredNumberFields =
+  new Set([
+    "price",
+    "trialDays",
+    "sortOrder",
+  ]);
+
+
 const SubscriptionPlanForm = ({
   initialValues,
   onSubmit,
 }: Props) => {
-  const [form, setForm] =
+  const [
+    form,
+    setForm,
+  ] =
     useState<SubscriptionPlanFormData>(
-      defaultValues,
+      {
+        ...defaultValues,
+      },
     );
 
 
- const {
-  modules,
-  fetchModules,
-} = useModule();
+  const [
+    moduleSearch,
+    setModuleSearch,
+  ] =
+    useState("");
 
-const [moduleSearch, setModuleSearch] =
-  useState("");
 
-useEffect(() => {
-  if (initialValues) {
+  /*
+   * useModule already uses React Query,
+   * so separate fetchModules() call
+   * is not required.
+   */
+  const {
+    modules,
+    loading:
+      modulesLoading,
+  } = useModule();
+
+
+  useEffect(() => {
     setForm({
-      name: initialValues.name ?? "",
-      code: initialValues.code ?? "",
-      description: initialValues.description ?? "",
+      ...defaultValues,
+      ...initialValues,
 
-      planType: initialValues.planType ?? "PAID",
-      billingCycle:
-        initialValues.billingCycle ??
-        "MONTHLY",
-
-      price: Number(initialValues.price ?? 0),
-      trialDays:
-        initialValues.trialDays ?? 0,
+      description:
+        initialValues
+          ?.description ??
+        "",
 
       durationInDays:
-        initialValues.durationInDays,
+        initialValues
+          ?.durationInDays ??
+        undefined,
 
       maxUsers:
-        initialValues.maxUsers,
+        initialValues
+          ?.maxUsers ??
+        undefined,
 
       maxBranches:
-        initialValues.maxBranches,
+        initialValues
+          ?.maxBranches ??
+        undefined,
 
       maxProjects:
-        initialValues.maxProjects,
-
-      sortOrder:
-        initialValues.sortOrder ?? 1,
-
-      isPublic:
-        initialValues.isPublic ?? true,
-
-      status:
-        initialValues.status ??
-        "ACTIVE",
+        initialValues
+          ?.maxProjects ??
+        undefined,
 
       moduleIds:
-        initialValues.moduleIds ?? [],
+        initialValues
+          ?.moduleIds ??
+        [],
     });
-  } else {
-    setForm(defaultValues);
-  }
-}, [initialValues]);
+  }, [
+    initialValues,
+  ]);
 
-useEffect(() => {
-  fetchModules();
-}, []);
 
   const handleChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>,
+    event: ChangeEvent<
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
+    >,
   ) => {
     const {
       name,
       value,
       type,
-    } = e.target;
+    } = event.target;
 
-    setForm((prev) => ({
-      ...prev,
 
-      [name]:
-        type === "checkbox"
-          ? (
-              e.target as HTMLInputElement
-            ).checked
-          : [
-              "price",
-              "trialDays",
-              "durationInDays",
-              "maxUsers",
-              "maxBranches",
-              "maxProjects",
-              "sortOrder",
-            ].includes(name)
-          ? Number(value)
-          : value,
-    }));
+    let nextValue:
+      | string
+      | number
+      | boolean
+      | undefined;
+
+
+    if (
+      type ===
+      "checkbox"
+    ) {
+      nextValue = (
+        event.target as HTMLInputElement
+      ).checked;
+    } else if (
+      optionalNumberFields.has(
+        name,
+      )
+    ) {
+      nextValue =
+        value === ""
+          ? undefined
+          : Math.max(
+              0,
+              Number(value) ||
+                0,
+            );
+    } else if (
+      requiredNumberFields.has(
+        name,
+      )
+    ) {
+      nextValue =
+        Math.max(
+          0,
+          Number(value) ||
+            0,
+        );
+    } else {
+      nextValue =
+        value;
+    }
+
+
+    setForm(
+      (
+        previous,
+      ) => ({
+        ...previous,
+
+        [name]:
+          nextValue,
+      }),
+    );
   };
 
 
   const handleModuleToggle = (
-  moduleId: string,
-) => {
-  setForm((prev) => ({
-    ...prev,
-
-    moduleIds: prev.moduleIds.includes(
-      moduleId,
-    )
-      ? prev.moduleIds.filter(
-          (id) => id !== moduleId,
-        )
-      : [
-          ...prev.moduleIds,
-          moduleId,
-        ],
-  }));
-};
-
-
-const filteredModules =
-  modules.filter((module: Module) =>
-    module.name
-      .toLowerCase()
-      .includes(
-        moduleSearch.toLowerCase(),
-      ),
-  );
-
-  const handleSubmit = (
-    e: React.FormEvent,
+    moduleId: string,
   ) => {
-    e.preventDefault();
+    setForm(
+      (
+        previous,
+      ) => ({
+        ...previous,
 
-    console.log(form.moduleIds);
-console.log(typeof form.moduleIds[0]);
-
-    onSubmit(form);
+        moduleIds:
+          previous.moduleIds.includes(
+            moduleId,
+          )
+            ? previous.moduleIds.filter(
+                (
+                  id,
+                ) =>
+                  id !==
+                  moduleId,
+              )
+            : [
+                ...previous.moduleIds,
+                moduleId,
+              ],
+      }),
+    );
   };
+
+
+  /*
+   * Backend new assignments ke
+   * liye ACTIVE modules validate
+   * karta hai.
+   */
+  const filteredModules =
+    useMemo(
+      () => {
+        const search =
+          moduleSearch
+            .trim()
+            .toLowerCase();
+
+        return modules.filter(
+          (
+            module: Module,
+          ) => {
+            if (
+              module.status !==
+              "ACTIVE"
+            ) {
+              return false;
+            }
+
+            if (!search) {
+              return true;
+            }
+
+            return (
+              module.name
+                .toLowerCase()
+                .includes(
+                  search,
+                ) ||
+              module.code
+                .toLowerCase()
+                .includes(
+                  search,
+                )
+            );
+          },
+        );
+      },
+      [
+        modules,
+        moduleSearch,
+      ],
+    );
+
+
+  const handleSubmit =
+    async (
+      event:
+        FormEvent<HTMLFormElement>,
+    ) => {
+      event.preventDefault();
+
+      await onSubmit({
+        ...form,
+
+        name:
+          form.name.trim(),
+
+        code:
+          form.code
+            .trim()
+            .toUpperCase(),
+
+        description:
+          form.description
+            ?.trim(),
+
+        moduleIds: [
+          ...new Set(
+            form.moduleIds,
+          ),
+        ],
+      });
+    };
+
 
   return (
     <form
-  id="subscription-plan-form"
-  onSubmit={handleSubmit}
-  className={styles.form}
->
-  {/* General Information */}
-
-  <h4 className={styles.section}>
-    General Information
-  </h4>
-
-  <div className={styles.form2}>
-    <Input
-      label="Plan Name"
-      name="name"
-      value={form.name}
-      onChange={handleChange}
-      required
-    />
-
-    <Input
-      label="Plan Code"
-      name="code"
-      value={form.code}
-      onChange={handleChange}
-      required
-    />
-
-    <div className={styles.fullWidth}>
-      <Textarea
-        label="Description"
-        name="description"
-        value={form.description}
-        onChange={handleChange}
-        rows={3}
-      />
-    </div>
-  </div>
-
-  {/* Pricing & Configuration */}
-
-  <h4 className={styles.section}>
-    Pricing & Configuration
-  </h4>
-
-  <div className={styles.form3}>
-    <Select
-  label="Plan Type"
-  name="planType"
-  value={form.planType}
-  onChange={handleChange}
-  options={[
-    {
-      label: "Internal",
-      value: "INTERNAL",
-    },
-    {
-      label: "Trial",
-      value: "TRIAL",
-    },
-    {
-      label: "Paid",
-      value: "PAID",
-    },
-    {
-      label: "Lifetime",
-      value: "LIFETIME",
-    },
-  ]}
-/>
-
-    <Select
-      label="Billing Cycle"
-      name="billingCycle"
-      value={form.billingCycle}
-      onChange={handleChange}
-      options={[
-        {
-          label: "Monthly",
-          value: "MONTHLY",
-        },
-        {
-          label: "Quarterly",
-          value: "QUARTERLY",
-        },
-        {
-          label: "Half Yearly",
-          value: "HALF_YEARLY",
-        },
-        {
-          label: "Yearly",
-          value: "YEARLY",
-        },
-        {
-          label: "Lifetime",
-          value: "LIFETIME",
-        },
-      ]}
-    />
-
-    <Input
-      type="number"
-      label="Price"
-      name="price"
-      value={String(form.price)}
-      onChange={handleChange}
-    />
-  </div>
-
-  <div className={styles.form3}>
-    <Input
-      type="number"
-      label="Trial Days"
-      name="trialDays"
-      value={String(form.trialDays)}
-      onChange={handleChange}
-    />
-
-    <Input
-      type="number"
-      label="Duration (Days)"
-      name="durationInDays"
-      value={
-        form.durationInDays
-          ? String(form.durationInDays)
-          : ""
+      id="subscription-plan-form"
+      onSubmit={
+        handleSubmit
       }
-      onChange={handleChange}
-    />
-
-    <Select
-      label="Status"
-      name="status"
-      value={form.status}
-      onChange={handleChange}
-      options={[
-        {
-          label: "Active",
-          value: "ACTIVE",
-        },
-        {
-          label: "Inactive",
-          value: "INACTIVE",
-        },
-      ]}
-    />
-  </div>
-
-  {/* Usage Limits */}
-
-  <h4 className={styles.section}>
-    Usage Limits
-  </h4>
-
-  <div className={styles.form3}>
-    <Input
-      type="number"
-      label="Max Users"
-      name="maxUsers"
-      value={
-        form.maxUsers
-          ? String(form.maxUsers)
-          : ""
+      className={
+        styles.form
       }
-      onChange={handleChange}
-    />
+    >
+      <h4
+        className={
+          styles.section
+        }
+      >
+        General Information
+      </h4>
 
-    <Input
-      type="number"
-      label="Max Branches"
-      name="maxBranches"
-      value={
-        form.maxBranches
-          ? String(form.maxBranches)
-          : ""
-      }
-      onChange={handleChange}
-    />
 
-    <Input
-      type="number"
-      label="Max Projects"
-      name="maxProjects"
-      value={
-        form.maxProjects
-          ? String(form.maxProjects)
-          : ""
-      }
-      onChange={handleChange}
-    />
-  </div>
+      <div
+        className={
+          styles.form2
+        }
+      >
+        <Input
+          label="Plan Name"
+          name="name"
+          value={
+            form.name
+          }
+          onChange={
+            handleChange
+          }
+          required
+        />
 
-  <div className={styles.form2}>
-    <Input
-      type="number"
-      label="Sort Order"
-      name="sortOrder"
-      value={String(form.sortOrder)}
-      onChange={handleChange}
-    />
+        <Input
+          label="Plan Code"
+          name="code"
+          value={
+            form.code
+          }
+          onChange={
+            handleChange
+          }
+          required
+        />
 
-    <Checkbox
-      label="Public Plan"
-      name="isPublic"
-      checked={form.isPublic}
-      onChange={handleChange}
-    />
-  </div>
-
-  {/* Modules */}
-
-  <h4 className={styles.section}>
-    Modules Included ({form.moduleIds.length})
-  </h4>
-
-  <Input
-    placeholder="Search module..."
-    value={moduleSearch}
-    onChange={(e) =>
-      setModuleSearch(e.target.value)
-    }
-  />
-
-  <div className={styles.modulesGrid}>
-    {filteredModules.map(
-      (module: Module) => (
         <div
-          key={module.id}
-          className={`${styles.moduleCard} ${
-            form.moduleIds.includes(
-              module.id,
-            )
-              ? styles.selected
-              : ""
-          }`}
+          className={
+            styles.fullWidth
+          }
         >
-          <Checkbox
-            label={module.name}
-            checked={form.moduleIds.includes(
-              module.id,
-            )}
-            onChange={() =>
-              handleModuleToggle(
-                module.id,
-              )
+          <Textarea
+            label="Description"
+            name="description"
+            value={
+              form.description ??
+              ""
             }
+            onChange={
+              handleChange
+            }
+            rows={3}
           />
         </div>
-      ),
-    )}
-  </div>
-</form>
+      </div>
+
+
+      <h4
+        className={
+          styles.section
+        }
+      >
+        Pricing & Configuration
+      </h4>
+
+
+      <div
+        className={
+          styles.form3
+        }
+      >
+        <Select
+          label="Plan Type"
+          name="planType"
+          value={
+            form.planType
+          }
+          onChange={
+            handleChange
+          }
+          options={[
+            {
+              label:
+                "Trial",
+              value:
+                "TRIAL",
+            },
+            {
+              label:
+                "Free",
+              value:
+                "FREE",
+            },
+            {
+              label:
+                "Paid",
+              value:
+                "PAID",
+            },
+            {
+              label:
+                "Enterprise",
+              value:
+                "ENTERPRISE",
+            },
+          ]}
+        />
+
+        <Select
+          label="Billing Cycle"
+          name="billingCycle"
+          value={
+            form.billingCycle
+          }
+          onChange={
+            handleChange
+          }
+          options={[
+            {
+              label:
+                "Monthly",
+              value:
+                "MONTHLY",
+            },
+            {
+              label:
+                "Quarterly",
+              value:
+                "QUARTERLY",
+            },
+            {
+              label:
+                "Half Yearly",
+              value:
+                "HALF_YEARLY",
+            },
+            {
+              label:
+                "Yearly",
+              value:
+                "YEARLY",
+            },
+            {
+              label:
+                "Lifetime",
+              value:
+                "LIFETIME",
+            },
+          ]}
+        />
+
+        <Input
+          type="number"
+          label="Price"
+          name="price"
+          value={String(
+            form.price,
+          )}
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+      </div>
+
+
+      <div
+        className={
+          styles.form3
+        }
+      >
+        <Input
+          type="number"
+          label="Trial Days"
+          name="trialDays"
+          value={String(
+            form.trialDays,
+          )}
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+
+        <Input
+          type="number"
+          label="Duration (Days)"
+          name="durationInDays"
+          value={
+            form.durationInDays !==
+            undefined
+              ? String(
+                  form.durationInDays,
+                )
+              : ""
+          }
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+
+        <Select
+          label="Status"
+          name="status"
+          value={
+            form.status
+          }
+          onChange={
+            handleChange
+          }
+          options={[
+            {
+              label:
+                "Active",
+              value:
+                "ACTIVE",
+            },
+            {
+              label:
+                "Inactive",
+              value:
+                "INACTIVE",
+            },
+          ]}
+        />
+      </div>
+
+
+      <h4
+        className={
+          styles.section
+        }
+      >
+        Usage Limits
+      </h4>
+
+
+      <div
+        className={
+          styles.form3
+        }
+      >
+        <Input
+          type="number"
+          label="Max Users"
+          name="maxUsers"
+          value={
+            form.maxUsers !==
+            undefined
+              ? String(
+                  form.maxUsers,
+                )
+              : ""
+          }
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+
+        <Input
+          type="number"
+          label="Max Branches"
+          name="maxBranches"
+          value={
+            form.maxBranches !==
+            undefined
+              ? String(
+                  form.maxBranches,
+                )
+              : ""
+          }
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+
+        <Input
+          type="number"
+          label="Max Projects"
+          name="maxProjects"
+          value={
+            form.maxProjects !==
+            undefined
+              ? String(
+                  form.maxProjects,
+                )
+              : ""
+          }
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+      </div>
+
+
+      <div
+        className={
+          styles.form2
+        }
+      >
+        <Input
+          type="number"
+          label="Sort Order"
+          name="sortOrder"
+          value={String(
+            form.sortOrder,
+          )}
+          onChange={
+            handleChange
+          }
+          min={0}
+        />
+
+        <Checkbox
+          label="Public Plan"
+          name="isPublic"
+          checked={
+            form.isPublic
+          }
+          onChange={
+            handleChange
+          }
+        />
+      </div>
+
+
+      <h4
+        className={
+          styles.section
+        }
+      >
+        Modules Included (
+        {form.moduleIds.length})
+      </h4>
+
+
+      <Input
+        name="moduleSearch"
+        placeholder="Search module by name or code..."
+        value={
+          moduleSearch
+        }
+        onChange={(
+          event,
+        ) =>
+          setModuleSearch(
+            event.target.value,
+          )
+        }
+      />
+
+
+      {modulesLoading ? (
+        <div>
+          Loading modules...
+        </div>
+      ) : filteredModules.length ===
+        0 ? (
+        <div>
+          No active modules found.
+        </div>
+      ) : (
+        <div
+          className={
+            styles.modulesGrid
+          }
+        >
+          {filteredModules.map(
+            (
+              module:
+                Module,
+            ) => {
+              const selected =
+                form.moduleIds.includes(
+                  module.id,
+                );
+
+              return (
+                <div
+                  key={
+                    module.id
+                  }
+                  className={`${styles.moduleCard} ${
+                    selected
+                      ? styles.selected
+                      : ""
+                  }`}
+                >
+                  <Checkbox
+                    label={`${module.name} (${module.code})`}
+                    checked={
+                      selected
+                    }
+                    onChange={() =>
+                      handleModuleToggle(
+                        module.id,
+                      )
+                    }
+                  />
+                </div>
+              );
+            },
+          )}
+        </div>
+      )}
+    </form>
   );
 };
+
 
 export default SubscriptionPlanForm;

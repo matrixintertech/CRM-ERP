@@ -1,17 +1,37 @@
-import { Prisma } from '@prisma/client';
+import {
+  Prisma,
+} from "@prisma/client";
 
 import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import { SubscriptionPlanRepository } from '../repositories/subscription-plan.repository';
-import { SubscriptionPlanModuleRepository } from '../repositories/subscription-plan-module.repository';
+import {
+  SubscriptionPlanRepository,
+} from "../repositories/subscription-plan.repository";
 
-import { CreateSubscriptionPlanDto } from '../dto/create-subscription-plan.dto';
-import { GetSubscriptionPlansDto } from '../dto/get-subscription-plans.dto';
-import { UpdateSubscriptionPlanDto } from '../dto/update-subscription-plan.dto';
+import {
+  SubscriptionPlanModuleRepository,
+} from "../repositories/subscription-plan-module.repository";
+
+import {
+  ModuleRepository,
+} from "../../module/repositories/module.repository";
+
+import {
+  CreateSubscriptionPlanDto,
+} from "../dto/create-subscription-plan.dto";
+
+import {
+  GetSubscriptionPlansDto,
+} from "../dto/get-subscription-plans.dto";
+
+import {
+  UpdateSubscriptionPlanDto,
+} from "../dto/update-subscription-plan.dto";
+
 
 @Injectable()
 export class SubscriptionPlanService {
@@ -21,7 +41,47 @@ export class SubscriptionPlanService {
 
     private readonly subscriptionPlanModuleRepository:
       SubscriptionPlanModuleRepository,
+
+    private readonly moduleRepository:
+      ModuleRepository,
   ) {}
+
+
+  /*
+   * Validate requested module IDs.
+   *
+   * Subscription plan me sirf existing
+   * modules assign hone chahiye.
+   */
+  private async validateModuleIds(
+    moduleIds: string[],
+  ): Promise<string[]> {
+    const uniqueModuleIds =
+      [...new Set(moduleIds)];
+
+    if (
+      uniqueModuleIds.length === 0
+    ) {
+      return [];
+    }
+
+    const modules =
+      await this.moduleRepository.findByIds(
+        uniqueModuleIds,
+      );
+
+    if (
+      modules.length !==
+      uniqueModuleIds.length
+    ) {
+      throw new NotFoundException(
+        "One or more modules were not found.",
+      );
+    }
+
+    return uniqueModuleIds;
+  }
+
 
   /**
    * Create subscription plan
@@ -32,51 +92,77 @@ export class SubscriptionPlanService {
     try {
       const {
         moduleIds = [],
-        ...planData
+        ...rawPlanData
       } = dto;
+
+      const code =
+        rawPlanData.code
+          .trim()
+          .toUpperCase();
+
+      const name =
+        rawPlanData.name.trim();
 
       const existingPlan =
         await this.subscriptionPlanRepository.findByCode(
-          planData.code,
+          code,
         );
 
       if (existingPlan) {
         throw new ConflictException(
-          'Subscription plan code already exists.',
+          "Subscription plan code already exists.",
         );
       }
 
-      const subscriptionPlan =
-        await this.subscriptionPlanRepository.create(
-          planData,
+      const validatedModuleIds =
+        await this.validateModuleIds(
+          moduleIds,
         );
 
-      if (moduleIds.length > 0) {
+      const subscriptionPlan =
+        await this.subscriptionPlanRepository.create({
+          ...rawPlanData,
+
+          name,
+          code,
+
+          description:
+            rawPlanData.description
+              ?.trim(),
+        });
+
+      if (
+        validatedModuleIds.length >
+        0
+      ) {
         await this.subscriptionPlanModuleRepository.createMany(
           subscriptionPlan.id,
-          moduleIds,
+          validatedModuleIds,
         );
       }
 
       return {
         message:
-          'Subscription plan created successfully.',
+          "Subscription plan created successfully.",
+
         subscriptionPlan,
       };
     } catch (error) {
       if (
         error instanceof
           Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        error.code ===
+          "P2002"
       ) {
         throw new ConflictException(
-          'Subscription plan code already exists.',
+          "Subscription plan code already exists.",
         );
       }
 
       throw error;
     }
   }
+
 
   /**
    * List subscription plans
@@ -85,7 +171,8 @@ export class SubscriptionPlanService {
     dto: GetSubscriptionPlansDto,
   ) {
     const skip =
-      (dto.page - 1) * dto.limit;
+      (dto.page - 1) *
+      dto.limit;
 
     const [
       subscriptionPlans,
@@ -107,17 +194,26 @@ export class SubscriptionPlanService {
 
       pagination: {
         total,
-        page: dto.page,
-        limit: dto.limit,
-        totalPages: Math.ceil(
-          total / dto.limit,
-        ),
+
+        page:
+          dto.page,
+
+        limit:
+          dto.limit,
+
+        totalPages:
+          Math.ceil(
+            total /
+              dto.limit,
+          ),
       },
     };
   }
 
+
   /**
-   * Find subscription plan by internal ID
+   * Find subscription plan
+   * by internal ID.
    */
   async findById(
     id: bigint,
@@ -127,9 +223,11 @@ export class SubscriptionPlanService {
         id,
       );
 
-    if (!subscriptionPlan) {
+    if (
+      !subscriptionPlan
+    ) {
       throw new NotFoundException(
-        'Subscription plan not found.',
+        "Subscription plan not found.",
       );
     }
 
@@ -139,28 +237,51 @@ export class SubscriptionPlanService {
       );
 
     return {
-  subscriptionPlan: {
-    ...subscriptionPlan,
+      subscriptionPlan: {
+        ...subscriptionPlan,
 
-    moduleIds: selectedModules.map(
-      (item) => item.module.id.toString(),
-    ),
+        moduleIds:
+          selectedModules.map(
+            (
+              item,
+            ) =>
+              item.module.id.toString(),
+          ),
 
-    modules: selectedModules.map(
-      (item) => ({
-        id: item.module.id.toString(),
-        uuid: item.module.uuid,
-        name: item.module.name,
-        code: item.module.code,
-        icon: item.module.icon,
-        route: item.module.route,
-        sortOrder: item.module.sortOrder,
-        status: item.module.status,
-      }),
-    ),
-  },
-};
+        modules:
+          selectedModules.map(
+            (
+              item,
+            ) => ({
+              id:
+                item.module.id.toString(),
+
+              uuid:
+                item.module.uuid,
+
+              name:
+                item.module.name,
+
+              code:
+                item.module.code,
+
+              icon:
+                item.module.icon,
+
+              route:
+                item.module.route,
+
+              sortOrder:
+                item.module.sortOrder,
+
+              status:
+                item.module.status,
+            }),
+          ),
+      },
+    };
   }
+
 
   /**
    * Update subscription plan
@@ -175,71 +296,125 @@ export class SubscriptionPlanService {
           id,
         );
 
-      if (!subscriptionPlan) {
+      if (
+        !subscriptionPlan
+      ) {
         throw new NotFoundException(
-          'Subscription plan not found.',
+          "Subscription plan not found.",
         );
-      }
-
-      if (dto.code) {
-        const existingPlan =
-          await this.subscriptionPlanRepository.findByCodeExceptId(
-            dto.code,
-            id,
-          );
-
-        if (existingPlan) {
-          throw new ConflictException(
-            'Subscription plan code already exists.',
-          );
-        }
       }
 
       const {
         moduleIds,
-        ...planData
+        ...rawPlanData
       } = dto;
+
+      const code =
+        rawPlanData.code
+          ? rawPlanData.code
+              .trim()
+              .toUpperCase()
+          : undefined;
+
+      const name =
+        rawPlanData.name
+          ? rawPlanData.name.trim()
+          : undefined;
+
+      if (
+        code &&
+        code !==
+          subscriptionPlan.code
+      ) {
+        const existingPlan =
+          await this.subscriptionPlanRepository.findByCodeExceptId(
+            code,
+            id,
+          );
+
+        if (
+          existingPlan
+        ) {
+          throw new ConflictException(
+            "Subscription plan code already exists.",
+          );
+        }
+      }
+
+      let validatedModuleIds:
+        string[] | undefined;
+
+      /*
+       * undefined
+       * → existing mappings untouched
+       *
+       * []
+       * → remove all mappings
+       *
+       * [...]
+       * → replace mappings
+       */
+      if (
+        moduleIds !==
+        undefined
+      ) {
+        validatedModuleIds =
+          await this.validateModuleIds(
+            moduleIds,
+          );
+      }
 
       const updatedPlan =
         await this.subscriptionPlanRepository.update(
           id,
-          planData,
+          {
+            ...rawPlanData,
+
+            name,
+            code,
+
+            description:
+              rawPlanData.description !==
+              undefined
+                ? rawPlanData.description
+                    ?.trim()
+                : undefined,
+          },
         );
 
-      /*
-       * Replace module mappings only when moduleIds
-       * is actually present in the update request.
-       *
-       * moduleIds: undefined -> keep existing mappings
-       * moduleIds: []        -> remove all mappings
-       * moduleIds: [...]     -> replace mappings
-       */
-      if (moduleIds !== undefined) {
+      if (
+        validatedModuleIds !==
+        undefined
+      ) {
         await this.subscriptionPlanModuleRepository.replaceModules(
           id,
-          moduleIds,
+          validatedModuleIds,
         );
       }
 
       return {
         message:
-          'Subscription plan updated successfully.',
-        subscriptionPlan: updatedPlan,
+          "Subscription plan updated successfully.",
+
+        subscriptionPlan:
+          updatedPlan,
       };
     } catch (error) {
       if (
         error instanceof
           Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        error.code ===
+          "P2002"
       ) {
         throw new ConflictException(
-          'Subscription plan code already exists.',
+          "Subscription plan code already exists.",
         );
       }
 
       throw error;
     }
   }
+
 
   /**
    * Soft delete subscription plan
@@ -252,9 +427,11 @@ export class SubscriptionPlanService {
         id,
       );
 
-    if (!subscriptionPlan) {
+    if (
+      !subscriptionPlan
+    ) {
       throw new NotFoundException(
-        'Subscription plan not found.',
+        "Subscription plan not found.",
       );
     }
 
@@ -268,7 +445,7 @@ export class SubscriptionPlanService {
 
     return {
       message:
-        'Subscription plan deleted successfully.',
+        "Subscription plan deleted successfully.",
     };
   }
 }

@@ -1,23 +1,44 @@
+import type {
+  ReactNode,
+} from "react";
+
 import Modal from "@/shared/components/Modal";
 
-import type { SubscriptionPlan } from "../../types/subscription-plan.types";
+import type {
+  SubscriptionPlan,
+} from "../../types/subscription-plan.types";
 
 import styles from "./SubscriptionPlanDetailsModal.module.css";
+
 
 interface Props {
   open: boolean;
 
-  plan: SubscriptionPlan | null;
+  plan:
+    | SubscriptionPlan
+    | null;
 
   onClose: () => void;
 }
+
 
 const SubscriptionPlanDetailsModal = ({
   open,
   plan,
   onClose,
 }: Props) => {
-  if (!plan) return null;
+  if (!plan) {
+    return null;
+  }
+
+
+  const moduleCount =
+    plan.modules?.length ??
+    plan.moduleIds?.length ??
+    plan._count
+      ?.subscriptionPlanModules ??
+    0;
+
 
   return (
     <Modal
@@ -26,73 +47,143 @@ const SubscriptionPlanDetailsModal = ({
       size="lg"
       onClose={onClose}
     >
-      <div className={styles.wrapper}>
+      <div
+        className={
+          styles.wrapper
+        }
+      >
         {/* Header */}
 
-        <div className={styles.header}>
-          <h2>{plan.name}</h2>
+        <div
+          className={
+            styles.header
+          }
+        >
+          <h2>
+            {plan.name}
+          </h2>
 
-          <p>{plan.description || "-"}</p>
+          <p>
+            {plan.description ||
+              "-"}
+          </p>
         </div>
+
 
         {/* Summary */}
 
-        <div className={styles.summaryGrid}>
-          <div className={styles.summaryCard}>
-            <span>Price</span>
+        <div
+          className={
+            styles.summaryGrid
+          }
+        >
+          <div
+            className={
+              styles.summaryCard
+            }
+          >
+            <span>
+              Price
+            </span>
 
             <strong>
-              ₹{plan.price}
+              ₹
+              {plan.price}
             </strong>
           </div>
 
-          <div className={styles.summaryCard}>
-            <span>Billing</span>
+
+          <div
+            className={
+              styles.summaryCard
+            }
+          >
+            <span>
+              Billing
+            </span>
 
             <strong>
-              {plan.billingCycle}
+              {
+                plan.billingCycle
+              }
             </strong>
           </div>
 
-          <div className={styles.summaryCard}>
-            <span>Users</span>
+
+          <div
+            className={
+              styles.summaryCard
+            }
+          >
+            <span>
+              Users
+            </span>
 
             <strong>
-              {plan.maxUsers ?? "Unlimited"}
+              {plan.maxUsers ??
+                "Unlimited"}
             </strong>
           </div>
 
-          <div className={styles.summaryCard}>
-            <span>Modules</span>
+
+          <div
+            className={
+              styles.summaryCard
+            }
+          >
+            <span>
+              Modules
+            </span>
 
             <strong>
-              {plan.moduleIds?.length ??
-                0}
+              {moduleCount}
             </strong>
           </div>
         </div>
 
+
         {/* General */}
 
-        <section className={styles.section}>
+        <section
+          className={
+            styles.section
+          }
+        >
           <h3>
             General Information
           </h3>
 
-          <div className={styles.infoGrid}>
+          <div
+            className={
+              styles.infoGrid
+            }
+          >
             <InfoRow
               label="Name"
-              value={plan.name}
+              value={
+                plan.name
+              }
             />
 
             <InfoRow
               label="Code"
-              value={plan.code}
+              value={
+                plan.code
+              }
+            />
+
+            <InfoRow
+              label="Plan Type"
+              value={
+                plan.planType
+              }
             />
 
             <InfoRow
               label="Status"
-              value={plan.status}
+              value={
+                plan.status
+              }
             />
 
             <InfoRow
@@ -103,20 +194,33 @@ const SubscriptionPlanDetailsModal = ({
                   : "No"
               }
             />
+
+            <InfoRow
+              label="Sort Order"
+              value={String(
+                plan.sortOrder,
+              )}
+            />
           </div>
         </section>
 
+
         {/* Pricing */}
 
-        <section className={styles.section}>
-          <h3>Pricing</h3>
+        <section
+          className={
+            styles.section
+          }
+        >
+          <h3>
+            Pricing
+          </h3>
 
-          <div className={styles.infoGrid}>
-            <InfoRow
-              label="Plan Type"
-              value={plan.planType}
-            />
-
+          <div
+            className={
+              styles.infoGrid
+            }
+          >
             <InfoRow
               label="Billing"
               value={
@@ -131,18 +235,17 @@ const SubscriptionPlanDetailsModal = ({
 
             <InfoRow
               label="Trial Days"
-              value={
-                String(
-                  plan.trialDays ??
-                    0,
-                )
-              }
+              value={String(
+                plan.trialDays ??
+                  0,
+              )}
             />
 
             <InfoRow
               label="Duration"
               value={
-                plan.durationInDays
+                plan.durationInDays !=
+                null
                   ? `${plan.durationInDays} Days`
                   : "-"
               }
@@ -150,14 +253,23 @@ const SubscriptionPlanDetailsModal = ({
           </div>
         </section>
 
+
         {/* Limits */}
 
-        <section className={styles.section}>
+        <section
+          className={
+            styles.section
+          }
+        >
           <h3>
             Usage Limits
           </h3>
 
-          <div className={styles.infoGrid}>
+          <div
+            className={
+              styles.infoGrid
+            }
+          >
             <InfoRow
               label="Users"
               value={
@@ -184,9 +296,14 @@ const SubscriptionPlanDetailsModal = ({
           </div>
         </section>
 
+
         {/* Modules */}
 
-        <section className={styles.section}>
+        <section
+          className={
+            styles.section
+          }
+        >
           <h3>
             Included Modules
           </h3>
@@ -196,22 +313,31 @@ const SubscriptionPlanDetailsModal = ({
               styles.modulesGrid
             }
           >
-            {plan.modules?.length ? (
+            {plan.modules
+              ?.length ? (
               plan.modules.map(
-                (module) => (
+                (
+                  module,
+                ) => (
                   <span
-                    key={module.id}
+                    key={
+                      module.id
+                    }
                     className={
                       styles.moduleChip
                     }
+                    title={`${module.code} • ${module.status}`}
                   >
-                    {module.name}
+                    {
+                      module.name
+                    }
                   </span>
                 ),
               )
             ) : (
               <span>
-                No Modules Assigned
+                No Modules
+                Assigned
               </span>
             )}
           </div>
@@ -221,17 +347,23 @@ const SubscriptionPlanDetailsModal = ({
   );
 };
 
+
 interface InfoRowProps {
   label: string;
 
-  value: React.ReactNode;
+  value: ReactNode;
 }
+
 
 const InfoRow = ({
   label,
   value,
 }: InfoRowProps) => (
-  <div className={styles.infoRow}>
+  <div
+    className={
+      styles.infoRow
+    }
+  >
     <span
       className={
         styles.infoLabel
@@ -249,5 +381,6 @@ const InfoRow = ({
     </span>
   </div>
 );
+
 
 export default SubscriptionPlanDetailsModal;

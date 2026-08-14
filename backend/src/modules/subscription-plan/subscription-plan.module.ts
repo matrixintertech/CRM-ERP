@@ -1,14 +1,42 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+} from "@nestjs/common";
 
-import { PrismaModule } from 'src/database/prisma.module';
+import {
+  PrismaModule,
+} from "src/database/prisma.module";
 
-import { SubscriptionPlanController } from './controllers/subscription-plan.controller';
-import { SubscriptionPlanService } from './services/subscription-plan.service';
-import { SubscriptionPlanRepository } from './repositories/subscription-plan.repository';
-import { SubscriptionPlanModuleRepository } from './repositories/subscription-plan-module.repository';
+import {
+  AuthorizationModule,
+} from "../authorization/authorization.module";
+
+import {
+  ModuleModule,
+} from "../module/module.module";
+
+import {
+  SubscriptionPlanController,
+} from "./controllers/subscription-plan.controller";
+
+import {
+  SubscriptionPlanService,
+} from "./services/subscription-plan.service";
+
+import {
+  SubscriptionPlanRepository,
+} from "./repositories/subscription-plan.repository";
+
+import {
+  SubscriptionPlanModuleRepository,
+} from "./repositories/subscription-plan-module.repository";
+
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    AuthorizationModule,
+    ModuleModule,
+  ],
 
   controllers: [
     SubscriptionPlanController,
@@ -17,13 +45,13 @@ import { SubscriptionPlanModuleRepository } from './repositories/subscription-pl
   providers: [
     SubscriptionPlanService,
     SubscriptionPlanRepository,
-    SubscriptionPlanModuleRepository
+    SubscriptionPlanModuleRepository,
   ],
 
   exports: [
     SubscriptionPlanService,
     SubscriptionPlanRepository,
-    SubscriptionPlanModuleRepository
+    SubscriptionPlanModuleRepository,
   ],
 })
 export class SubscriptionPlanModule {}

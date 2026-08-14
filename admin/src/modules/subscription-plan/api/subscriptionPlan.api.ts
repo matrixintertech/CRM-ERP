@@ -5,18 +5,27 @@ import type {
   SubscriptionPlanFormData,
 } from "../types/subscription-plan.types";
 
+
+const BASE_URL =
+  "/platform/subscription-plans";
+
+
 export const getSubscriptionPlans =
   async (): Promise<
     SubscriptionPlan[]
   > => {
     const { data } =
       await api.get(
-        "/subscription-plans",
+        BASE_URL,
       );
 
-    return data.data
-      .subscriptionPlans;
+    return (
+      data.data?.subscriptionPlans ??
+      data.subscriptionPlans ??
+      []
+    );
   };
+
 
 export const getSubscriptionPlanById =
   async (
@@ -24,39 +33,55 @@ export const getSubscriptionPlanById =
   ): Promise<SubscriptionPlan> => {
     const { data } =
       await api.get(
-        `/subscription-plans/${id}`,
+        `${BASE_URL}/${id}`,
       );
 
-    return data.data
-      .subscriptionPlan;
+    return (
+      data.data?.subscriptionPlan ??
+      data.subscriptionPlan ??
+      data.data
+    );
   };
+
 
 export const createSubscriptionPlan =
   async (
-    payload: SubscriptionPlanFormData,
-  ) => {
+    payload:
+      SubscriptionPlanFormData,
+  ): Promise<SubscriptionPlan> => {
     const { data } =
       await api.post(
-        "/subscription-plans",
+        BASE_URL,
         payload,
       );
 
-    return data;
+    return (
+      data.data?.subscriptionPlan ??
+      data.subscriptionPlan ??
+      data.data
+    );
   };
+
 
 export const updateSubscriptionPlan =
   async (
     id: string,
-    payload: SubscriptionPlanFormData,
-  ) => {
+    payload:
+      SubscriptionPlanFormData,
+  ): Promise<SubscriptionPlan> => {
     const { data } =
       await api.patch(
-        `/subscription-plans/${id}`,
+        `${BASE_URL}/${id}`,
         payload,
       );
 
-    return data;
+    return (
+      data.data?.subscriptionPlan ??
+      data.subscriptionPlan ??
+      data.data
+    );
   };
+
 
 export const deleteSubscriptionPlan =
   async (
@@ -64,7 +89,7 @@ export const deleteSubscriptionPlan =
   ) => {
     const { data } =
       await api.delete(
-        `/subscription-plans/${id}`,
+        `${BASE_URL}/${id}`,
       );
 
     return data;

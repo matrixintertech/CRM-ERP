@@ -4,6 +4,7 @@ export type PlanType =
   | "PAID"
   | "ENTERPRISE";
 
+
 export type BillingCycle =
   | "MONTHLY"
   | "QUARTERLY"
@@ -11,16 +12,30 @@ export type BillingCycle =
   | "YEARLY"
   | "LIFETIME";
 
+
 export type SubscriptionStatus =
   | "ACTIVE"
   | "INACTIVE";
 
+
 export interface PlanModule {
   id: string;
+
+  uuid: string;
+
   name: string;
+
   code: string;
+
   icon?: string | null;
+
+  route?: string | null;
+
+  sortOrder: number;
+
+  status: SubscriptionStatus;
 }
+
 
 export interface SubscriptionPlan {
   id: string;
@@ -31,7 +46,7 @@ export interface SubscriptionPlan {
 
   code: string;
 
-  description?: string;
+  description?: string | null;
 
   planType: PlanType;
 
@@ -41,13 +56,13 @@ export interface SubscriptionPlan {
 
   trialDays: number;
 
-  durationInDays?: number;
+  durationInDays?: number | null;
 
-  maxUsers?: number;
+  maxUsers?: number | null;
 
-  maxBranches?: number;
+  maxBranches?: number | null;
 
-  maxProjects?: number;
+  maxProjects?: number | null;
 
   sortOrder: number;
 
@@ -61,12 +76,23 @@ export interface SubscriptionPlan {
 
   deletedAt?: string | null;
 
-  moduleCount?: number;
+  /*
+   * List endpoint repository currently
+   * returns Prisma _count.
+   */
+  _count?: {
+    subscriptionPlanModules: number;
+    companySubscriptions: number;
+  };
 
+  /*
+   * Detail endpoint adds these.
+   */
   moduleIds?: string[];
 
   modules?: PlanModule[];
 }
+
 
 export interface SubscriptionPlanFormData {
   name: string;
@@ -100,9 +126,8 @@ export interface SubscriptionPlanFormData {
   moduleIds: string[];
 }
 
-export interface SubscriptionPlanListResponse {
-  subscriptionPlans: SubscriptionPlan[];
 
+export interface SubscriptionPlanPagination {
   total: number;
 
   page: number;
@@ -112,6 +137,17 @@ export interface SubscriptionPlanListResponse {
   totalPages: number;
 }
 
+
+export interface SubscriptionPlanListResponse {
+  subscriptionPlans:
+    SubscriptionPlan[];
+
+  pagination:
+    SubscriptionPlanPagination;
+}
+
+
 export interface SubscriptionPlanResponse {
-  subscriptionPlan: SubscriptionPlan;
+  subscriptionPlan:
+    SubscriptionPlan;
 }
