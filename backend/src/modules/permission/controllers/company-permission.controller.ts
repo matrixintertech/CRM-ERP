@@ -35,6 +35,7 @@ import {
 @ApiBearerAuth("access-token")
 @UseGuards(
   JwtAuthGuard,
+  PermissionGuard
 
 )
 @Controller("company/permissions")
@@ -60,9 +61,9 @@ export class CompanyPermissionController {
    * boundary me expose nahi hongi.
    */
   @Get("grouped")
-//   @RequirePermission(
-//     "company.permission.view",
-//   )
+  @RequirePermission(
+    "company.permission.view",
+  )
   @ApiOperation({
     summary:
       "Get Company Permission Catalog",
