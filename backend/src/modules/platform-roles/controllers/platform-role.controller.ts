@@ -99,9 +99,9 @@ export class PlatformRoleController {
    * Get all platform roles.
    */
   @Get()
-  // @RequirePermission(
-  //   "platform.platform_role.view",
-  // )
+  @RequirePermission(
+    "platform.platform_role.view",
+  )
   @ApiOperation({
     summary:
       "Get Platform Roles",
@@ -177,9 +177,9 @@ export class PlatformRoleController {
   @Get(
     ":uuid/permissions",
   )
-  // @RequirePermission(
-  //   "platform.platform_role.view",
-  // )
+  @RequirePermission(
+    "platform.platform_role.view",
+  )
   @ApiOperation({
     summary:
       "Get Platform Role Permissions",
@@ -212,9 +212,9 @@ export class PlatformRoleController {
   @Put(
     ":uuid/permissions",
   )
-  // @RequirePermission(
-  //   "platform.platform_role.update",
-  // )
+  @RequirePermission(
+    "platform.platform_role.update",
+  )
   @ApiOperation({
     summary:
       "Assign Permissions To Platform Role",
@@ -285,9 +285,9 @@ export class PlatformRoleController {
   @Patch(
     ":uuid",
   )
-  // @RequirePermission(
-  //   "platform.platform_role.update",
-  // )
+  @RequirePermission(
+    "platform.platform_role.update",
+  )
   @ApiOperation({
     summary:
       "Update Platform Role",

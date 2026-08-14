@@ -1,19 +1,35 @@
 import api from "@/shared/services/axios";
-import type{ CompanyProfile } from "../types/company-profile.types";
 
-export const getCompanyProfile = async (): Promise<CompanyProfile> => {
-  const response = await api.get("/companies/profile");
+import type {
+  CompanyProfile,
+} from "../types/company-profile.types";
 
-  return response.data.data;
-};
 
-export const updateCompanyProfile = async (
-  payload: Partial<CompanyProfile>,
-) => {
-  const { data } = await api.patch(
-    "/companies/profile",
-    payload,
-  );
+const BASE_URL =
+  "/companies/profile";
 
- return data.data;
-};
+
+export const getCompanyProfile =
+  async (): Promise<CompanyProfile> => {
+    const response =
+      await api.get(
+        BASE_URL,
+      );
+
+    return response.data.data;
+  };
+
+
+export const updateCompanyProfile =
+  async (
+    payload:
+      Partial<CompanyProfile>,
+  ) => {
+    const { data } =
+      await api.patch(
+        BASE_URL,
+        payload,
+      );
+
+    return data.data;
+  };
