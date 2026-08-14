@@ -158,9 +158,9 @@ export class PlatformRoleController {
   @Get(
     "dropdown",
   )
-  // @RequirePermission(
-  //   "platform.platform_role.view",
-  // )
+  @RequirePermission(
+    "platform.platform_role.view",
+  )
   @ApiOperation({
     summary:
       "Get Platform Role Dropdown",

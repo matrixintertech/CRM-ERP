@@ -26,6 +26,7 @@ import {
   UpdatePermissionDto,
 } from '../dto/update-permission.dto';
 
+
 @Injectable()
 export class PermissionService {
   constructor(
@@ -33,9 +34,93 @@ export class PermissionService {
       PermissionRepository,
   ) {}
 
+
+  /*
+   * Platform-specific permission modules.
+   */
+  private readonly platformModules =
+    new Set<string>([
+      'PLATFORM_COMPANY',
+      'PLATFORM_ROLE',
+      'PLATFORM_USER',
+      'PLATFORM_PERMISSION',
+    ]);
+
+
+  /*
+   * Permission type aur module
+   * same authorization boundary ke
+   * hone chahiye.
+   */
+  private validateModuleForType(
+    type: PermissionType,
+    module: string,
+  ): void {
+    const isPlatformModule =
+      this.platformModules.has(
+        module,
+      );
+
+    if (
+      type ===
+        PermissionType.PLATFORM &&
+      !isPlatformModule
+    ) {
+      throw new BadRequestException(
+        'Platform permissions must use a platform permission module.',
+      );
+    }
+
+    if (
+      type ===
+        PermissionType.COMPANY &&
+      isPlatformModule
+    ) {
+      throw new BadRequestException(
+        'Company permissions cannot use a platform permission module.',
+      );
+    }
+  }
+
+
+  /*
+   * Permission code boundary should
+   * match PermissionType.
+   */
+  private validateCodeForType(
+    type: PermissionType,
+    code: string,
+  ): void {
+    if (
+      type ===
+        PermissionType.PLATFORM &&
+      !code.startsWith(
+        'platform.',
+      )
+    ) {
+      throw new BadRequestException(
+        'Platform permission code must start with "platform.".',
+      );
+    }
+
+    if (
+      type ===
+        PermissionType.COMPANY &&
+      !code.startsWith(
+        'company.',
+      )
+    ) {
+      throw new BadRequestException(
+        'Company permission code must start with "company.".',
+      );
+    }
+  }
+
+
   private normalizeAllowedScopes(
     type: PermissionType,
-    allowedScopes: PermissionScope[],
+    allowedScopes:
+      PermissionScope[],
   ): PermissionScope[] {
     const scopes =
       Array.from(
@@ -48,7 +133,10 @@ export class PermissionService {
       type ===
       PermissionType.PLATFORM
     ) {
-      if (scopes.length > 0) {
+      if (
+        scopes.length >
+        0
+      ) {
         throw new BadRequestException(
           'Platform permissions cannot have scopes.',
         );
@@ -60,7 +148,8 @@ export class PermissionService {
     if (
       type ===
         PermissionType.COMPANY &&
-      scopes.length === 0
+      scopes.length ===
+        0
     ) {
       throw new BadRequestException(
         'Company permissions must have at least one allowed scope.',
@@ -70,6 +159,7 @@ export class PermissionService {
     return scopes;
   }
 
+
   async create(
     dto: CreatePermissionDto,
   ) {
@@ -78,22 +168,41 @@ export class PermissionService {
         .trim()
         .toLowerCase();
 
+
+    /*
+     * Boundary validation.
+     */
+    this.validateModuleForType(
+      dto.type,
+      dto.module,
+    );
+
+    this.validateCodeForType(
+      dto.type,
+      normalizedCode,
+    );
+
+
     const existingPermission =
       await this.permissionRepository.findByCode(
         normalizedCode,
       );
 
-    if (existingPermission) {
+    if (
+      existingPermission
+    ) {
       throw new ConflictException(
         'Permission code already exists.',
       );
     }
+
 
     const allowedScopes =
       this.normalizeAllowedScopes(
         dto.type,
         dto.allowedScopes,
       );
+
 
     const permission =
       await this.permissionRepository.create({
@@ -118,6 +227,7 @@ export class PermissionService {
             ?.trim(),
       });
 
+
     return {
       message:
         'Permission created successfully.',
@@ -126,8 +236,10 @@ export class PermissionService {
     };
   }
 
+
   async findAll(
-    params: FindPermissionsParams = {},
+    params:
+      FindPermissionsParams = {},
   ) {
     const [
       result,
@@ -142,6 +254,7 @@ export class PermissionService {
           params.type,
         ),
       ]);
+
 
     return {
       message:
@@ -163,6 +276,7 @@ export class PermissionService {
       },
     };
   }
+
 
   async findOne(
     uuid: string,
@@ -186,6 +300,7 @@ export class PermissionService {
     };
   }
 
+
   async update(
     uuid: string,
     dto: UpdatePermissionDto,
@@ -195,16 +310,55 @@ export class PermissionService {
         uuid,
       );
 
-    if (!existingPermission) {
+    if (
+      !existingPermission
+    ) {
       throw new NotFoundException(
         'Permission not found.',
       );
     }
 
+
     const normalizedCode =
       dto.code
         ?.trim()
         .toLowerCase();
+
+
+    /*
+     * Effective values calculate karo,
+     * because type/module individually
+     * update ho sakte hain.
+     */
+    const effectiveType =
+      dto.type ??
+      existingPermission.type;
+
+    const effectiveModule =
+      dto.module ??
+      existingPermission.module;
+
+    const effectiveCode =
+      normalizedCode ??
+      existingPermission.code;
+
+
+    /*
+     * Prevent:
+     *
+     * PLATFORM + USER
+     * COMPANY + PLATFORM_USER
+     */
+    this.validateModuleForType(
+      effectiveType,
+      effectiveModule,
+    );
+
+    this.validateCodeForType(
+      effectiveType,
+      effectiveCode,
+    );
+
 
     if (
       normalizedCode &&
@@ -227,17 +381,15 @@ export class PermissionService {
       }
     }
 
-    const effectiveType =
-      dto.type ??
-      existingPermission.type;
 
     let allowedScopes:
-      PermissionScope[] |
-      undefined;
+      | PermissionScope[]
+      | undefined;
+
 
     /*
-     * Agar permission PLATFORM banayi ja rahi hai,
-     * scope automatically empty kar denge.
+     * PLATFORM permissions
+     * scope-less hain.
      */
     if (
       effectiveType ===
@@ -245,33 +397,33 @@ export class PermissionService {
     ) {
       if (
         dto.allowedScopes &&
-        dto.allowedScopes.length > 0
+        dto.allowedScopes.length >
+          0
       ) {
         throw new BadRequestException(
           'Platform permissions cannot have scopes.',
         );
       }
 
+
       /*
-       * Type COMPANY -> PLATFORM change hua
-       * to existing scopes remove karna zaroori hai.
+       * COMPANY -> PLATFORM
+       * hone par old scopes clear.
        */
       if (
-        dto.type !== undefined ||
-        dto.allowedScopes !== undefined
+        dto.type !==
+          undefined ||
+        dto.allowedScopes !==
+          undefined
       ) {
         allowedScopes = [];
       }
     } else if (
-      dto.allowedScopes !== undefined ||
-      dto.type !== undefined
+      dto.allowedScopes !==
+        undefined ||
+      dto.type !==
+        undefined
     ) {
-      /*
-       * COMPANY permission ke case me:
-       *
-       * - new scopes aaye to woh use honge
-       * - sirf type change hua ho to existing scopes use honge
-       */
       const effectiveScopes =
         dto.allowedScopes ??
         existingPermission.allowedScopes;
@@ -282,6 +434,7 @@ export class PermissionService {
           effectiveScopes,
         );
     }
+
 
     const permission =
       await this.permissionRepository.update(
@@ -314,7 +467,8 @@ export class PermissionService {
           ...(dto.description !==
             undefined && {
             description:
-              dto.description.trim(),
+              dto.description
+                .trim(),
           }),
 
           ...(allowedScopes !==
@@ -330,6 +484,7 @@ export class PermissionService {
         },
       );
 
+
     return {
       message:
         'Permission updated successfully.',
@@ -337,6 +492,7 @@ export class PermissionService {
       permission,
     };
   }
+
 
   async remove(
     uuid: string,
@@ -346,16 +502,20 @@ export class PermissionService {
         uuid,
       );
 
-    if (!existingPermission) {
+    if (
+      !existingPermission
+    ) {
       throw new NotFoundException(
         'Permission not found.',
       );
     }
 
+
     const permission =
       await this.permissionRepository.softDelete(
         uuid,
       );
+
 
     return {
       message:
@@ -365,8 +525,10 @@ export class PermissionService {
     };
   }
 
+
   async findGrouped(
-    type?: PermissionType,
+    type?:
+      PermissionType,
   ) {
     const permissions =
       await this.permissionRepository.findGrouped(
@@ -376,10 +538,12 @@ export class PermissionService {
     type PermissionItem =
       (typeof permissions)[number];
 
-    const grouped: Record<
-      string,
-      PermissionItem[]
-    > = {};
+    const grouped:
+      Record<
+        string,
+        PermissionItem[]
+      > = {};
+
 
     for (
       const permission
@@ -388,14 +552,23 @@ export class PermissionService {
       const module =
         permission.module;
 
-      if (!grouped[module]) {
-        grouped[module] = [];
+      if (
+        !grouped[
+          module
+        ]
+      ) {
+        grouped[
+          module
+        ] = [];
       }
 
-      grouped[module].push(
+      grouped[
+        module
+      ].push(
         permission,
       );
     }
+
 
     const permissionGroups =
       Object.entries(
@@ -412,12 +585,14 @@ export class PermissionService {
         }),
       );
 
+
     return {
       message:
         'Grouped permissions fetched successfully.',
 
       type:
-        type ?? null,
+        type ??
+        null,
 
       permissionGroups,
     };

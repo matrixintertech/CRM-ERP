@@ -3,6 +3,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionScope,
   PermissionType,
   Prisma,
   Status,
@@ -13,16 +14,9 @@ import {
 } from "src/database/prisma.service";
 
 import {
-  CreatePermissionDto,
-} from "../dto/create-permission.dto";
-
-import {
-  UpdatePermissionDto,
-} from "../dto/update-permission.dto";
-
-import {
   PermissionModule,
 } from "../enums/permission-module.enum";
+
 
 export interface FindPermissionsParams {
   page?: number;
@@ -47,6 +41,55 @@ export interface FindPermissionsParams {
     | "desc";
 }
 
+
+export interface CreatePermissionData {
+  module:
+    PermissionModule;
+
+  type:
+    PermissionType;
+
+  name:
+    string;
+
+  code:
+    string;
+
+  description?:
+    string | null;
+
+  allowedScopes:
+    PermissionScope[];
+
+  status?:
+    Status;
+}
+
+
+export interface UpdatePermissionData {
+  module?:
+    PermissionModule;
+
+  type?:
+    PermissionType;
+
+  name?:
+    string;
+
+  code?:
+    string;
+
+  description?:
+    string | null;
+
+  allowedScopes?:
+    PermissionScope[];
+
+  status?:
+    Status;
+}
+
+
 @Injectable()
 export class PermissionRepository {
   constructor(
@@ -54,47 +97,45 @@ export class PermissionRepository {
       PrismaService,
   ) {}
 
-create(
-  data: CreatePermissionDto,
-) {
-  return this.prisma.permission.create({
-    data: {
-      module:
-        data.module,
 
-      type:
-        data.type,
+  create(
+    data:
+      CreatePermissionData,
+  ) {
+    return this.prisma.permission.create({
+      data: {
+        module:
+          data.module,
 
-      name:
-        data.name.trim(),
+        type:
+          data.type,
 
-      code:
-        data.code
-          .trim()
-          .toLowerCase(),
+        name:
+          data.name,
 
-      description:
-        data.description
-          ?.trim(),
+        code:
+          data.code,
 
-      allowedScopes:
-        Array.from(
-          new Set(
-            data.allowedScopes,
-          ),
-        ),
+        description:
+          data.description ??
+          null,
 
-      ...(data.status !==
-        undefined && {
-        status:
-          data.status,
-      }),
-    },
-  });
-}
+        allowedScopes:
+          data.allowedScopes,
+
+        ...(data.status !==
+          undefined && {
+          status:
+            data.status,
+        }),
+      },
+    });
+  }
+
 
   async findAll(
-    params: FindPermissionsParams = {},
+    params:
+      FindPermissionsParams = {},
   ) {
     const page =
       Math.max(
@@ -127,6 +168,7 @@ create(
       Prisma.SortOrder =
         params.sortOrder ??
         "asc";
+
 
     const where:
       Prisma.PermissionWhereInput = {
@@ -196,12 +238,14 @@ create(
         }),
       };
 
+
     const orderBy:
       Prisma.PermissionOrderByWithRelationInput =
         {
           [sortBy]:
             sortOrder,
         };
+
 
     const [
       permissions,
@@ -224,6 +268,7 @@ create(
         }),
       ]);
 
+
     return {
       permissions,
 
@@ -235,19 +280,18 @@ create(
         total,
 
         totalPages:
-          Math.max(
-            1,
-            Math.ceil(
-              total /
-                limit,
-            ),
+          Math.ceil(
+            total /
+              limit,
           ),
       },
     };
   }
 
+
   async findModules(
-    type?: PermissionType,
+    type?:
+      PermissionType,
   ) {
     const modules =
       await this.prisma.permission.findMany({
@@ -276,14 +320,19 @@ create(
         },
       });
 
+
     return modules.map(
-      (item) =>
+      (
+        item,
+      ) =>
         item.module,
     );
   }
 
+
   findActive(
-    type?: PermissionType,
+    type?:
+      PermissionType,
   ) {
     return this.prisma.permission.findMany({
       where: {
@@ -313,8 +362,10 @@ create(
     });
   }
 
+
   findById(
-    id: bigint,
+    id:
+      bigint,
   ) {
     return this.prisma.permission.findFirst({
       where: {
@@ -326,8 +377,10 @@ create(
     });
   }
 
+
   findByUuid(
-    uuid: string,
+    uuid:
+      string,
   ) {
     return this.prisma.permission.findFirst({
       where: {
@@ -339,25 +392,37 @@ create(
     });
   }
 
+
+  /*
+   * IMPORTANT:
+   *
+   * code schema level par @unique hai.
+   *
+   * Isliye deleted permission ko bhi
+   * duplicate check me include karna
+   * zaroori hai.
+   */
   findByCode(
-    code: string,
+    code:
+      string,
   ) {
-    return this.prisma.permission.findFirst({
+    return this.prisma.permission.findUnique({
       where: {
         code:
           code
             .trim()
             .toLowerCase(),
-
-        deletedAt:
-          null,
       },
     });
   }
 
+
   findByUuids(
-    uuids: string[],
-    type?: PermissionType,
+    uuids:
+      string[],
+
+    type?:
+      PermissionType,
   ) {
     return this.prisma.permission.findMany({
       where: {
@@ -380,79 +445,78 @@ create(
     });
   }
 
-update(
-  uuid: string,
-  data: UpdatePermissionDto,
-) {
-  const payload:
-    Prisma.PermissionUpdateInput = {
-      ...(data.module !==
-        undefined && {
-        module:
-          data.module,
-      }),
 
-      ...(data.type !==
-        undefined && {
-        type:
-          data.type,
-      }),
-
-      ...(data.name !==
-        undefined && {
-        name:
-          data.name.trim(),
-      }),
-
-      ...(data.code !==
-        undefined && {
-        code:
-          data.code
-            .trim()
-            .toLowerCase(),
-      }),
-
-      ...(data.description !==
-        undefined && {
-        description:
-          data.description
-            .trim() ||
-          null,
-      }),
-
-      ...(data.allowedScopes !==
-        undefined && {
-        allowedScopes: {
-          set:
-            Array.from(
-              new Set(
-                data.allowedScopes,
-              ),
-            ),
-        },
-      }),
-
-      ...(data.status !==
-        undefined && {
-        status:
-          data.status,
-      }),
-    };
-
-  return this.prisma.permission.update({
-    where: {
-      uuid,
-    },
+  update(
+    uuid:
+      string,
 
     data:
-      payload,
-  });
-}
+      UpdatePermissionData,
+  ) {
+    const payload:
+      Prisma.PermissionUpdateInput =
+        {
+          ...(data.module !==
+            undefined && {
+            module:
+              data.module,
+          }),
 
+          ...(data.type !==
+            undefined && {
+            type:
+              data.type,
+          }),
+
+          ...(data.name !==
+            undefined && {
+            name:
+              data.name,
+          }),
+
+          ...(data.code !==
+            undefined && {
+            code:
+              data.code,
+          }),
+
+          ...(data.description !==
+            undefined && {
+            description:
+              data.description ||
+              null,
+          }),
+
+          ...(data.allowedScopes !==
+            undefined && {
+            allowedScopes: {
+              set:
+                data.allowedScopes,
+            },
+          }),
+
+          ...(data.status !==
+            undefined && {
+            status:
+              data.status,
+          }),
+        };
+
+
+    return this.prisma.permission.update({
+      where: {
+        uuid,
+      },
+
+      data:
+        payload,
+    });
+  }
 
 
   softDelete(
-    uuid: string,
+    uuid:
+      string,
   ) {
     return this.prisma.permission.update({
       where: {
@@ -469,8 +533,10 @@ update(
     });
   }
 
+
   async findGrouped(
-    type?: PermissionType,
+    type?:
+      PermissionType,
   ) {
     return this.prisma.permission.findMany({
       where: {

@@ -8,7 +8,26 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
+
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+} from "@nestjs/swagger";
+
+import {
+  JwtAuthGuard,
+} from "../../auth/guards/jwt-auth.guard";
+
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
+
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
 
 import {
   PermissionService,
@@ -30,47 +49,105 @@ import {
   UpdatePermissionDto,
 } from "../dto/update-permission.dto";
 
-@Controller("permissions")
+
+@ApiTags("Platform Permissions")
+@ApiBearerAuth("access-token")
+@UseGuards(
+  JwtAuthGuard,
+  PermissionGuard,
+)
+@Controller("platform/permissions")
 export class PermissionController {
   constructor(
     private readonly permissionService:
       PermissionService,
   ) {}
 
+
+  /*
+   * Create permission definition.
+   */
   @Post()
+  @RequirePermission(
+    "platform.permission.create",
+  )
+  @ApiOperation({
+    summary:
+      "Create Permission",
+  })
   create(
     @Body()
-    dto: CreatePermissionDto,
+    dto:
+      CreatePermissionDto,
   ) {
     return this.permissionService.create(
       dto,
     );
   }
 
+
+  /*
+   * Get permission definitions.
+   *
+   * Platform permission administrator
+   * COMPANY + PLATFORM definitions
+   * dono inspect kar sakta hai.
+   */
   @Get()
+  @RequirePermission(
+    "platform.permission.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get Permissions",
+  })
   findAll(
     @Query()
-    query: GetPermissionsQueryDto,
+    query:
+      GetPermissionsQueryDto,
   ) {
     return this.permissionService.findAll(
       query,
     );
   }
 
+
   /*
-   * Static route ko :uuid se pehle rakho.
+   * Grouped permission definitions.
+   *
+   * Static route ko :uuid se
+   * pehle rakho.
    */
   @Get("grouped")
+  @RequirePermission(
+    "platform.permission.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get Grouped Permissions",
+  })
   findGrouped(
     @Query()
-    query: GetGroupedPermissionsQueryDto,
+    query:
+      GetGroupedPermissionsQueryDto,
   ) {
     return this.permissionService.findGrouped(
       query.type,
     );
   }
 
+
+  /*
+   * Get one permission.
+   */
   @Get(":uuid")
+  @RequirePermission(
+    "platform.permission.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get Permission By UUID",
+  })
   findOne(
     @Param(
       "uuid",
@@ -83,7 +160,18 @@ export class PermissionController {
     );
   }
 
+
+  /*
+   * Update permission definition.
+   */
   @Patch(":uuid")
+  @RequirePermission(
+    "platform.permission.update",
+  )
+  @ApiOperation({
+    summary:
+      "Update Permission",
+  })
   update(
     @Param(
       "uuid",
@@ -92,7 +180,8 @@ export class PermissionController {
     uuid: string,
 
     @Body()
-    dto: UpdatePermissionDto,
+    dto:
+      UpdatePermissionDto,
   ) {
     return this.permissionService.update(
       uuid,
@@ -100,7 +189,18 @@ export class PermissionController {
     );
   }
 
+
+  /*
+   * Soft delete permission definition.
+   */
   @Delete(":uuid")
+  @RequirePermission(
+    "platform.permission.delete",
+  )
+  @ApiOperation({
+    summary:
+      "Delete Permission",
+  })
   remove(
     @Param(
       "uuid",

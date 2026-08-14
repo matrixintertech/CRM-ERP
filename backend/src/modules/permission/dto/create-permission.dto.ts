@@ -4,6 +4,7 @@ import {
 } from '@nestjs/swagger';
 
 import {
+  ArrayUnique,
   IsArray,
   IsEnum,
   IsNotEmpty,
@@ -22,28 +23,44 @@ import {
   PermissionModule,
 } from '../enums/permission-module.enum';
 
+
 export class CreatePermissionDto {
   @ApiProperty({
     enum: PermissionModule,
-    example: PermissionModule.COMPANY,
+    example:
+      PermissionModule.COMPANY,
   })
-  @IsEnum(PermissionModule)
-  module: PermissionModule;
+  @IsEnum(
+    PermissionModule,
+  )
+  module:
+    PermissionModule;
+
 
   @ApiProperty({
-    enum: PermissionType,
-    example: PermissionType.COMPANY,
+    enum:
+      PermissionType,
+
+    example:
+      PermissionType.COMPANY,
   })
-  @IsEnum(PermissionType)
-  type: PermissionType;
+  @IsEnum(
+    PermissionType,
+  )
+  type:
+    PermissionType;
+
 
   @ApiProperty({
-    example: 'View Project Categories',
+    example:
+      'View Project Categories',
   })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  name: string;
+  name:
+    string;
+
 
   @ApiProperty({
     example:
@@ -52,25 +69,36 @@ export class CreatePermissionDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  code: string;
+  code:
+    string;
+
 
   @ApiProperty({
-    enum: PermissionScope,
-    isArray: true,
+    enum:
+      PermissionScope,
+
+    isArray:
+      true,
+
     example: [
       PermissionScope.COMPANY,
     ],
+
     description:
-      'Scopes supported by this permission. PLATFORM permissions must use an empty array.',
+      'Scopes supported by this permission. COMPANY permissions require at least one scope. PLATFORM permissions must use an empty array.',
   })
   @IsArray()
+  @ArrayUnique()
   @IsEnum(
     PermissionScope,
     {
-      each: true,
+      each:
+        true,
     },
   )
-  allowedScopes: PermissionScope[];
+  allowedScopes:
+    PermissionScope[];
+
 
   @ApiPropertyOptional({
     example:
@@ -79,13 +107,21 @@ export class CreatePermissionDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  description?: string;
+  description?:
+    string;
+
 
   @ApiPropertyOptional({
-    enum: Status,
-    default: Status.ACTIVE,
+    enum:
+      Status,
+
+    default:
+      Status.ACTIVE,
   })
   @IsOptional()
-  @IsEnum(Status)
-  status?: Status;
+  @IsEnum(
+    Status,
+  )
+  status?:
+    Status;
 }
