@@ -5,6 +5,10 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  PROFILE_QUERY_KEY,
+} from "@/modules/profile/hooks/useProfile";
+
+import {
   notify,
 } from "@/shared/utils/notify";
 
@@ -24,6 +28,7 @@ import type {
   UpdatePermissionDto,
 } from "../types/permission.types";
 
+
 interface ApiErrorResponse {
   message?: string;
 
@@ -31,6 +36,20 @@ interface ApiErrorResponse {
     | string
     | string[];
 }
+
+
+const PERMISSIONS_QUERY_KEY = [
+  "permissions",
+] as const;
+
+const GROUPED_PERMISSIONS_QUERY_KEY = [
+  "grouped-permissions",
+] as const;
+
+const PLATFORM_ROLE_PERMISSIONS_QUERY_KEY = [
+  "platform-role-permissions",
+] as const;
+
 
 const getErrorMessage = (
   error: unknown,
@@ -55,12 +74,19 @@ const getErrorMessage = (
     return message;
   }
 
-  if (Array.isArray(errors)) {
-    return errors.join(", ");
+  if (
+    Array.isArray(
+      errors,
+    )
+  ) {
+    return errors.join(
+      ", ",
+    );
   }
 
   if (
-    typeof errors === "string"
+    typeof errors ===
+    "string"
   ) {
     return errors;
   }
@@ -68,16 +94,19 @@ const getErrorMessage = (
   return fallback;
 };
 
+
 export const usePermission = (
-  params: GetPermissionsParams = {},
+  params:
+    GetPermissionsParams = {},
 ) => {
   const queryClient =
     useQueryClient();
 
+
   const permissionsQuery =
     useQuery({
       queryKey: [
-        "permissions",
+        ...PERMISSIONS_QUERY_KEY,
         params,
       ],
 
@@ -90,11 +119,13 @@ export const usePermission = (
         5 * 60 * 1000,
     });
 
+
   const groupedPermissionsQuery =
     useQuery({
       queryKey: [
-        "grouped-permissions",
-        params.type ?? "ALL",
+        ...GROUPED_PERMISSIONS_QUERY_KEY,
+        params.type ??
+          "ALL",
       ],
 
       queryFn: () =>
@@ -105,6 +136,7 @@ export const usePermission = (
       staleTime:
         5 * 60 * 1000,
     });
+
 
   const fetchPermission =
     async (
@@ -125,7 +157,9 @@ export const usePermission = (
           staleTime:
             5 * 60 * 1000,
         });
-      } catch (error) {
+      } catch (
+        error
+      ) {
         notify.error(
           getErrorMessage(
             error,
@@ -136,6 +170,7 @@ export const usePermission = (
         throw error;
       }
     };
+
 
   const createMutation =
     useMutation({
@@ -154,20 +189,20 @@ export const usePermission = (
 
         await Promise.all([
           queryClient.invalidateQueries({
-            queryKey: [
-              "permissions",
-            ],
+            queryKey:
+              PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
-            queryKey: [
-              "grouped-permissions",
-            ],
+            queryKey:
+              GROUPED_PERMISSIONS_QUERY_KEY,
           }),
         ]);
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         notify.error(
           getErrorMessage(
             error,
@@ -176,6 +211,7 @@ export const usePermission = (
         );
       },
     });
+
 
   const updateMutation =
     useMutation({
@@ -194,36 +230,59 @@ export const usePermission = (
         ),
 
       onSuccess: async (
-        _data,
+        permission,
         variables,
       ) => {
+        queryClient.setQueryData(
+          [
+            "permission",
+            variables.uuid,
+          ],
+          permission,
+        );
+
         notify.success(
           "Permission updated successfully.",
         );
 
         await Promise.all([
           queryClient.invalidateQueries({
-            queryKey: [
-              "permissions",
-            ],
+            queryKey:
+              PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
-            queryKey: [
-              "grouped-permissions",
-            ],
+            queryKey:
+              GROUPED_PERMISSIONS_QUERY_KEY,
           }),
 
+          /*
+           * PlatformRole permission pages
+           * may contain this permission.
+           */
           queryClient.invalidateQueries({
-            queryKey: [
-              "permission",
-              variables.uuid,
-            ],
+            queryKey:
+              PLATFORM_ROLE_PERMISSIONS_QUERY_KEY,
+          }),
+
+          /*
+           * If current user's assigned
+           * permission changed status/code,
+           * effectivePermissions must refresh.
+           */
+          queryClient.invalidateQueries({
+            queryKey:
+              PROFILE_QUERY_KEY,
+
+            exact:
+              true,
           }),
         ]);
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         notify.error(
           getErrorMessage(
             error,
@@ -232,6 +291,7 @@ export const usePermission = (
         );
       },
     });
+
 
   const deleteMutation =
     useMutation({
@@ -246,33 +306,53 @@ export const usePermission = (
         _data,
         uuid,
       ) => {
-        notify.success(
-          "Permission deleted successfully.",
-        );
-
         queryClient.removeQueries({
           queryKey: [
             "permission",
             uuid,
           ],
+
+          exact:
+            true,
         });
+
+        notify.success(
+          "Permission deleted successfully.",
+        );
 
         await Promise.all([
           queryClient.invalidateQueries({
-            queryKey: [
-              "permissions",
-            ],
+            queryKey:
+              PERMISSIONS_QUERY_KEY,
           }),
 
           queryClient.invalidateQueries({
-            queryKey: [
-              "grouped-permissions",
-            ],
+            queryKey:
+              GROUPED_PERMISSIONS_QUERY_KEY,
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey:
+              PLATFORM_ROLE_PERMISSIONS_QUERY_KEY,
+          }),
+
+          /*
+           * Deleted/inactive permission
+           * may currently belong to user role.
+           */
+          queryClient.invalidateQueries({
+            queryKey:
+              PROFILE_QUERY_KEY,
+
+            exact:
+              true,
           }),
         ]);
       },
 
-      onError: (error) => {
+      onError: (
+        error,
+      ) => {
         notify.error(
           getErrorMessage(
             error,
@@ -282,28 +362,34 @@ export const usePermission = (
       },
     });
 
+
   return {
     permissions:
       permissionsQuery.data
-        ?.permissions ?? [],
+        ?.permissions ??
+      [],
 
     pagination:
       permissionsQuery.data
-        ?.pagination ?? null,
+        ?.pagination ??
+      null,
 
     moduleOptions:
       permissionsQuery.data
-        ?.filters?.modules ??
+        ?.filters
+        ?.modules ??
       [],
 
     typeOptions:
       permissionsQuery.data
-        ?.filters?.types ??
+        ?.filters
+        ?.types ??
       [],
 
     groupedPermissions:
       groupedPermissionsQuery
-        .data ?? [],
+        .data ??
+      [],
 
     loading:
       permissionsQuery.isLoading,
@@ -312,10 +398,12 @@ export const usePermission = (
       permissionsQuery.isFetching,
 
     groupedLoading:
-      groupedPermissionsQuery.isLoading,
+      groupedPermissionsQuery
+        .isLoading,
 
     groupedFetching:
-      groupedPermissionsQuery.isFetching,
+      groupedPermissionsQuery
+        .isFetching,
 
     error:
       permissionsQuery.error,

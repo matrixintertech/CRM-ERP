@@ -10,13 +10,19 @@ import type {
   UpdatePermissionDto,
 } from "../types/permission.types";
 
+
+const BASE_URL =
+  "/platform/permissions";
+
+
 export const createPermission = async (
   payload: CreatePermissionDto,
 ): Promise<Permission> => {
-  const { data } = await api.post(
-    "/permissions",
-    payload,
-  );
+  const { data } =
+    await api.post(
+      BASE_URL,
+      payload,
+    );
 
   return (
     data.data?.permission ??
@@ -25,15 +31,17 @@ export const createPermission = async (
   );
 };
 
+
 export const getPermissions = async (
   params: GetPermissionsParams = {},
 ): Promise<PermissionListResponse> => {
-  const { data } = await api.get(
-    "/permissions",
-    {
-      params,
-    },
-  );
+  const { data } =
+    await api.get(
+      BASE_URL,
+      {
+        params,
+      },
+    );
 
   const response =
     data.data ?? data;
@@ -52,7 +60,7 @@ export const getPermissions = async (
 
         total: 0,
 
-        totalPages: 1,
+        totalPages: 0,
       },
 
     filters:
@@ -63,20 +71,22 @@ export const getPermissions = async (
   };
 };
 
+
 export const getGroupedPermissions =
   async (
     type?: PermissionType,
   ): Promise<PermissionGroup[]> => {
-    const { data } = await api.get(
-      "/permissions/grouped",
-      {
-        params: {
-          ...(type && {
-            type,
-          }),
+    const { data } =
+      await api.get(
+        `${BASE_URL}/grouped`,
+        {
+          params: {
+            ...(type && {
+              type,
+            }),
+          },
         },
-      },
-    );
+      );
 
     return (
       data.data?.permissionGroups ??
@@ -86,12 +96,14 @@ export const getGroupedPermissions =
     );
   };
 
+
 export const getPermission = async (
   uuid: string,
 ): Promise<Permission> => {
-  const { data } = await api.get(
-    `/permissions/${uuid}`,
-  );
+  const { data } =
+    await api.get(
+      `${BASE_URL}/${uuid}`,
+    );
 
   return (
     data.data?.permission ??
@@ -99,15 +111,17 @@ export const getPermission = async (
     data.data
   );
 };
+
 
 export const updatePermission = async (
   uuid: string,
   payload: UpdatePermissionDto,
 ): Promise<Permission> => {
-  const { data } = await api.patch(
-    `/permissions/${uuid}`,
-    payload,
-  );
+  const { data } =
+    await api.patch(
+      `${BASE_URL}/${uuid}`,
+      payload,
+    );
 
   return (
     data.data?.permission ??
@@ -116,12 +130,14 @@ export const updatePermission = async (
   );
 };
 
+
 export const deletePermission = async (
   uuid: string,
 ) => {
-  const { data } = await api.delete(
-    `/permissions/${uuid}`,
-  );
+  const { data } =
+    await api.delete(
+      `${BASE_URL}/${uuid}`,
+    );
 
   return data;
 };
