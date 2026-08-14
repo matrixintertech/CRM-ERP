@@ -165,6 +165,10 @@ export const menu:
 
     portals:
       PLATFORM_PORTAL,
+
+    permissions: [
+          "platform.subscription_plan.view",
+        ],
   },
 
 
