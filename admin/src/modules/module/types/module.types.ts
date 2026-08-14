@@ -2,6 +2,7 @@ export type ModuleStatus =
   | "ACTIVE"
   | "INACTIVE";
 
+
 export interface Module {
   id: string;
 
@@ -30,6 +31,10 @@ export interface Module {
 
   isVisible: boolean;
 
+  /*
+   * Backend-managed field.
+   * Form se update nahi hoga.
+   */
   isSystem: boolean;
 
   status: ModuleStatus;
@@ -38,6 +43,7 @@ export interface Module {
 
   updatedAt: string;
 }
+
 
 export interface ModuleFormData {
   name: string;
@@ -58,10 +64,9 @@ export interface ModuleFormData {
 
   isVisible: boolean;
 
-  isSystem: boolean;
-
   status: ModuleStatus;
 }
+
 
 export interface ModuleListResponse {
   message: string;
@@ -69,11 +74,13 @@ export interface ModuleListResponse {
   modules: Module[];
 }
 
+
 export interface ModuleResponse {
   message: string;
 
   module: Module;
 }
+
 
 export interface ModuleFormModalProps {
   open: boolean;

@@ -7,87 +7,138 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-} from '@nestjs/common';
+  UseGuards,
+} from "@nestjs/common";
+
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
-import { ModuleService } from '../services/module.service';
+import {
+  JwtAuthGuard,
+} from "../../auth/guards/jwt-auth.guard";
 
-import { CreateModuleDto } from '../dto/create-module.dto';
-import { UpdateModuleDto } from '../dto/update-module.dto';
+import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
 
-@ApiTags('Modules')
-@ApiBearerAuth()
-@Controller('modules')
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
+
+import {
+  ModuleService,
+} from "../services/module.service";
+
+import {
+  CreateModuleDto,
+} from "../dto/create-module.dto";
+
+import {
+  UpdateModuleDto,
+} from "../dto/update-module.dto";
+
+
+@ApiTags("Platform Modules")
+@ApiBearerAuth("access-token")
+@UseGuards(
+  JwtAuthGuard,
+  PermissionGuard,
+)
+@Controller("platform/modules")
 export class ModuleController {
   constructor(
-    private readonly moduleService: ModuleService,
+    private readonly moduleService:
+      ModuleService,
   ) {}
 
+
   @Post()
+  @RequirePermission(
+    "platform.module.create",
+  )
   @ApiOperation({
-    summary: 'Create Module',
+    summary:
+      "Create Platform Module",
   })
   @ApiResponse({
     status: 201,
     description:
-      'Module created successfully.',
+      "Module created successfully.",
   })
   create(
     @Body()
     dto: CreateModuleDto,
   ) {
-    return this.moduleService.create(dto);
+    return this.moduleService.create(
+      dto,
+    );
   }
 
+
   @Get()
+  @RequirePermission(
+    "platform.module.view",
+  )
   @ApiOperation({
-    summary: 'Module List',
+    summary:
+      "Platform Module List",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Modules fetched successfully.',
+      "Modules fetched successfully.",
   })
   findAll() {
     return this.moduleService.findAll();
   }
 
-  @Get(':id')
+
+  @Get(":id")
+  @RequirePermission(
+    "platform.module.view",
+  )
   @ApiOperation({
-    summary: 'Get Module Details',
+    summary:
+      "Get Platform Module Details",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Module fetched successfully.',
+      "Module fetched successfully.",
   })
   findOne(
     @Param(
-      'id',
+      "id",
       ParseIntPipe,
     )
     id: number,
   ) {
-    return this.moduleService.findOne(id);
+    return this.moduleService.findOne(
+      id,
+    );
   }
 
-  @Patch(':id')
+
+  @Patch(":id")
+  @RequirePermission(
+    "platform.module.update",
+  )
   @ApiOperation({
-    summary: 'Update Module',
+    summary:
+      "Update Platform Module",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Module updated successfully.',
+      "Module updated successfully.",
   })
   update(
     @Param(
-      'id',
+      "id",
       ParseIntPipe,
     )
     id: number,
@@ -101,22 +152,29 @@ export class ModuleController {
     );
   }
 
-  @Delete(':id')
+
+  @Delete(":id")
+  @RequirePermission(
+    "platform.module.delete",
+  )
   @ApiOperation({
-    summary: 'Delete Module',
+    summary:
+      "Delete Platform Module",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Module deleted successfully.',
+      "Module deleted successfully.",
   })
   remove(
     @Param(
-      'id',
+      "id",
       ParseIntPipe,
     )
     id: number,
   ) {
-    return this.moduleService.remove(id);
+    return this.moduleService.remove(
+      id,
+    );
   }
 }

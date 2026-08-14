@@ -9,7 +9,13 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
+import {
+  useDocumentTitle,
+} from "@/shared/hooks/useDocumentTitle";
+
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
 
 import Button from "@/shared/components/Button";
 import Card from "@/shared/components/Card";
@@ -18,19 +24,47 @@ import DataTable from "@/shared/components/DataTable/DataTable";
 import Modal from "@/shared/components/Modal";
 import PageHeader from "@/shared/components/PageHeader";
 
-import type { DataTableColumn } from "@/shared/components/DataTable/types";
+import type {
+  DataTableColumn,
+} from "@/shared/components/DataTable/types";
 
 import ModuleForm from "../components/ModuleForm";
 
-import { useModule } from "../hooks/useModules";
+import {
+  useModule,
+} from "../hooks/useModules";
 
 import type {
   Module,
   ModuleFormData,
 } from "../types/module.types";
 
+
 const ModuleListPage = () => {
-  useDocumentTitle("Module Master");
+  useDocumentTitle(
+    "Module Master",
+  );
+
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canCreate =
+    hasPermission(
+      "platform.module.create",
+    );
+
+  const canUpdate =
+    hasPermission(
+      "platform.module.update",
+    );
+
+  const canDelete =
+    hasPermission(
+      "platform.module.delete",
+    );
+
 
   const {
     loading,
@@ -41,6 +75,7 @@ const ModuleListPage = () => {
     saving,
     deleting,
   } = useModule();
+
 
   const [
     open,
@@ -66,40 +101,87 @@ const ModuleListPage = () => {
     null,
   );
 
+
   const handleOpenCreate = () => {
-    setEditingModule(null);
-    setOpen(true);
+    if (!canCreate) {
+      return;
+    }
+
+    setEditingModule(
+      null,
+    );
+
+    setOpen(
+      true,
+    );
   };
+
 
   const handleOpenEdit = (
     module: Module,
   ) => {
-    setEditingModule(module);
-    setOpen(true);
+    if (!canUpdate) {
+      return;
+    }
+
+    setEditingModule(
+      module,
+    );
+
+    setOpen(
+      true,
+    );
   };
 
+
   const handleCloseModal = () => {
-    setOpen(false);
-    setEditingModule(null);
+    setOpen(
+      false,
+    );
+
+    setEditingModule(
+      null,
+    );
   };
+
 
   const handleOpenDelete = (
     module: Module,
   ) => {
-    setSelectedModule(module);
-    setDeleteOpen(true);
+    if (
+      !canDelete ||
+      module.isSystem
+    ) {
+      return;
+    }
+
+    setSelectedModule(
+      module,
+    );
+
+    setDeleteOpen(
+      true,
+    );
   };
 
+
   const handleCloseDelete = () => {
-    setDeleteOpen(false);
-    setSelectedModule(null);
+    setDeleteOpen(
+      false,
+    );
+
+    setSelectedModule(
+      null,
+    );
   };
+
 
   const handleSubmit = async (
     values: ModuleFormData,
   ) => {
     try {
-      const payload: ModuleFormData = {
+      const payload:
+        ModuleFormData = {
         ...values,
 
         parentId:
@@ -112,12 +194,22 @@ const ModuleListPage = () => {
       };
 
       if (editingModule) {
+        if (!canUpdate) {
+          return;
+        }
+
         await update(
           editingModule.id,
           payload,
         );
       } else {
-        await create(payload);
+        if (!canCreate) {
+          return;
+        }
+
+        await create(
+          payload,
+        );
       }
 
       handleCloseModal();
@@ -129,122 +221,209 @@ const ModuleListPage = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedModule) {
-      return;
-    }
 
-    try {
-      await remove(
-        selectedModule.id,
-      );
+  const handleDelete =
+    async () => {
+      if (
+        !selectedModule ||
+        !canDelete ||
+        selectedModule.isSystem
+      ) {
+        return;
+      }
 
-      handleCloseDelete();
-    } catch (error) {
-      console.error(
-        "Failed to delete module:",
-        error,
-      );
-    }
-  };
+      try {
+        await remove(
+          selectedModule.id,
+        );
 
-const columns: DataTableColumn<Module>[] = [
-  {
-    key: "name",
-    title: "Module",
-  },
-  {
-    key: "code",
-    title: "Code",
-  },
-  {
-    key: "parent",
-    title: "Parent",
-    render: (row) =>
-      row.parent?.name ?? "-",
-  },
-  {
-    key: "route",
-    title: "Route",
-    render: (row) =>
-      row.route || "-",
-  },
-  {
-    key: "isMenu",
-    title: "Menu",
-    align: "center",
-    render: (row) =>
-      row.isMenu ? "Yes" : "No",
-  },
-  {
-    key: "isVisible",
-    title: "Visible",
-    align: "center",
-    render: (row) =>
-      row.isVisible ? "Yes" : "No",
-  },
-  {
-    key: "isSystem",
-    title: "System",
-    align: "center",
-    render: (row) =>
-      row.isSystem ? "Yes" : "No",
-  },
-  {
-    key: "status",
-    title: "Status",
-    align: "center",
-  },
-  {
-    key: "actions",
-    title: "Actions",
-    align: "center",
-    render: (row) => (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 8,
-        }}
-      >
-        <Button
-          size="sm"
-          aria-label={`Edit ${row.name}`}
-          onClick={() =>
-            handleOpenEdit(row)
-          }
-        >
-          <SquarePen size={16} />
-        </Button>
+        handleCloseDelete();
+      } catch (error) {
+        console.error(
+          "Failed to delete module:",
+          error,
+        );
+      }
+    };
 
-        <Button
-          size="sm"
-          variant="danger"
-          disabled={row.isSystem}
-          aria-label={`Delete ${row.name}`}
-          onClick={() =>
-            handleOpenDelete(row)
-          }
-        >
-          <Trash2 size={16} />
-        </Button>
-      </div>
-    ),
-  },
-];
 
-  const parentModules = useMemo(
-    () =>
-      modules.filter(
-        (module) =>
-          module.id !==
-          editingModule?.id,
-      ),
-    [
-      modules,
-      editingModule,
-    ],
-  );
+  const columns =
+    useMemo<
+      DataTableColumn<Module>[]
+    >(
+      () => [
+        {
+          key: "name",
+          title: "Module",
+        },
+
+        {
+          key: "code",
+          title: "Code",
+        },
+
+        {
+          key: "parent",
+          title: "Parent",
+
+          render: (
+            row,
+          ) =>
+            row.parent?.name ??
+            "-",
+        },
+
+        {
+          key: "route",
+          title: "Route",
+
+          render: (
+            row,
+          ) =>
+            row.route ||
+            "-",
+        },
+
+        {
+          key: "isMenu",
+          title: "Menu",
+          align: "center",
+
+          render: (
+            row,
+          ) =>
+            row.isMenu
+              ? "Yes"
+              : "No",
+        },
+
+        {
+          key: "isVisible",
+          title: "Visible",
+          align: "center",
+
+          render: (
+            row,
+          ) =>
+            row.isVisible
+              ? "Yes"
+              : "No",
+        },
+
+        {
+          key: "isSystem",
+          title: "System",
+          align: "center",
+
+          render: (
+            row,
+          ) =>
+            row.isSystem
+              ? "Yes"
+              : "No",
+        },
+
+        {
+          key: "status",
+          title: "Status",
+          align: "center",
+        },
+
+        ...(canUpdate ||
+        canDelete
+          ? [
+              {
+                key:
+                  "actions",
+
+                title:
+                  "Actions",
+
+                align:
+                  "center" as const,
+
+                render: (
+                  row: Module,
+                ) => (
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      justifyContent:
+                        "center",
+
+                      gap: 8,
+                    }}
+                  >
+                    {canUpdate && (
+                      <Button
+                        size="sm"
+                        aria-label={`Edit ${row.name}`}
+                        onClick={() =>
+                          handleOpenEdit(
+                            row,
+                          )
+                        }
+                      >
+                        <SquarePen
+                          size={
+                            16
+                          }
+                        />
+                      </Button>
+                    )}
+
+                    {canDelete && (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={
+                          row.isSystem
+                        }
+                        aria-label={`Delete ${row.name}`}
+                        onClick={() =>
+                          handleOpenDelete(
+                            row,
+                          )
+                        }
+                      >
+                        <Trash2
+                          size={
+                            16
+                          }
+                        />
+                      </Button>
+                    )}
+                  </div>
+                ),
+              },
+            ]
+          : []),
+      ],
+      [
+        canUpdate,
+        canDelete,
+      ],
+    );
+
+
+  const parentModules =
+    useMemo(
+      () =>
+        modules.filter(
+          (
+            module,
+          ) =>
+            module.id !==
+            editingModule?.id,
+        ),
+      [
+        modules,
+        editingModule,
+      ],
+    );
+
 
   return (
     <>
@@ -252,30 +431,45 @@ const columns: DataTableColumn<Module>[] = [
         title="Module Master"
         subtitle="Manage application modules"
         actions={
-          <Button
-            onClick={
-              handleOpenCreate
-            }
-          >
-            <Plus size={16} />
-            Add Module
-          </Button>
+          canCreate ? (
+            <Button
+              onClick={
+                handleOpenCreate
+              }
+            >
+              <Plus
+                size={16}
+              />
+
+              Add Module
+            </Button>
+          ) : undefined
         }
       />
 
+
       <Card>
         <DataTable
-          loading={loading}
-          data={modules}
-          columns={columns}
+          loading={
+            loading
+          }
+          data={
+            modules
+          }
+          columns={
+            columns
+          }
           keyField="id"
           emptyMessage="No modules found."
           showSerialNumber
         />
       </Card>
 
+
       <Modal
-        open={open}
+        open={
+          open
+        }
         title={
           editingModule
             ? "Edit Module"
@@ -288,7 +482,9 @@ const columns: DataTableColumn<Module>[] = [
           <>
             <Button
               variant="secondary"
-              disabled={saving}
+              disabled={
+                saving
+              }
               onClick={
                 handleCloseModal
               }
@@ -299,7 +495,9 @@ const columns: DataTableColumn<Module>[] = [
             <Button
               type="submit"
               form="module-form"
-              loading={saving}
+              loading={
+                saving
+              }
             >
               {editingModule
                 ? "Update Module"
@@ -309,7 +507,9 @@ const columns: DataTableColumn<Module>[] = [
         }
       >
         <ModuleForm
-          modules={parentModules}
+          modules={
+            parentModules
+          }
           initialValues={
             editingModule
               ? {
@@ -332,8 +532,10 @@ const columns: DataTableColumn<Module>[] = [
                     "",
 
                   parentId:
-                    editingModule.parent
-                      ?.uuid ?? "",
+                    editingModule
+                      .parent
+                      ?.uuid ??
+                    "",
 
                   sortOrder:
                     editingModule.sortOrder,
@@ -343,9 +545,6 @@ const columns: DataTableColumn<Module>[] = [
 
                   isVisible:
                     editingModule.isVisible,
-
-                  isSystem:
-                    editingModule.isSystem,
 
                   status:
                     editingModule.status,
@@ -358,8 +557,11 @@ const columns: DataTableColumn<Module>[] = [
         />
       </Modal>
 
+
       <ConfirmDialog
-        open={deleteOpen}
+        open={
+          deleteOpen
+        }
         title="Delete Module"
         message={
           selectedModule
@@ -368,7 +570,9 @@ const columns: DataTableColumn<Module>[] = [
         }
         confirmText="Delete"
         confirmVariant="danger"
-        loading={deleting}
+        loading={
+          deleting
+        }
         onConfirm={
           handleDelete
         }

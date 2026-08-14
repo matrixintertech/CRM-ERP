@@ -3,24 +3,43 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Module } from "@prisma/client";
 
-import { ModuleRepository } from "../repositories/module.repository";
+import {
+  Module,
+} from "@prisma/client";
 
-import { CreateModuleDto } from "../dto/create-module.dto";
-import { UpdateModuleDto } from "../dto/update-module.dto";
+import {
+  ModuleRepository,
+} from "../repositories/module.repository";
+
+import {
+  CreateModuleDto,
+} from "../dto/create-module.dto";
+
+import {
+  UpdateModuleDto,
+} from "../dto/update-module.dto";
+
 
 @Injectable()
 export class ModuleService {
   constructor(
-    private readonly moduleRepository: ModuleRepository,
+    private readonly moduleRepository:
+      ModuleRepository,
   ) {}
+
 
   async create(
     dto: CreateModuleDto,
   ) {
-    const code = dto.code.trim().toUpperCase();
-    const name = dto.name.trim();
+    const code =
+      dto.code
+        .trim()
+        .toUpperCase();
+
+    const name =
+      dto.name.trim();
+
 
     const codeExists =
       await this.moduleRepository.findByCode(
@@ -33,6 +52,7 @@ export class ModuleService {
       );
     }
 
+
     const nameExists =
       await this.moduleRepository.findByName(
         name,
@@ -44,7 +64,10 @@ export class ModuleService {
       );
     }
 
-    let parent: Module | null = null;
+
+    let parent:
+      Module | null =
+      null;
 
     if (dto.parentId) {
       parent =
@@ -59,24 +82,48 @@ export class ModuleService {
       }
     }
 
+
     const module =
       await this.moduleRepository.create({
         name,
         code,
-        description: dto.description,
-        icon: dto.icon,
-        route: dto.route,
 
-        sortOrder: dto.sortOrder,
-        isMenu: dto.isMenu,
-        isVisible: dto.isVisible,
-        isSystem: dto.isSystem,
-        status: dto.status,
+        description:
+          dto.description,
+
+        icon:
+          dto.icon,
+
+        route:
+          dto.route,
+
+        sortOrder:
+          dto.sortOrder,
+
+        isMenu:
+          dto.isMenu,
+
+        isVisible:
+          dto.isVisible,
+
+        /*
+         * System flag API se control
+         * nahi hona chahiye.
+         *
+         * System modules seed/bootstrap
+         * process se create honge.
+         */
+        isSystem:
+          false,
+
+        status:
+          dto.status,
 
         parent: parent
           ? {
               connect: {
-                id: parent.id,
+                id:
+                  parent.id,
               },
             }
           : undefined,
@@ -85,9 +132,11 @@ export class ModuleService {
     return {
       message:
         "Module created successfully.",
+
       module,
     };
   }
+
 
   async findAll() {
     const modules =
@@ -96,9 +145,11 @@ export class ModuleService {
     return {
       message:
         "Modules fetched successfully.",
+
       modules,
     };
   }
+
 
   async findOne(
     id: number,
@@ -117,9 +168,11 @@ export class ModuleService {
     return {
       message:
         "Module fetched successfully.",
+
       module,
     };
   }
+
 
   async update(
     id: number,
@@ -136,13 +189,19 @@ export class ModuleService {
       );
     }
 
-    const code = dto.code
-      ? dto.code.trim().toUpperCase()
-      : undefined;
 
-    const name = dto.name
-      ? dto.name.trim()
-      : undefined;
+    const code =
+      dto.code
+        ? dto.code
+            .trim()
+            .toUpperCase()
+        : undefined;
+
+    const name =
+      dto.name
+        ? dto.name.trim()
+        : undefined;
+
 
     if (
       code &&
@@ -155,13 +214,14 @@ export class ModuleService {
 
       if (
         exists &&
-        exists.id !== BigInt(id)
+        exists.id !== module.id
       ) {
         throw new ConflictException(
           "Module code already exists.",
         );
       }
     }
+
 
     if (
       name &&
@@ -174,7 +234,7 @@ export class ModuleService {
 
       if (
         exists &&
-        exists.id !== BigInt(id)
+        exists.id !== module.id
       ) {
         throw new ConflictException(
           "Module name already exists.",
@@ -182,7 +242,10 @@ export class ModuleService {
       }
     }
 
-    let parent: Module | null = null;
+
+    let parent:
+      Module | null =
+      null;
 
     if (dto.parentId) {
       parent =
@@ -197,7 +260,8 @@ export class ModuleService {
       }
 
       if (
-        parent.id === BigInt(id)
+        parent.id ===
+        module.id
       ) {
         throw new ConflictException(
           "Module cannot be its own parent.",
@@ -205,30 +269,45 @@ export class ModuleService {
       }
     }
 
+
     const updatedModule =
       await this.moduleRepository.update(
-        BigInt(id),
+        module.id,
         {
           name,
           code,
+
           description:
             dto.description,
-          icon: dto.icon,
-          route: dto.route,
+
+          icon:
+            dto.icon,
+
+          route:
+            dto.route,
 
           sortOrder:
             dto.sortOrder,
-          isMenu: dto.isMenu,
+
+          isMenu:
+            dto.isMenu,
+
           isVisible:
             dto.isVisible,
-          isSystem:
-            dto.isSystem,
-          status: dto.status,
+
+          /*
+           * IMPORTANT:
+           * isSystem intentionally
+           * update nahi kar rahe.
+           */
+          status:
+            dto.status,
 
           parent: parent
             ? {
                 connect: {
-                  id: parent.id,
+                  id:
+                    parent.id,
                 },
               }
             : undefined,
@@ -238,9 +317,12 @@ export class ModuleService {
     return {
       message:
         "Module updated successfully.",
-      module: updatedModule,
+
+      module:
+        updatedModule,
     };
   }
+
 
   async remove(
     id: number,
@@ -256,14 +338,16 @@ export class ModuleService {
       );
     }
 
+
     if (module.isSystem) {
       throw new ConflictException(
         "System module cannot be deleted.",
       );
     }
 
+
     await this.moduleRepository.softDelete(
-      BigInt(id),
+      module.id,
     );
 
     return {

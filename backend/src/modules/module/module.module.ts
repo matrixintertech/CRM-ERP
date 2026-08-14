@@ -1,13 +1,31 @@
-import { Module } from '@nestjs/common';
+import { Module } from "@nestjs/common";
 
-import { PrismaModule } from 'src/database/prisma.module';
+import {
+  PrismaModule,
+} from "src/database/prisma.module";
 
-import { ModuleController } from './controllers/module.controller';
-import { ModuleService } from './services/module.service';
-import { ModuleRepository } from './repositories/module.repository';
+import {
+  AuthorizationModule,
+} from "../authorization/authorization.module";
+
+import {
+  ModuleController,
+} from "./controllers/module.controller";
+
+import {
+  ModuleService,
+} from "./services/module.service";
+
+import {
+  ModuleRepository,
+} from "./repositories/module.repository";
+
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    AuthorizationModule,
+  ],
 
   controllers: [
     ModuleController,
@@ -18,6 +36,8 @@ import { ModuleRepository } from './repositories/module.repository';
     ModuleRepository,
   ],
 
-  exports: [ModuleService],
+  exports: [
+    ModuleService,
+  ],
 })
 export class ModuleModule {}
