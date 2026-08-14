@@ -54,7 +54,7 @@ import {
 @ApiBearerAuth("access-token")
 @UseGuards(
   JwtAuthGuard,
-  PermissionGuard,
+  
 )
 @Controller("platform/permissions")
 export class PermissionController {
