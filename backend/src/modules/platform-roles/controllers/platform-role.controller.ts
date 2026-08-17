@@ -171,6 +171,36 @@ export class PlatformRoleController {
 
 
   /*
+   * Permission catalog used only
+   * while managing Platform Role
+   * permissions.
+   *
+   * IMPORTANT:
+   * Is endpoint ko
+   * platform.permission.view
+   * ki zarurat nahi hai.
+   *
+   * Otherwise permission.view
+   * accidentally remove hone par
+   * role permission management
+   * self-lock ho sakta hai.
+   */
+  @Get(
+    "permissions/catalog",
+  )
+  @RequirePermission(
+    "platform.platform_role.update",
+  )
+  @ApiOperation({
+    summary:
+      "Get Platform Role Permission Catalog",
+  })
+  findPermissionCatalog() {
+    return this.platformRoleService.findPermissionCatalog();
+  }
+
+
+  /*
    * Get permissions assigned
    * to a platform role.
    */
@@ -178,7 +208,7 @@ export class PlatformRoleController {
     ":uuid/permissions",
   )
   @RequirePermission(
-    "platform.platform_role.view",
+    "platform.platform_role.update",
   )
   @ApiOperation({
     summary:

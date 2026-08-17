@@ -1,6 +1,10 @@
 import api from "@/shared/services/axios";
 
 import type {
+  PermissionGroup,
+} from "../../permission/types/permission.types";
+
+import type {
   AssignPlatformRolePermissionsDto,
   CreatePlatformRoleDto,
   PlatformRole,
@@ -26,7 +30,15 @@ export interface GetPlatformRolesParams {
 }
 
 
-const BASE_URL = "/platform/roles";
+interface PlatformRolePermissionCatalogResponse {
+  message: string;
+
+  groups: PermissionGroup[];
+}
+
+
+const BASE_URL =
+  "/platform/roles";
 
 
 export const getPlatformRoles =
@@ -93,6 +105,31 @@ export const getPlatformRoleDropdown =
       );
 
     return data.data.roles;
+  };
+
+
+/*
+ * Active PLATFORM permission catalog
+ * used only for Platform Role
+ * permission management.
+ *
+ * Backend access:
+ * platform.platform_role.update
+ */
+export const getPlatformRolePermissionCatalog =
+  async (): Promise<
+    PermissionGroup[]
+  > => {
+    const { data } =
+      await api.get<
+        ApiResponse<
+          PlatformRolePermissionCatalogResponse
+        >
+      >(
+        `${BASE_URL}/permissions/catalog`,
+      );
+
+    return data.data.groups;
   };
 
 

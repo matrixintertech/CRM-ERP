@@ -148,6 +148,71 @@ async create(
     };
   }
 
+
+  /*
+ * Get active PLATFORM permission
+ * catalog for Platform Role
+ * permission management.
+ *
+ * This is intentionally separate
+ * from Permission Master access.
+ *
+ * Access is controlled by:
+ * platform.platform_role.update
+ */
+async findPermissionCatalog() {
+  const permissions =
+    await this.platformRoleRepository
+      .findPermissionCatalog();
+
+  const groupedPermissionMap =
+    new Map<
+      string,
+      typeof permissions
+    >();
+
+  for (
+    const permission
+    of permissions
+  ) {
+    const existing =
+      groupedPermissionMap.get(
+        permission.module,
+      ) ?? [];
+
+    existing.push(
+      permission,
+    );
+
+    groupedPermissionMap.set(
+      permission.module,
+      existing,
+    );
+  }
+
+  const groups =
+    Array.from(
+      groupedPermissionMap.entries(),
+    ).map(
+      ([
+        module,
+        modulePermissions,
+      ]) => ({
+        module,
+
+        permissions:
+          modulePermissions,
+      }),
+    );
+
+  return {
+    message:
+      "Platform role permission catalog fetched successfully.",
+
+    groups,
+  };
+}
+
   /*
    * Get one role.
    */

@@ -157,6 +157,45 @@ export class PlatformRoleRepository {
   }
 
   /*
+ * Active PLATFORM permission
+ * catalog for Platform Role
+ * permission assignment.
+ *
+ * Important:
+ * This is separate from
+ * Permission Master access.
+ */
+async findPermissionCatalog() {
+  return this.prisma.permission.findMany({
+    where: {
+      type:
+        PermissionType.PLATFORM,
+
+      status:
+        Status.ACTIVE,
+
+      deletedAt:
+        null,
+    },
+
+    select:
+      this.permissionSelect,
+
+    orderBy: [
+      {
+        module:
+          "asc",
+      },
+
+      {
+        name:
+          "asc",
+      },
+    ],
+  });
+}
+
+  /*
    * Find platform role by internal ID.
    */
   async findById(

@@ -22,8 +22,8 @@ import Input from "@/shared/components/Input";
 import Select from "@/shared/components/Select";
 
 import {
-  getGroupedPermissions,
-} from "../../permission/api/permission.api";
+  getPlatformRolePermissionCatalog,
+} from "../api/platform-role.api";
 
 import {
   usePlatformRoles,
@@ -66,20 +66,19 @@ const PlatformRolePage = () => {
       "platform.platform_role.delete",
     );
 
-  const canViewPermissionCatalog =
-    hasPermission(
-      "platform.permission.view",
-    );
 
   /*
-   * Permission assignment role ko
-   * modify karta hai.
+   * Platform Role permission
+   * management is controlled by
+   * platform.platform_role.update.
    *
-   * Catalog bhi read karna required hai.
+   * Permission Master access:
+   * platform.permission.view
+   *
+   * is intentionally independent.
    */
   const canManagePermissions =
-    canUpdate &&
-    canViewPermissionCatalog;
+    canUpdate;
 
 
   const [
@@ -87,12 +86,14 @@ const PlatformRolePage = () => {
     setSearchValue,
   ] = useState("");
 
+
   const [
     status,
     setStatus,
   ] = useState<
     PlatformRoleStatus | ""
   >("");
+
 
   const [
     query,
@@ -129,23 +130,29 @@ const PlatformRolePage = () => {
 
 
   /*
-   * PLATFORM permissions only.
+   * Dedicated Platform Role
+   * permission catalog.
    *
-   * Permission catalog tabhi load
-   * hoga jab current user role
-   * permissions manage kar sakta hai.
+   * Backend:
+   *
+   * GET
+   * /platform/roles/permissions/catalog
+   *
+   * Permission:
+   * platform.platform_role.update
+   *
+   * Permission Master ki
+   * platform.permission.view
+   * permission required nahi hai.
    */
-  const groupedPermissionsQuery =
+  const permissionCatalogQuery =
     useQuery({
       queryKey: [
-        "platform-grouped-permissions",
-        "PLATFORM",
+        "platform-role-permission-catalog",
       ],
 
-      queryFn: () =>
-        getGroupedPermissions(
-          "PLATFORM",
-        ),
+      queryFn:
+        getPlatformRolePermissionCatalog,
 
       enabled:
         canManagePermissions,
@@ -158,14 +165,14 @@ const PlatformRolePage = () => {
   const allPermissions =
     useMemo(
       () =>
-        groupedPermissionsQuery
+        permissionCatalogQuery
           .data
           ?.flatMap(
             (group) =>
               group.permissions,
           ) ?? [],
       [
-        groupedPermissionsQuery
+        permissionCatalogQuery
           .data,
       ],
     );
@@ -178,6 +185,7 @@ const PlatformRolePage = () => {
     openRoleModal,
     setOpenRoleModal,
   ] = useState(false);
+
 
   const [
     selectedRole,
@@ -195,12 +203,14 @@ const PlatformRolePage = () => {
     setOpenPermissionModal,
   ] = useState(false);
 
+
   const [
     permissionRoleUuid,
     setPermissionRoleUuid,
   ] = useState<
     string | null
   >(null);
+
 
   const [
     rolePermissions,
@@ -243,7 +253,9 @@ const PlatformRolePage = () => {
    * Create role.
    */
   const handleCreate = () => {
-    if (!canCreate) {
+    if (
+      !canCreate
+    ) {
       return;
     }
 
@@ -264,7 +276,9 @@ const PlatformRolePage = () => {
     async (
       uuid: string,
     ) => {
-      if (!canUpdate) {
+      if (
+        !canUpdate
+      ) {
         return;
       }
 
@@ -301,8 +315,12 @@ const PlatformRolePage = () => {
       formData:
         PlatformRoleFormData,
     ) => {
-      if (selectedRole) {
-        if (!canUpdate) {
+      if (
+        selectedRole
+      ) {
+        if (
+          !canUpdate
+        ) {
           return;
         }
 
@@ -328,7 +346,9 @@ const PlatformRolePage = () => {
           },
         );
       } else {
-        if (!canCreate) {
+        if (
+          !canCreate
+        ) {
           return;
         }
 
@@ -379,7 +399,9 @@ const PlatformRolePage = () => {
           `Delete platform role "${role.name}"?`,
         );
 
-      if (!confirmed) {
+      if (
+        !confirmed
+      ) {
         return;
       }
 
@@ -391,6 +413,14 @@ const PlatformRolePage = () => {
 
   /*
    * Open permissions.
+   *
+   * platform.permission.view
+   * is intentionally not checked.
+   *
+   * Role permission management
+   * requires:
+   *
+   * platform.platform_role.update
    */
   const handlePermissions =
     async (
@@ -494,7 +524,7 @@ const PlatformRolePage = () => {
       openPermissionModal &&
       (
         !rolePermissions ||
-        groupedPermissionsQuery
+        permissionCatalogQuery
           .isLoading
       )
     );
@@ -589,6 +619,7 @@ const PlatformRolePage = () => {
             }}
           />
 
+
           <Select
             label="Status"
             value={
@@ -631,6 +662,7 @@ const PlatformRolePage = () => {
             }
           />
 
+
           <Button
             type="button"
             loading={
@@ -642,6 +674,7 @@ const PlatformRolePage = () => {
           >
             Search
           </Button>
+
 
           <Button
             type="button"
@@ -703,6 +736,7 @@ const PlatformRolePage = () => {
                   Name
                 </th>
 
+
                 <th
                   style={
                     headerCellStyle
@@ -710,6 +744,7 @@ const PlatformRolePage = () => {
                 >
                   Code
                 </th>
+
 
                 <th
                   style={
@@ -719,6 +754,7 @@ const PlatformRolePage = () => {
                   Type
                 </th>
 
+
                 <th
                   style={
                     headerCellStyle
@@ -727,6 +763,7 @@ const PlatformRolePage = () => {
                   Status
                 </th>
 
+
                 <th
                   style={
                     headerCellStyle
@@ -734,6 +771,7 @@ const PlatformRolePage = () => {
                 >
                   Users
                 </th>
+
 
                 {hasRoleActions && (
                   <th
@@ -749,6 +787,7 @@ const PlatformRolePage = () => {
                 )}
               </tr>
             </thead>
+
 
             <tbody>
               {loading ? (
@@ -807,6 +846,7 @@ const PlatformRolePage = () => {
                           }
                         </div>
 
+
                         {role.description && (
                           <div
                             style={{
@@ -830,6 +870,7 @@ const PlatformRolePage = () => {
                         )}
                       </td>
 
+
                       <td
                         style={
                           bodyCellStyle
@@ -841,6 +882,7 @@ const PlatformRolePage = () => {
                           }
                         </code>
                       </td>
+
 
                       <td
                         style={
@@ -877,6 +919,7 @@ const PlatformRolePage = () => {
                             : "Custom"}
                         </span>
                       </td>
+
 
                       <td
                         style={
@@ -915,6 +958,7 @@ const PlatformRolePage = () => {
                           }
                         </span>
                       </td>
+
 
                       <td
                         style={
@@ -968,6 +1012,7 @@ const PlatformRolePage = () => {
                               </Button>
                             )}
 
+
                             {canUpdate && (
                               <Button
                                 type="button"
@@ -982,6 +1027,7 @@ const PlatformRolePage = () => {
                                 Edit
                               </Button>
                             )}
+
 
                             {canDelete &&
                               !role.isSystem && (
