@@ -38,6 +38,87 @@ interface StopWorkResponse {
 }
 
 
+export type ProjectTaskReportType =
+  | "PROGRESS"
+  | "BLOCKER"
+  | "NOTE";
+
+
+export interface ProjectTaskReport {
+  uuid: string;
+
+  type:
+    ProjectTaskReportType;
+
+  message:
+    string;
+
+  taskStatusSnapshot:
+    string;
+
+  createdAt:
+    string;
+}
+
+
+interface CreateTaskReportResponse {
+  message: string;
+
+  report:
+    ProjectTaskReport;
+}
+
+
+/*
+ * Completion request response.
+ */
+export interface RequestTaskCompletionResponse {
+  message: string;
+
+  task: {
+    uuid:
+      string;
+
+    status:
+      "COMPLETION_REQUESTED";
+
+    updatedAt:
+      string;
+  };
+
+  completionRequest: {
+    uuid:
+      string;
+
+    status:
+      "PENDING";
+
+    workedSeconds:
+      number;
+
+    requestedAt:
+      string;
+
+    report: {
+      uuid:
+        string;
+
+      type:
+        "COMPLETION";
+
+      message:
+        string;
+
+      taskStatusSnapshot:
+        string;
+
+      createdAt:
+        string;
+    };
+  };
+}
+
+
 /*
  * Logged-in employee ke
  * assigned tasks.
@@ -100,6 +181,81 @@ export const stopMyTaskWork =
         >
       >(
         `/projects/${projectUuid}/tasks/${taskUuid}/stop-work`,
+      );
+
+    return data.data;
+  };
+
+
+/*
+ * Add employee execution report.
+ *
+ * Allowed:
+ *
+ * PROGRESS
+ * BLOCKER
+ * NOTE
+ */
+export const createMyTaskReport =
+  async (
+    projectUuid: string,
+    taskUuid: string,
+
+    payload: {
+      type:
+        ProjectTaskReportType;
+
+      message:
+        string;
+    },
+  ): Promise<
+    CreateTaskReportResponse
+  > => {
+    const { data } =
+      await api.post<
+        ApiResponse<
+          CreateTaskReportResponse
+        >
+      >(
+        `/projects/${projectUuid}/tasks/${taskUuid}/reports`,
+        payload,
+      );
+
+    return data.data;
+  };
+
+
+/*
+ * Employee requests task completion.
+ *
+ * Backend flow:
+ *
+ * IN_PROGRESS
+ *      ↓
+ * COMPLETION report
+ *      ↓
+ * PENDING completion request
+ *      ↓
+ * COMPLETION_REQUESTED
+ */
+export const requestMyTaskCompletion =
+  async (
+    projectUuid: string,
+    taskUuid: string,
+    message: string,
+  ): Promise<
+    RequestTaskCompletionResponse
+  > => {
+    const { data } =
+      await api.post<
+        ApiResponse<
+          RequestTaskCompletionResponse
+        >
+      >(
+        `/projects/${projectUuid}/tasks/${taskUuid}/request-completion`,
+        {
+          message,
+        },
       );
 
     return data.data;

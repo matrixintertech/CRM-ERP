@@ -1,8 +1,10 @@
 export type ProjectTaskStatus =
   | "TODO"
   | "IN_PROGRESS"
+  | "COMPLETION_REQUESTED"
   | "COMPLETED"
   | "CANCELLED";
+
 
 export type TaskPriority =
   | "LOW"
@@ -10,18 +12,51 @@ export type TaskPriority =
   | "HIGH"
   | "URGENT";
 
+
+export type ProjectTaskCompletionStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+
+
+export type ProjectTaskReportType =
+  | "PROGRESS"
+  | "BLOCKER"
+  | "NOTE"
+  | "COMPLETION";
+
+
 export interface ProjectTaskAssignee {
   uuid: string;
 
   employee: {
     uuid: string;
 
-    employeeCode?: string | null;
+    employeeCode?:
+      | string
+      | null;
 
-    firstName?: string | null;
-    lastName?: string | null;
+    firstName?:
+      | string
+      | null;
 
-    displayName?: string | null;
+    lastName?:
+      | string
+      | null;
+
+    displayName?:
+      | string
+      | null;
+
+    designation?: {
+      uuid: string;
+      name: string;
+    } | null;
+
+    department?: {
+      uuid: string;
+      name: string;
+    } | null;
   };
 
   projectRole: {
@@ -32,95 +67,225 @@ export interface ProjectTaskAssignee {
   };
 }
 
+
+export interface ProjectTaskCompletionReport {
+  uuid: string;
+
+  type:
+    ProjectTaskReportType;
+
+  message:
+    string;
+
+  taskStatusSnapshot:
+    ProjectTaskStatus;
+
+  createdAt:
+    string;
+}
+
+
+export interface ProjectTaskCompletionRequest {
+  uuid: string;
+
+  status:
+    ProjectTaskCompletionStatus;
+
+  workedSeconds:
+    number;
+
+  requestedAt:
+    string;
+
+  reviewNote?:
+    | string
+    | null;
+
+  requestedByProjectMember: {
+    uuid:
+      string;
+
+    employee: {
+      uuid:
+        string;
+
+      employeeCode?:
+        | string
+        | null;
+
+      firstName?:
+        | string
+        | null;
+
+      lastName?:
+        | string
+        | null;
+
+      displayName?:
+        | string
+        | null;
+
+      designation?: {
+        uuid:
+          string;
+
+        name:
+          string;
+      } | null;
+
+      department?: {
+        uuid:
+          string;
+
+        name:
+          string;
+      } | null;
+    };
+
+    projectRole: {
+      uuid:
+        string;
+
+      name:
+        string;
+
+      code:
+        string;
+    };
+  };
+
+  report?:
+    | ProjectTaskCompletionReport
+    | null;
+}
+
+
 export interface ProjectTask {
   uuid: string;
 
   title: string;
 
-  description?: string | null;
+  description?:
+    | string
+    | null;
 
-  priority: TaskPriority;
+  priority:
+    TaskPriority;
 
-  status: ProjectTaskStatus;
+  status:
+    ProjectTaskStatus;
 
-  startDate?: string | null;
+  startDate?:
+    | string
+    | null;
 
-  dueDate?: string | null;
+  dueDate?:
+    | string
+    | null;
 
-  completedAt?: string | null;
+  completedAt?:
+    | string
+    | null;
 
-  remarks?: string | null;
+  remarks?:
+    | string
+    | null;
 
-  sortOrder: number;
+  sortOrder:
+    number;
 
   assignedProjectMember?:
     | ProjectTaskAssignee
     | null;
 
-  createdAt: string;
-  updatedAt: string;
+  completionRequests:
+    ProjectTaskCompletionRequest[];
+
+  createdAt:
+    string;
+
+  updatedAt:
+    string;
 }
+
 
 export interface CreateProjectTaskRequest {
   title: string;
 
-  description?: string;
+  description?:
+    string;
 
-  priority?: TaskPriority;
+  priority?:
+    TaskPriority;
 
-  status?: ProjectTaskStatus;
+  startDate?:
+    string;
 
-  startDate?: string;
-
-  dueDate?: string;
+  dueDate?:
+    string;
 
   assignedProjectMemberUuid?:
     | string
     | null;
 
-  remarks?: string;
+  remarks?:
+    string;
 
-  sortOrder?: number;
+  sortOrder?:
+    number;
 }
+
 
 export interface UpdateProjectTaskRequest {
-  title?: string;
+  title?:
+    string;
 
-  description?: string;
+  description?:
+    string;
 
-  priority?: TaskPriority;
+  priority?:
+    TaskPriority;
 
-  status?: ProjectTaskStatus;
+  startDate?:
+    string;
 
-  startDate?: string;
-
-  dueDate?: string;
+  dueDate?:
+    string;
 
   assignedProjectMemberUuid?:
     | string
     | null;
 
-  remarks?: string;
+  remarks?:
+    string;
 
-  sortOrder?: number;
+  sortOrder?:
+    number;
 }
 
+
 export interface ProjectTaskFormData {
-  title: string;
+  title:
+    string;
 
-  description: string;
+  description:
+    string;
 
-  priority: TaskPriority;
+  priority:
+    TaskPriority;
 
-  status: ProjectTaskStatus;
+  startDate:
+    string;
 
-  startDate: string;
+  dueDate:
+    string;
 
-  dueDate: string;
+  assignedProjectMemberUuid:
+    string;
 
-  assignedProjectMemberUuid: string;
+  remarks:
+    string;
 
-  remarks: string;
-
-  sortOrder: number;
+  sortOrder:
+    number;
 }

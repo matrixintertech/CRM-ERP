@@ -16,9 +16,9 @@ import {
 } from "class-validator";
 
 import {
-  ProjectTaskStatus,
   TaskPriority,
 } from "@prisma/client";
+
 
 export class CreateProjectTaskDto {
   @ApiProperty({
@@ -30,6 +30,7 @@ export class CreateProjectTaskDto {
   @MaxLength(200)
   title: string;
 
+
   @ApiPropertyOptional({
     example:
       "Install and test 8 CCTV cameras.",
@@ -37,6 +38,7 @@ export class CreateProjectTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
+
 
   @ApiPropertyOptional({
     enum: TaskPriority,
@@ -49,16 +51,6 @@ export class CreateProjectTaskDto {
   @IsEnum(TaskPriority)
   priority?: TaskPriority;
 
-  @ApiPropertyOptional({
-    enum: ProjectTaskStatus,
-    example:
-      ProjectTaskStatus.TODO,
-    default:
-      ProjectTaskStatus.TODO,
-  })
-  @IsOptional()
-  @IsEnum(ProjectTaskStatus)
-  status?: ProjectTaskStatus;
 
   @ApiPropertyOptional({
     example:
@@ -68,6 +60,7 @@ export class CreateProjectTaskDto {
   @IsDateString()
   startDate?: string;
 
+
   @ApiPropertyOptional({
     example:
       "2026-08-11",
@@ -76,6 +69,7 @@ export class CreateProjectTaskDto {
   @IsDateString()
   dueDate?: string;
 
+
   @ApiPropertyOptional({
     description:
       "UUID of an active project member to assign this task to.",
@@ -83,18 +77,12 @@ export class CreateProjectTaskDto {
       "a9f76cf3-0ef1-4fd1-be29-307893249e3e",
     nullable: true,
   })
- @ApiPropertyOptional({
-  description:
-    "UUID of an active project member to assign this task to.",
-  example:
-    "a9f76cf3-0ef1-4fd1-be29-307893249e3e",
-  nullable: true,
-})
-@IsOptional()
-@IsUUID()
-assignedProjectMemberUuid?:
-  | string
-  | null;
+  @IsOptional()
+  @IsUUID()
+  assignedProjectMemberUuid?:
+    | string
+    | null;
+
 
   @ApiPropertyOptional({
     example:
@@ -103,6 +91,7 @@ assignedProjectMemberUuid?:
   @IsOptional()
   @IsString()
   remarks?: string;
+
 
   @ApiPropertyOptional({
     example: 0,

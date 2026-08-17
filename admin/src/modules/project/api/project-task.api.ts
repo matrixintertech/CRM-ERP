@@ -3,8 +3,10 @@ import api from "@/shared/services/axios";
 import type {
   CreateProjectTaskRequest,
   ProjectTask,
+  ProjectTaskCompletionRequest,
   UpdateProjectTaskRequest,
 } from "../types/project-task.types";
+
 
 interface ApiResponse<T> {
   success: boolean;
@@ -13,13 +15,41 @@ interface ApiResponse<T> {
   data: T;
 }
 
+
 interface ProjectTasksData {
-  projectTasks: ProjectTask[];
+  projectTasks:
+    ProjectTask[];
 }
 
+
 interface ProjectTaskData {
-  projectTask: ProjectTask;
+  projectTask:
+    ProjectTask;
 }
+
+
+export type ProjectTaskCompletionDecision =
+  | "APPROVED"
+  | "REJECTED";
+
+
+export interface ReviewProjectTaskCompletionPayload {
+  decision:
+    ProjectTaskCompletionDecision;
+
+  reviewNote?:
+    string;
+}
+
+
+interface ReviewProjectTaskCompletionData {
+  task:
+    ProjectTask;
+
+  completionRequest:
+    ProjectTaskCompletionRequest;
+}
+
 
 export const getProjectTasks =
   async (
@@ -38,6 +68,7 @@ export const getProjectTasks =
     );
   };
 
+
 export const getProjectTaskByUuid =
   async (
     projectUuid: string,
@@ -52,6 +83,7 @@ export const getProjectTaskByUuid =
 
     return data.data;
   };
+
 
 export const createProjectTask =
   async (
@@ -69,6 +101,7 @@ export const createProjectTask =
 
     return data.data.projectTask;
   };
+
 
 export const updateProjectTask =
   async (
@@ -88,6 +121,7 @@ export const updateProjectTask =
     return data.data.projectTask;
   };
 
+
 export const deleteProjectTask =
   async (
     projectUuid: string,
@@ -96,4 +130,39 @@ export const deleteProjectTask =
     await api.delete(
       `/projects/${projectUuid}/tasks/${taskUuid}`,
     );
+  };
+
+
+/*
+ * Manager completion review.
+ *
+ * APPROVED
+ *   -> task becomes COMPLETED
+ *
+ * REJECTED
+ *   -> task returns to IN_PROGRESS
+ *
+ * Frontend UX me REJECTED ko
+ * "Request Changes" label dikhayenge.
+ */
+export const reviewProjectTaskCompletion =
+  async (
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+
+    payload:
+      ReviewProjectTaskCompletionPayload,
+  ): Promise<ReviewProjectTaskCompletionData> => {
+    const { data } =
+      await api.post<
+        ApiResponse<ReviewProjectTaskCompletionData>
+      >(
+        `/projects/${projectUuid}/tasks/${taskUuid}/review-completion`,
+        payload,
+      );
+
+    return data.data;
   };

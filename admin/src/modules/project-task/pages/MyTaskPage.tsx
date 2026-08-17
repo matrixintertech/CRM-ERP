@@ -19,6 +19,15 @@ import {
   useMyTasks,
 } from "../hooks/useMyTasks";
 
+import MyTaskTable from "../components/MyTaskTable";
+import TaskReportModal from "../components/TaskReportModal";
+import TaskActivityModal from "../components/TaskActivityModal";
+import RequestCompletionModal from "../components/RequestCompletionModal";
+
+import type {
+  ProjectTaskReportType,
+} from "../api/my-task.api";
+
 import type {
   MyTask,
   ProjectTaskStatus,
@@ -84,7 +93,8 @@ const MyTaskPage = () => {
 
   const {
     hasPermission,
-  } = useAuthorization();
+  } =
+    useAuthorization();
 
 
   const canExecute =
@@ -96,9 +106,76 @@ const MyTaskPage = () => {
   const [
     activeFilter,
     setActiveFilter,
-  ] = useState<TaskFilter>(
-    "ALL",
-  );
+  ] =
+    useState<TaskFilter>(
+      "ALL",
+    );
+
+
+  /*
+   * Report modal state.
+   */
+  const [
+    reportModalOpen,
+    setReportModalOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    selectedTask,
+    setSelectedTask,
+  ] =
+    useState<
+      MyTask | null
+    >(null);
+
+
+  const [
+    reportType,
+    setReportType,
+  ] =
+    useState<
+      ProjectTaskReportType | null
+    >(null);
+
+
+  /*
+   * Activity modal state.
+   */
+  const [
+    activityModalOpen,
+    setActivityModalOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    activityTask,
+    setActivityTask,
+  ] =
+    useState<
+      MyTask | null
+    >(null);
+
+
+  /*
+   * Completion request modal state.
+   */
+  const [
+    completionModalOpen,
+    setCompletionModalOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    completionTask,
+    setCompletionTask,
+  ] =
+    useState<
+      MyTask | null
+    >(null);
 
 
   const {
@@ -108,12 +185,20 @@ const MyTaskPage = () => {
 
     startWork,
     stopWork,
+    addReport,
+    requestCompletion,
 
     starting,
     stopping,
-  } = useMyTasks();
+    reporting,
+    requestingCompletion,
+  } =
+    useMyTasks();
 
 
+  /*
+   * Status filter.
+   */
   const filteredTasks =
     useMemo(
       () => {
@@ -123,6 +208,7 @@ const MyTaskPage = () => {
         ) {
           return tasks;
         }
+
 
         return tasks.filter(
           (
@@ -139,6 +225,9 @@ const MyTaskPage = () => {
     );
 
 
+  /*
+   * Filter counters.
+   */
   const counts =
     useMemo(
       () => ({
@@ -196,6 +285,9 @@ const MyTaskPage = () => {
     );
 
 
+  /*
+   * Start / resume employee work.
+   */
   const handleStartWork =
     async (
       task: MyTask,
@@ -206,6 +298,7 @@ const MyTaskPage = () => {
         return;
       }
 
+
       await startWork(
         task.project.uuid,
         task.uuid,
@@ -213,6 +306,9 @@ const MyTaskPage = () => {
     };
 
 
+  /*
+   * Stop current work session.
+   */
   const handleStopWork =
     async (
       task: MyTask,
@@ -223,10 +319,278 @@ const MyTaskPage = () => {
         return;
       }
 
+
       await stopWork(
         task.project.uuid,
         task.uuid,
       );
+    };
+
+
+  /*
+   * Open task report modal.
+   */
+  const openReportModal = (
+    task:
+      MyTask,
+
+    type:
+      ProjectTaskReportType,
+  ) => {
+    if (
+      !canExecute ||
+      task.status !==
+        "IN_PROGRESS"
+    ) {
+      return;
+    }
+
+
+    setSelectedTask(
+      task,
+    );
+
+    setReportType(
+      type,
+    );
+
+    setReportModalOpen(
+      true,
+    );
+  };
+
+
+  const handleAddProgress = (
+    task:
+      MyTask,
+  ) => {
+    openReportModal(
+      task,
+      "PROGRESS",
+    );
+  };
+
+
+  const handleReportBlocker = (
+    task:
+      MyTask,
+  ) => {
+    openReportModal(
+      task,
+      "BLOCKER",
+    );
+  };
+
+
+  const handleAddNote = (
+    task:
+      MyTask,
+  ) => {
+    openReportModal(
+      task,
+      "NOTE",
+    );
+  };
+
+
+  /*
+   * Activity modal.
+   */
+  const handleViewActivity = (
+    task:
+      MyTask,
+  ) => {
+    setActivityTask(
+      task,
+    );
+
+    setActivityModalOpen(
+      true,
+    );
+  };
+
+
+  const handleCloseActivityModal =
+    () => {
+      setActivityModalOpen(
+        false,
+      );
+
+      setActivityTask(
+        null,
+      );
+    };
+
+
+  /*
+   * Completion request modal.
+   *
+   * Only:
+   * - IN_PROGRESS
+   * - no OPEN work session
+   * - execute permission
+   */
+  const handleRequestCompletion = (
+    task:
+      MyTask,
+  ) => {
+    if (
+      !canExecute ||
+      task.status !==
+        "IN_PROGRESS" ||
+      task.workSessions?.length >
+        0
+    ) {
+      return;
+    }
+
+
+    setCompletionTask(
+      task,
+    );
+
+    setCompletionModalOpen(
+      true,
+    );
+  };
+
+
+  const handleCloseCompletionModal =
+    () => {
+      if (
+        requestingCompletion
+      ) {
+        return;
+      }
+
+
+      setCompletionModalOpen(
+        false,
+      );
+
+      setCompletionTask(
+        null,
+      );
+    };
+
+
+  /*
+   * Submit completion request.
+   */
+  const handleSubmitCompletion =
+    async (
+      message: string,
+    ) => {
+      if (
+        !completionTask ||
+        !canExecute
+      ) {
+        return;
+      }
+
+
+      try {
+        await requestCompletion(
+          completionTask
+            .project.uuid,
+
+          completionTask.uuid,
+
+          message,
+        );
+
+
+        setCompletionModalOpen(
+          false,
+        );
+
+        setCompletionTask(
+          null,
+        );
+      } catch {
+        /*
+         * Hook already shows
+         * backend error notification.
+         *
+         * Modal remains open so
+         * employee can retry.
+         */
+      }
+    };
+
+
+  /*
+   * Close report modal.
+   */
+  const handleCloseReportModal =
+    () => {
+      if (
+        reporting
+      ) {
+        return;
+      }
+
+
+      setReportModalOpen(
+        false,
+      );
+
+      setSelectedTask(
+        null,
+      );
+
+      setReportType(
+        null,
+      );
+    };
+
+
+  /*
+   * Submit report.
+   */
+  const handleSubmitReport =
+    async (
+      message: string,
+    ) => {
+      if (
+        !selectedTask ||
+        !reportType ||
+        !canExecute
+      ) {
+        return;
+      }
+
+
+      try {
+        await addReport(
+          selectedTask
+            .project.uuid,
+
+          selectedTask.uuid,
+
+          reportType,
+
+          message,
+        );
+
+
+        setReportModalOpen(
+          false,
+        );
+
+        setSelectedTask(
+          null,
+        );
+
+        setReportType(
+          null,
+        );
+      } catch {
+        /*
+         * useMyTasks already
+         * shows API error notification.
+         */
+      }
     };
 
 
@@ -264,10 +628,13 @@ const MyTaskPage = () => {
                 activeFilter ===
                 filter.value;
 
+
               const count =
                 counts[
                   filter.value
-                ] ?? 0;
+                ] ??
+                0;
+
 
               return (
                 <Button
@@ -287,13 +654,16 @@ const MyTaskPage = () => {
                     )
                   }
                 >
-                  {filter.label} ({count})
+                  {filter.label} (
+                  {count})
                 </Button>
               );
             },
           )}
         </div>
 
+
+        {/* Background Refresh */}
 
         {fetching &&
           !loading && (
@@ -314,666 +684,113 @@ const MyTaskPage = () => {
           )}
 
 
-        <div
-          style={{
-            overflowX:
-              "auto",
-          }}
-        >
-          <table
-            style={{
-              width:
-                "100%",
+        {/* Task Table */}
 
-              borderCollapse:
-                "collapse",
-            }}
-          >
-            <thead>
-              <tr>
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Task
-                </th>
-
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Project
-                </th>
-
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Role
-                </th>
-
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Priority
-                </th>
-
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Status
-                </th>
-
-                <th
-                  style={
-                    headerCellStyle
-                  }
-                >
-                  Due Date
-                </th>
-
-                <th
-                  style={{
-                    ...headerCellStyle,
-
-                    textAlign:
-                      "right",
-                  }}
-                >
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={
-                      7
-                    }
-                    style={
-                      emptyCellStyle
-                    }
-                  >
-                    Loading your tasks...
-                  </td>
-                </tr>
-              ) : filteredTasks
-                  .length ===
-                0 ? (
-                <tr>
-                  <td
-                    colSpan={
-                      7
-                    }
-                    style={
-                      emptyCellStyle
-                    }
-                  >
-                    No tasks found.
-                  </td>
-                </tr>
-              ) : (
-                filteredTasks.map(
-                  (
-                    task,
-                  ) => {
-                    const openSession =
-                      task.workSessions?.[
-                        0
-                      ];
-
-                    const isWorking =
-                      Boolean(
-                        openSession,
-                      );
-
-                    const overdue =
-                      isTaskOverdue(
-                        task,
-                      );
-
-
-                    return (
-                      <tr
-                        key={
-                          task.uuid
-                        }
-                      >
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          <div
-                            style={{
-                              fontWeight:
-                                600,
-
-                              color:
-                                "#111827",
-                            }}
-                          >
-                            {
-                              task.title
-                            }
-                          </div>
-
-                          {task.description && (
-                            <div
-                              style={{
-                                marginTop:
-                                  4,
-
-                                maxWidth:
-                                  340,
-
-                                fontSize:
-                                  12,
-
-                                color:
-                                  "#6b7280",
-                              }}
-                            >
-                              {
-                                task.description
-                              }
-                            </div>
-                          )}
-                        </td>
-
-
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          <div>
-                            {
-                              task.project
-                                .name
-                            }
-                          </div>
-
-                          <div
-                            style={{
-                              marginTop:
-                                3,
-
-                              fontSize:
-                                11,
-
-                              color:
-                                "#6b7280",
-                            }}
-                          >
-                            {
-                              task.project
-                                .srn
-                            }
-                          </div>
-                        </td>
-
-
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          {
-                            task
-                              .assignedProjectMember
-                              ?.projectRole
-                              ?.name ??
-                            "-"
-                          }
-                        </td>
-
-
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          <PriorityBadge
-                            priority={
-                              task.priority
-                            }
-                          />
-                        </td>
-
-
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          <StatusBadge
-                            status={
-                              task.status
-                            }
-                          />
-
-                          {isWorking && (
-                            <div
-                              style={{
-                                marginTop:
-                                  6,
-
-                                fontSize:
-                                  11,
-
-                                fontWeight:
-                                  600,
-
-                                color:
-                                  "#15803d",
-                              }}
-                            >
-                              Work session active
-                            </div>
-                          )}
-                        </td>
-
-
-                        <td
-                          style={
-                            bodyCellStyle
-                          }
-                        >
-                          {task.dueDate
-                            ? formatDate(
-                                task.dueDate,
-                              )
-                            : "-"}
-
-                          {overdue && (
-                            <div
-                              style={{
-                                marginTop:
-                                  4,
-
-                                fontSize:
-                                  11,
-
-                                fontWeight:
-                                  600,
-
-                                color:
-                                  "#b91c1c",
-                              }}
-                            >
-                              Overdue
-                            </div>
-                          )}
-                        </td>
-
-
-                        <td
-                          style={{
-                            ...bodyCellStyle,
-
-                            textAlign:
-                              "right",
-                          }}
-                        >
-                          {canExecute && (
-                            <TaskAction
-                              task={
-                                task
-                              }
-                              isWorking={
-                                isWorking
-                              }
-                              loading={
-                                starting ||
-                                stopping
-                              }
-                              onStart={() =>
-                                handleStartWork(
-                                  task,
-                                )
-                              }
-                              onStop={() =>
-                                handleStopWork(
-                                  task,
-                                )
-                              }
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  },
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
+        <MyTaskTable
+          tasks={
+            filteredTasks
+          }
+          loading={
+            loading
+          }
+          canExecute={
+            canExecute
+          }
+          workLoading={
+            starting ||
+            stopping
+          }
+          reportLoading={
+            reporting
+          }
+          completionLoading={
+            requestingCompletion
+          }
+          onStartWork={
+            handleStartWork
+          }
+          onStopWork={
+            handleStopWork
+          }
+          onAddProgress={
+            handleAddProgress
+          }
+          onReportBlocker={
+            handleReportBlocker
+          }
+          onAddNote={
+            handleAddNote
+          }
+          onViewActivity={
+            handleViewActivity
+          }
+          onRequestCompletion={
+            handleRequestCompletion
+          }
+        />
       </Card>
+
+
+      {/* Task Report Modal */}
+
+      <TaskReportModal
+        open={
+          reportModalOpen
+        }
+        task={
+          selectedTask
+        }
+        type={
+          reportType
+        }
+        loading={
+          reporting
+        }
+        onClose={
+          handleCloseReportModal
+        }
+        onSubmit={
+          handleSubmitReport
+        }
+      />
+
+
+      {/* Task Activity Modal */}
+
+      <TaskActivityModal
+        open={
+          activityModalOpen
+        }
+        task={
+          activityTask
+        }
+        onClose={
+          handleCloseActivityModal
+        }
+      />
+
+
+      {/* Request Completion Modal */}
+
+      <RequestCompletionModal
+        open={
+          completionModalOpen
+        }
+        task={
+          completionTask
+        }
+        loading={
+          requestingCompletion
+        }
+        onClose={
+          handleCloseCompletionModal
+        }
+        onSubmit={
+          handleSubmitCompletion
+        }
+      />
     </>
   );
-};
-
-
-interface TaskActionProps {
-  task:
-    MyTask;
-
-  isWorking:
-    boolean;
-
-  loading:
-    boolean;
-
-  onStart:
-    () => void;
-
-  onStop:
-    () => void;
-}
-
-
-const TaskAction = ({
-  task,
-  isWorking,
-  loading,
-  onStart,
-  onStop,
-}: TaskActionProps) => {
-  if (
-    task.status ===
-      "COMPLETION_REQUESTED"
-  ) {
-    return (
-      <span
-        style={{
-          fontSize:
-            12,
-
-          color:
-            "#6b7280",
-        }}
-      >
-        Waiting for Review
-      </span>
-    );
-  }
-
-
-  if (
-    task.status ===
-      "COMPLETED"
-  ) {
-    return (
-      <span
-        style={{
-          fontSize:
-            12,
-
-          color:
-            "#15803d",
-        }}
-      >
-        Completed
-      </span>
-    );
-  }
-
-
-  if (
-    task.status ===
-      "CANCELLED"
-  ) {
-    return (
-      <span
-        style={{
-          fontSize:
-            12,
-
-          color:
-            "#6b7280",
-        }}
-      >
-        Cancelled
-      </span>
-    );
-  }
-
-
-  if (
-    isWorking
-  ) {
-    return (
-      <Button
-        type="button"
-        size="sm"
-        variant="danger"
-        loading={
-          loading
-        }
-        onClick={
-          onStop
-        }
-      >
-        Stop Work
-      </Button>
-    );
-  }
-
-
-  if (
-    task.status ===
-      "TODO" ||
-    task.status ===
-      "IN_PROGRESS"
-  ) {
-    return (
-      <Button
-        type="button"
-        size="sm"
-        loading={
-          loading
-        }
-        onClick={
-          onStart
-        }
-      >
-        {task.status ===
-        "TODO"
-          ? "Start Work"
-          : "Resume Work"}
-      </Button>
-    );
-  }
-
-
-  return null;
-};
-
-
-const PriorityBadge = ({
-  priority,
-}: {
-  priority:
-    MyTask["priority"];
-}) => (
-  <span
-    style={{
-      padding:
-        "5px 9px",
-
-      borderRadius:
-        999,
-
-      background:
-        "#f3f4f6",
-
-      fontSize:
-        11,
-
-      fontWeight:
-        600,
-    }}
-  >
-    {priority}
-  </span>
-);
-
-
-const StatusBadge = ({
-  status,
-}: {
-  status:
-    MyTask["status"];
-}) => (
-  <span
-    style={{
-      padding:
-        "5px 9px",
-
-      borderRadius:
-        999,
-
-      background:
-        "#f3f4f6",
-
-      fontSize:
-        11,
-
-      fontWeight:
-        600,
-    }}
-  >
-    {status.replaceAll(
-      "_",
-      " ",
-    )}
-  </span>
-);
-
-
-const formatDate = (
-  value: string,
-) =>
-  new Intl.DateTimeFormat(
-    "en-IN",
-    {
-      day:
-        "2-digit",
-
-      month:
-        "short",
-
-      year:
-        "numeric",
-    },
-  ).format(
-    new Date(
-      value,
-    ),
-  );
-
-
-const isTaskOverdue = (
-  task:
-    MyTask,
-) => {
-  if (
-    !task.dueDate ||
-    task.status ===
-      "COMPLETED" ||
-    task.status ===
-      "CANCELLED"
-  ) {
-    return false;
-  }
-
-  const due =
-    new Date(
-      task.dueDate,
-    );
-
-  const today =
-    new Date();
-
-  due.setHours(
-    23,
-    59,
-    59,
-    999,
-  );
-
-  return (
-    due.getTime() <
-    today.getTime()
-  );
-};
-
-
-const headerCellStyle = {
-  padding:
-    "12px 14px",
-
-  borderBottom:
-    "1px solid #e5e7eb",
-
-  background:
-    "#f8fafc",
-
-  color:
-    "#374151",
-
-  fontSize:
-    12,
-
-  fontWeight:
-    600,
-
-  textAlign:
-    "left" as const,
-
-  whiteSpace:
-    "nowrap" as const,
-};
-
-
-const bodyCellStyle = {
-  padding:
-    "14px",
-
-  borderBottom:
-    "1px solid #e5e7eb",
-
-  color:
-    "#374151",
-
-  fontSize:
-    14,
-
-  verticalAlign:
-    "middle" as const,
-};
-
-
-const emptyCellStyle = {
-  padding:
-    "32px 16px",
-
-  color:
-    "#6b7280",
-
-  textAlign:
-    "center" as const,
 };
 
 

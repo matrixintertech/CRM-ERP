@@ -13,6 +13,13 @@ export type TaskPriority =
   | "URGENT";
 
 
+export type MyTaskReportType =
+  | "PROGRESS"
+  | "BLOCKER"
+  | "NOTE"
+  | "COMPLETION";
+
+
 export interface MyTaskProject {
   uuid: string;
   srn: string;
@@ -24,8 +31,12 @@ export interface MyTaskEmployee {
   uuid: string;
 
   firstName: string;
-  lastName?: string | null;
-  displayName?: string | null;
+
+  lastName?:
+    string | null;
+
+  displayName?:
+    string | null;
 
   employeeCode: string;
 
@@ -95,6 +106,66 @@ export interface MyTaskCompletionRequest {
 }
 
 
+/*
+ * Task activity report author.
+ *
+ * Backend report query me sirf
+ * limited employee information
+ * return ho rahi hai.
+ */
+export interface MyTaskReportEmployee {
+  uuid: string;
+
+  firstName:
+    string;
+
+  lastName?:
+    string | null;
+
+  displayName?:
+    string | null;
+}
+
+
+/*
+ * Project member snapshot attached
+ * with task report.
+ */
+export interface MyTaskReportProjectMember {
+  uuid: string;
+
+  employee:
+    MyTaskReportEmployee;
+
+  projectRole:
+    MyTaskProjectRole;
+}
+
+
+/*
+ * Progress / Blocker / Note /
+ * Completion activity.
+ */
+export interface MyTaskReport {
+  uuid: string;
+
+  type:
+    MyTaskReportType;
+
+  message:
+    string;
+
+  taskStatusSnapshot:
+    ProjectTaskStatus;
+
+  createdAt:
+    string;
+
+  projectMember:
+    MyTaskReportProjectMember;
+}
+
+
 export interface MyTask {
   uuid: string;
 
@@ -140,4 +211,24 @@ export interface MyTask {
    */
   completionRequests:
     MyTaskCompletionRequest[];
+
+  /*
+   * Backend latest 20 reports
+   * return karta hai.
+   *
+   * Newest report first.
+   */
+  reports:
+    MyTaskReport[];
+
+  /*
+   * Total reports count.
+   *
+   * reports[] latest 20 ho sakte hain,
+   * but ye actual total count hai.
+   */
+  _count: {
+    reports:
+      number;
+  };
 }

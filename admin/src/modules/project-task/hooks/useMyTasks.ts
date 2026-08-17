@@ -9,9 +9,15 @@ import {
 } from "@/shared/utils/notify";
 
 import {
+  createMyTaskReport,
   getMyTasks,
+  requestMyTaskCompletion,
   startMyTaskWork,
   stopMyTaskWork,
+} from "../api/my-task.api";
+
+import type {
+  ProjectTaskReportType,
 } from "../api/my-task.api";
 
 
@@ -23,6 +29,25 @@ export const MY_TASKS_QUERY_KEY = [
 interface TaskWorkVariables {
   projectUuid: string;
   taskUuid: string;
+}
+
+
+interface TaskReportVariables {
+  projectUuid: string;
+  taskUuid: string;
+
+  type:
+    ProjectTaskReportType;
+
+  message:
+    string;
+}
+
+
+interface TaskCompletionVariables {
+  projectUuid: string;
+  taskUuid: string;
+  message: string;
 }
 
 
@@ -49,10 +74,40 @@ const getErrorMessage = (
 };
 
 
+const getReportSuccessMessage = (
+  type:
+    ProjectTaskReportType,
+) => {
+  switch (type) {
+    case "PROGRESS":
+      return "Progress update added successfully.";
+
+    case "BLOCKER":
+      return "Blocker reported successfully.";
+
+    case "NOTE":
+      return "Note added successfully.";
+
+    default:
+      return "Task report added successfully.";
+  }
+};
+
+
 export const useMyTasks =
   () => {
     const queryClient =
       useQueryClient();
+
+
+    const invalidateMyTasks =
+      async () => {
+        await queryClient
+          .invalidateQueries({
+            queryKey:
+              MY_TASKS_QUERY_KEY,
+          });
+      };
 
 
     const tasksQuery =
@@ -85,11 +140,7 @@ export const useMyTasks =
               "Work started successfully.",
             );
 
-            await queryClient
-              .invalidateQueries({
-                queryKey:
-                  MY_TASKS_QUERY_KEY,
-              });
+            await invalidateMyTasks();
           },
 
         onError: (
@@ -122,11 +173,7 @@ export const useMyTasks =
               "Work stopped successfully.",
             );
 
-            await queryClient
-              .invalidateQueries({
-                queryKey:
-                  MY_TASKS_QUERY_KEY,
-              });
+            await invalidateMyTasks();
           },
 
         onError: (
@@ -136,6 +183,86 @@ export const useMyTasks =
             getErrorMessage(
               error,
               "Failed to stop work.",
+            ),
+          );
+        },
+      });
+
+
+    const reportMutation =
+      useMutation({
+        mutationFn: ({
+          projectUuid,
+          taskUuid,
+          type,
+          message,
+        }: TaskReportVariables) =>
+          createMyTaskReport(
+            projectUuid,
+            taskUuid,
+            {
+              type,
+
+              message,
+            },
+          ),
+
+        onSuccess:
+          async (
+            _response,
+            variables,
+          ) => {
+            notify.success(
+              getReportSuccessMessage(
+                variables.type,
+              ),
+            );
+
+            await invalidateMyTasks();
+          },
+
+        onError: (
+          error,
+        ) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to add task report.",
+            ),
+          );
+        },
+      });
+
+
+    const completionMutation =
+      useMutation({
+        mutationFn: ({
+          projectUuid,
+          taskUuid,
+          message,
+        }: TaskCompletionVariables) =>
+          requestMyTaskCompletion(
+            projectUuid,
+            taskUuid,
+            message,
+          ),
+
+        onSuccess:
+          async () => {
+            notify.success(
+              "Completion request submitted successfully.",
+            );
+
+            await invalidateMyTasks();
+          },
+
+        onError: (
+          error,
+        ) => {
+          notify.error(
+            getErrorMessage(
+              error,
+              "Failed to request task completion.",
             ),
           );
         },
@@ -182,10 +309,45 @@ export const useMyTasks =
           }),
 
 
+      addReport: (
+        projectUuid: string,
+        taskUuid: string,
+        type:
+          ProjectTaskReportType,
+        message: string,
+      ) =>
+        reportMutation
+          .mutateAsync({
+            projectUuid,
+            taskUuid,
+            type,
+            message,
+          }),
+
+
+      requestCompletion: (
+        projectUuid: string,
+        taskUuid: string,
+        message: string,
+      ) =>
+        completionMutation
+          .mutateAsync({
+            projectUuid,
+            taskUuid,
+            message,
+          }),
+
+
       starting:
         startMutation.isPending,
 
       stopping:
         stopMutation.isPending,
+
+      reporting:
+        reportMutation.isPending,
+
+      requestingCompletion:
+        completionMutation.isPending,
     };
   };

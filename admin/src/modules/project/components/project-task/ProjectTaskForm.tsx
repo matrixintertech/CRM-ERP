@@ -8,14 +8,15 @@ import Select from "@/shared/components/Select";
 
 import type {
   ProjectTaskFormData,
-  ProjectTaskStatus,
   TaskPriority,
 } from "../../types/project-task.types";
+
 
 interface ProjectMemberOption {
   uuid: string;
   label: string;
 }
+
 
 interface Props {
   formData: ProjectTaskFormData;
@@ -32,13 +33,12 @@ interface Props {
   loadingMembers?: boolean;
 }
 
+
 const ProjectTaskForm = ({
   formData,
   setFormData,
 
   projectMembers,
-
-  isEdit = false,
 
   loadingMembers = false,
 }: Props) => {
@@ -47,16 +47,21 @@ const ProjectTaskForm = ({
       label: loadingMembers
         ? "Loading members..."
         : "Unassigned",
+
       value: "",
     },
 
     ...projectMembers.map(
       (member) => ({
-        label: member.label,
-        value: member.uuid,
+        label:
+          member.label,
+
+        value:
+          member.uuid,
       }),
     ),
   ];
+
 
   return (
     <div
@@ -67,18 +72,22 @@ const ProjectTaskForm = ({
     >
       <Input
         label="Task Title"
-        value={formData.title}
+        value={
+          formData.title
+        }
         placeholder="Enter task title"
         onChange={(event) =>
           setFormData(
             (previous) => ({
               ...previous,
+
               title:
                 event.target.value,
             }),
           )
         }
       />
+
 
       <Input
         label="Description"
@@ -90,6 +99,7 @@ const ProjectTaskForm = ({
           setFormData(
             (previous) => ({
               ...previous,
+
               description:
                 event.target.value,
             }),
@@ -97,10 +107,12 @@ const ProjectTaskForm = ({
         }
       />
 
+
       <Select
         label="Assign To"
         value={
-          formData.assignedProjectMemberUuid
+          formData
+            .assignedProjectMemberUuid
         }
         options={
           memberOptions
@@ -117,6 +129,7 @@ const ProjectTaskForm = ({
         }
       />
 
+
       <Select
         label="Priority"
         value={
@@ -127,14 +140,17 @@ const ProjectTaskForm = ({
             label: "Low",
             value: "LOW",
           },
+
           {
             label: "Medium",
             value: "MEDIUM",
           },
+
           {
             label: "High",
             value: "HIGH",
           },
+
           {
             label: "Urgent",
             value: "URGENT",
@@ -153,11 +169,14 @@ const ProjectTaskForm = ({
         }
       />
 
+
       <div
         style={{
           display: "grid",
+
           gridTemplateColumns:
             "1fr 1fr",
+
           gap: 16,
         }}
       >
@@ -198,49 +217,6 @@ const ProjectTaskForm = ({
         />
       </div>
 
-      {isEdit && (
-        <Select
-          label="Status"
-          value={
-            formData.status
-          }
-          options={[
-            {
-              label: "Todo",
-              value: "TODO",
-            },
-            {
-              label:
-                "In Progress",
-              value:
-                "IN_PROGRESS",
-            },
-            {
-              label:
-                "Completed",
-              value:
-                "COMPLETED",
-            },
-            {
-              label:
-                "Cancelled",
-              value:
-                "CANCELLED",
-            },
-          ]}
-          onChange={(event) =>
-            setFormData(
-              (previous) => ({
-                ...previous,
-
-                status:
-                  event.target
-                    .value as ProjectTaskStatus,
-              }),
-            )
-          }
-        />
-      )}
 
       <Input
         label="Remarks"
@@ -259,6 +235,7 @@ const ProjectTaskForm = ({
           )
         }
       />
+
 
       <Input
         type="number"
@@ -283,5 +260,6 @@ const ProjectTaskForm = ({
     </div>
   );
 };
+
 
 export default ProjectTaskForm;

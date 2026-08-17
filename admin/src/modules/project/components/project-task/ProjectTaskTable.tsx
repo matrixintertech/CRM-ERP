@@ -9,13 +9,28 @@ import type {
   ProjectTask,
 } from "../../types/project-task.types";
 
+
 interface Props {
   data: ProjectTask[];
   loading: boolean;
 
-  onEdit: (uuid: string) => void;
-  onDelete: (uuid: string) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canReview?: boolean;
+
+  onEdit: (
+    uuid: string,
+  ) => void;
+
+  onDelete: (
+    uuid: string,
+  ) => void;
+
+  onReview?: (
+    task: ProjectTask,
+  ) => void;
 }
+
 
 const formatDate = (
   value?: string | null,
@@ -45,6 +60,7 @@ const formatDate = (
   );
 };
 
+
 const getAssigneeName = (
   task: ProjectTask,
 ) => {
@@ -71,11 +87,31 @@ const getAssigneeName = (
   );
 };
 
+
+const hasPendingCompletionRequest = (
+  task: ProjectTask,
+) => {
+  return Boolean(
+    task.completionRequests?.some(
+      (request) =>
+        request.status ===
+        "PENDING",
+    ),
+  );
+};
+
+
 const ProjectTaskTable = ({
   data,
   loading,
+
+  canEdit = true,
+  canDelete = true,
+  canReview = false,
+
   onEdit,
   onDelete,
+  onReview,
 }: Props) => {
   const columns:
     Column<ProjectTask>[] = [
@@ -141,61 +177,143 @@ const ProjectTaskTable = ({
       key: "status",
       title: "Status",
 
-      render: (_, row) => (
-        <Badge
-          status={
-            row.status
-          }
-        />
-      ),
+      render: (_, row) => {
+        const awaitingReview =
+          row.status ===
+            "COMPLETION_REQUESTED" &&
+          hasPendingCompletionRequest(
+            row,
+          );
+
+        if (
+          awaitingReview
+        ) {
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: 6,
+              }}
+            >
+              <Badge
+                status={
+                  row.status
+                }
+              />
+
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color:
+                    "#92400e",
+                }}
+              >
+                Awaiting Review
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <Badge
+            status={
+              row.status
+            }
+          />
+        );
+      },
     },
 
     {
       key: "action",
       title: "Action",
 
-      render: (_, row) => (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <Button
-            size="sm"
-            onClick={() =>
-              onEdit(
-                row.uuid,
-              )
-            }
-          >
-            Edit
-          </Button>
+      render: (_, row) => {
+        const awaitingReview =
+          row.status ===
+            "COMPLETION_REQUESTED" &&
+          hasPendingCompletionRequest(
+            row,
+          );
 
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              onDelete(
-                row.uuid,
-              )
-            }
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems:
+                "center",
+              gap: 8,
+              flexWrap:
+                "wrap",
+            }}
           >
-            Delete
-          </Button>
-        </div>
-      ),
+            {canReview &&
+              awaitingReview &&
+              onReview && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    onReview(
+                      row,
+                    )
+                  }
+                >
+                  Review
+                </Button>
+              )}
+
+            {canEdit &&
+              !awaitingReview && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    onEdit(
+                      row.uuid,
+                    )
+                  }
+                >
+                  Edit
+                </Button>
+              )}
+
+            {canDelete &&
+              !awaitingReview && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() =>
+                    onDelete(
+                      row.uuid,
+                    )
+                  }
+                >
+                  Delete
+                </Button>
+              )}
+          </div>
+        );
+      },
     },
   ];
 
+
   return (
     <Table
-      columns={columns}
-      data={data}
-      loading={loading}
+      columns={
+        columns
+      }
+      data={
+        data
+      }
+      loading={
+        loading
+      }
     />
   );
 };
+
 
 export default ProjectTaskTable;

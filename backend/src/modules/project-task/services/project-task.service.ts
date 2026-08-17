@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  ProjectTaskReportType,
   ProjectTaskStatus,
   TaskPriority,
 } from "@prisma/client";
@@ -14,7 +15,19 @@ import {
 import {
   CreateProjectTaskDto,
   UpdateProjectTaskDto,
+  CreateProjectTaskReportDto,
+  RequestProjectTaskCompletionDto,
+  ReviewProjectTaskCompletionDto
 } from "../dto";
+
+import {
+  ProjectTaskCompletionDecision,
+} from "../dto/review-project-task-completion.dto";
+
+
+import {
+  ProjectTaskCompletionStatus,
+} from "@prisma/client";
 
 import {
   ProjectTaskRepository,
@@ -86,6 +99,39 @@ private ensureEmployeeContext(
     return project;
   }
 
+
+  /*
+ * Verify that logged-in employee
+ * is an active member of project.
+ *
+ * Used for PROJECT-scoped manager
+ * task access.
+ */
+private async ensureActiveProjectMembership(
+  companyId: bigint,
+  projectId: bigint,
+  employeeId: bigint,
+) {
+  const projectMember =
+    await this.projectTaskRepository
+      .findActiveProjectMemberByEmployeeId(
+        companyId,
+        projectId,
+        employeeId,
+      );
+
+
+  if (
+    !projectMember
+  ) {
+    throw new ForbiddenException(
+      "You are not an active member of this project.",
+    );
+  }
+
+
+  return projectMember;
+}
 
   /*
    * Resolve active project member
@@ -239,171 +285,203 @@ private ensureEmployeeContext(
   /*
    * Create task.
    */
-  async create(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+/*
+ * Create task.
+ *
+ * New tasks always begin in TODO.
+ * Status is workflow-controlled and
+ * cannot be supplied by planning DTO.
+ */
+async create(
+  companyId:
+    | bigint
+    | null
+    | undefined,
 
-    projectUuid:
-      string,
+  projectUuid:
+    string,
 
-    dto:
-      CreateProjectTaskDto,
-  ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
-      );
-
-
-    const project =
-      await this.getProject(
-        resolvedCompanyId,
-        projectUuid,
-      );
-
-
-    this.validateDates(
-      dto.startDate,
-      dto.dueDate,
+  dto:
+    CreateProjectTaskDto,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
     );
 
 
-    const assignedProjectMember =
-      await this.getAssignedProjectMember(
-        resolvedCompanyId,
-        project.id,
-        dto.assignedProjectMemberUuid,
-      );
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
 
 
-    const status =
-      dto.status ??
-      ProjectTaskStatus.TODO;
+  this.validateDates(
+    dto.startDate,
+    dto.dueDate,
+  );
 
 
-    const projectTask =
-      await this.projectTaskRepository
-        .create({
-          company: {
+  const assignedProjectMember =
+    await this.getAssignedProjectMember(
+      resolvedCompanyId,
+      project.id,
+      dto.assignedProjectMemberUuid,
+    );
+
+
+  const projectTask =
+    await this.projectTaskRepository
+      .create({
+        company: {
+          connect: {
+            id:
+              resolvedCompanyId,
+          },
+        },
+
+        project: {
+          connect: {
+            id:
+              project.id,
+          },
+        },
+
+        ...(assignedProjectMember && {
+          assignedProjectMember: {
             connect: {
               id:
-                resolvedCompanyId,
+                assignedProjectMember.id,
             },
           },
+        }),
 
-          project: {
-            connect: {
-              id:
-                project.id,
-            },
-          },
+        title:
+          dto.title.trim(),
 
-          ...(assignedProjectMember && {
-            assignedProjectMember: {
-              connect: {
-                id:
-                  assignedProjectMember.id,
-              },
-            },
-          }),
+        description:
+          dto.description
+            ?.trim() ||
+          null,
 
-          title:
-            dto.title.trim(),
+        priority:
+          dto.priority ??
+          TaskPriority.MEDIUM,
 
-          description:
-            dto.description
-              ?.trim() ||
-            null,
+        /*
+         * Status is never accepted
+         * from create DTO.
+         */
+        status:
+          ProjectTaskStatus.TODO,
 
-          priority:
-            dto.priority ??
-            TaskPriority.MEDIUM,
+        startDate:
+          dto.startDate
+            ? new Date(
+                dto.startDate,
+              )
+            : null,
 
-          status,
+        dueDate:
+          dto.dueDate
+            ? new Date(
+                dto.dueDate,
+              )
+            : null,
 
-          startDate:
-            dto.startDate
-              ? new Date(
-                  dto.startDate,
-                )
-              : null,
+        completedAt:
+          null,
 
-          dueDate:
-            dto.dueDate
-              ? new Date(
-                  dto.dueDate,
-                )
-              : null,
+        remarks:
+          dto.remarks
+            ?.trim() ||
+          null,
 
-          completedAt:
-            status ===
-            ProjectTaskStatus.COMPLETED
-              ? new Date()
-              : null,
-
-          remarks:
-            dto.remarks
-              ?.trim() ||
-            null,
-
-          sortOrder:
-            dto.sortOrder ??
-            0,
-        });
+        sortOrder:
+          dto.sortOrder ??
+          0,
+      });
 
 
-    return {
-      message:
-        "Project task created successfully.",
+  return {
+    message:
+      "Project task created successfully.",
 
-      projectTask,
-    };
-  }
-
+    projectTask,
+  };
+}
 
   /*
    * List project tasks.
    */
-  async findAll(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+/*
+ * List project tasks.
+ *
+ * PROJECT scoped access:
+ * logged-in employee must be an
+ * active member of this project.
+ */
+async findAll(
+  companyId:
+    | bigint
+    | null
+    | undefined,
 
-    projectUuid:
-      string,
-  ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
-      );
+  projectUuid:
+    string,
+
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
 
 
-    const project =
-      await this.getProject(
+  const resolvedEmployeeId =
+    this.ensureEmployeeContext(
+      employeeId,
+    );
+
+
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
+
+
+  /*
+   * Manager can see tasks only
+   * for projects where manager
+   * is an active ProjectMember.
+   */
+  await this.ensureActiveProjectMembership(
+    resolvedCompanyId,
+    project.id,
+    resolvedEmployeeId,
+  );
+
+
+  const projectTasks =
+    await this.projectTaskRepository
+      .findAllByProject(
         resolvedCompanyId,
-        projectUuid,
+        project.id,
       );
 
 
-    const projectTasks =
-      await this.projectTaskRepository
-        .findAllByProject(
-          resolvedCompanyId,
-          project.id,
-        );
+  return {
+    message:
+      "Project tasks fetched successfully.",
 
-
-    return {
-      message:
-        "Project tasks fetched successfully.",
-
-      projectTasks,
-    };
-  }
-
+    projectTasks,
+  };
+}
 
   /*
  * Logged-in employee ke
@@ -738,210 +816,394 @@ async findMyTasks(
   }
 
 
+
+  /*
+ * Create employee task report.
+ *
+ * Allowed:
+ *
+ * PROGRESS
+ * BLOCKER
+ * NOTE
+ *
+ * COMPLETION report is reserved
+ * for completion-request workflow.
+ */
+async createTaskReport(
+  companyId:
+    | bigint
+    | null
+    | undefined,
+
+  projectUuid:
+    string,
+
+  taskUuid:
+    string,
+
+  userId:
+    bigint,
+
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+
+  dto:
+    CreateProjectTaskReportDto,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  const resolvedEmployeeId =
+    this.ensureEmployeeContext(
+      employeeId,
+    );
+
+
+  /*
+   * Employee can manually create
+   * only normal execution reports.
+   *
+   * COMPLETION will be created by
+   * dedicated completion workflow.
+   */
+  if (
+    dto.type !==
+      ProjectTaskReportType.PROGRESS &&
+    dto.type !==
+      ProjectTaskReportType.BLOCKER &&
+    dto.type !==
+      ProjectTaskReportType.NOTE
+  ) {
+    throw new BadRequestException(
+      "Only PROGRESS, BLOCKER or NOTE reports can be created manually.",
+    );
+  }
+
+
+  const message =
+    dto.message.trim();
+
+
+  if (!message) {
+    throw new BadRequestException(
+      "Report message is required.",
+    );
+  }
+
+
+  const {
+    project,
+    projectTask,
+    assignedProjectMember,
+  } =
+    await this.getExecutionContext(
+      resolvedCompanyId,
+      projectUuid,
+      taskUuid,
+      resolvedEmployeeId,
+    );
+
+
+  /*
+   * Employee must start the task
+   * before posting execution reports.
+   *
+   * Repository re-checks this status
+   * inside transaction as well.
+   */
+  if (
+    projectTask.status !==
+    ProjectTaskStatus.IN_PROGRESS
+  ) {
+    throw new BadRequestException(
+      `Task report cannot be added while status is ${projectTask.status}.`,
+    );
+  }
+
+
+  const result =
+    await this.projectTaskRepository
+      .createTaskReport(
+        resolvedCompanyId,
+        project.id,
+        projectTask.id,
+        assignedProjectMember.id,
+        userId,
+        dto.type,
+        message,
+      );
+
+
+  /*
+   * Task may have been reassigned
+   * or deleted between service check
+   * and repository transaction.
+   */
+  if (
+    result.outcome ===
+    "TASK_NOT_AVAILABLE"
+  ) {
+    throw new ConflictException(
+      "Task assignment changed. Refresh the task and try again.",
+    );
+  }
+
+
+  /*
+   * Task status may have changed
+   * concurrently.
+   */
+  if (
+    result.outcome ===
+    "INVALID_STATUS"
+  ) {
+    throw new BadRequestException(
+      `Task report cannot be added while status is ${result.status}.`,
+    );
+  }
+
+
+  return {
+    message:
+      "Task report added successfully.",
+
+    report:
+      result.report,
+  };
+}
+
+
   /*
    * Manager / planning update.
    *
    * Employee execution should
    * NOT use this method.
    */
-  async updateByUuid(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+/*
+ * Manager / planning update.
+ *
+ * Employee execution should
+ * NOT use this method.
+ *
+ * Important:
+ * task status and completedAt are
+ * workflow-controlled and are not
+ * modified by normal planning edits.
+ */
+async updateByUuid(
+  companyId:
+    | bigint
+    | null
+    | undefined,
 
-    projectUuid:
-      string,
+  projectUuid:
+    string,
 
-    taskUuid:
-      string,
+  taskUuid:
+    string,
 
-    dto:
-      UpdateProjectTaskDto,
-  ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
-      );
-
-
-    const project =
-      await this.getProject(
-        resolvedCompanyId,
-        projectUuid,
-      );
-
-
-    const existing =
-      await this.projectTaskRepository
-        .findByUuid(
-          resolvedCompanyId,
-          project.id,
-          taskUuid,
-        );
-
-
-    if (!existing) {
-      throw new NotFoundException(
-        "Project task not found.",
-      );
-    }
-
-
-    const nextStartDate =
-      dto.startDate !==
-      undefined
-        ? dto.startDate
-        : existing.startDate
-          ? existing.startDate
-              .toISOString()
-          : undefined;
-
-
-    const nextDueDate =
-      dto.dueDate !==
-      undefined
-        ? dto.dueDate
-        : existing.dueDate
-          ? existing.dueDate
-              .toISOString()
-          : undefined;
-
-
-    this.validateDates(
-      nextStartDate,
-      nextDueDate,
+  dto:
+    UpdateProjectTaskDto,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
     );
 
 
-    let assignedProjectMember:
-      | Awaited<
-          ReturnType<
-            typeof this
-              .getAssignedProjectMember
-          >
-        >
-      | undefined;
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
 
 
-    if (
-      dto.assignedProjectMemberUuid !==
-      undefined
-    ) {
-      assignedProjectMember =
-        await this.getAssignedProjectMember(
-          resolvedCompanyId,
-          project.id,
-          dto.assignedProjectMemberUuid,
-        );
-    }
+  const existing =
+    await this.projectTaskRepository
+      .findByUuid(
+        resolvedCompanyId,
+        project.id,
+        taskUuid,
+      );
 
 
-    const nextStatus =
-      dto.status ??
-      existing.status;
-
-
-    const updated =
-      await this.projectTaskRepository
-        .update(
-          existing.id,
-          {
-            ...(dto.title !==
-              undefined && {
-              title:
-                dto.title.trim(),
-            }),
-
-            ...(dto.description !==
-              undefined && {
-              description:
-                dto.description
-                  ?.trim() ||
-                null,
-            }),
-
-            ...(dto.priority !==
-              undefined && {
-              priority:
-                dto.priority,
-            }),
-
-            ...(dto.status !==
-              undefined && {
-              status:
-                dto.status,
-            }),
-
-            ...(dto.startDate !==
-              undefined && {
-              startDate:
-                dto.startDate
-                  ? new Date(
-                      dto.startDate,
-                    )
-                  : null,
-            }),
-
-            ...(dto.dueDate !==
-              undefined && {
-              dueDate:
-                dto.dueDate
-                  ? new Date(
-                      dto.dueDate,
-                    )
-                  : null,
-            }),
-
-            ...(dto.remarks !==
-              undefined && {
-              remarks:
-                dto.remarks
-                  ?.trim() ||
-                null,
-            }),
-
-            ...(dto.sortOrder !==
-              undefined && {
-              sortOrder:
-                dto.sortOrder,
-            }),
-
-            ...(dto.assignedProjectMemberUuid !==
-              undefined && {
-              assignedProjectMember:
-                assignedProjectMember
-                  ? {
-                      connect: {
-                        id:
-                          assignedProjectMember.id,
-                      },
-                    }
-                  : {
-                      disconnect:
-                        true,
-                    },
-            }),
-
-            completedAt:
-              nextStatus ===
-              ProjectTaskStatus.COMPLETED
-                ? existing.completedAt ??
-                  new Date()
-                : null,
-          },
-        );
-
-
-    return {
-      message:
-        "Project task updated successfully.",
-
-      projectTask:
-        updated,
-    };
+  if (!existing) {
+    throw new NotFoundException(
+      "Project task not found.",
+    );
   }
 
+
+  /*
+   * Completion-requested tasks must
+   * be handled through review workflow,
+   * not generic planning edit.
+   */
+  if (
+    existing.status ===
+    ProjectTaskStatus
+      .COMPLETION_REQUESTED
+  ) {
+    throw new ConflictException(
+      "This task is awaiting completion review and cannot be edited.",
+    );
+  }
+
+
+  const nextStartDate =
+    dto.startDate !==
+    undefined
+      ? dto.startDate
+      : existing.startDate
+        ? existing.startDate
+            .toISOString()
+        : undefined;
+
+
+  const nextDueDate =
+    dto.dueDate !==
+    undefined
+      ? dto.dueDate
+      : existing.dueDate
+        ? existing.dueDate
+            .toISOString()
+        : undefined;
+
+
+  this.validateDates(
+    nextStartDate,
+    nextDueDate,
+  );
+
+
+  let assignedProjectMember:
+    | Awaited<
+        ReturnType<
+          typeof this
+            .getAssignedProjectMember
+        >
+      >
+    | undefined;
+
+
+  if (
+    dto.assignedProjectMemberUuid !==
+    undefined
+  ) {
+    assignedProjectMember =
+      await this.getAssignedProjectMember(
+        resolvedCompanyId,
+        project.id,
+        dto.assignedProjectMemberUuid,
+      );
+  }
+
+
+  const updated =
+    await this.projectTaskRepository
+      .update(
+        existing.id,
+        {
+          ...(dto.title !==
+            undefined && {
+            title:
+              dto.title.trim(),
+          }),
+
+          ...(dto.description !==
+            undefined && {
+            description:
+              dto.description
+                ?.trim() ||
+              null,
+          }),
+
+          ...(dto.priority !==
+            undefined && {
+            priority:
+              dto.priority,
+          }),
+
+          /*
+           * status intentionally absent.
+           *
+           * Workflow methods are the only
+           * allowed status transition path.
+           */
+
+          ...(dto.startDate !==
+            undefined && {
+            startDate:
+              dto.startDate
+                ? new Date(
+                    dto.startDate,
+                  )
+                : null,
+          }),
+
+          ...(dto.dueDate !==
+            undefined && {
+            dueDate:
+              dto.dueDate
+                ? new Date(
+                    dto.dueDate,
+                  )
+                : null,
+          }),
+
+          ...(dto.remarks !==
+            undefined && {
+            remarks:
+              dto.remarks
+                ?.trim() ||
+              null,
+          }),
+
+          ...(dto.sortOrder !==
+            undefined && {
+            sortOrder:
+              dto.sortOrder,
+          }),
+
+          ...(dto.assignedProjectMemberUuid !==
+            undefined && {
+            assignedProjectMember:
+              assignedProjectMember
+                ? {
+                    connect: {
+                      id:
+                        assignedProjectMember.id,
+                    },
+                  }
+                : {
+                    disconnect:
+                      true,
+                  },
+          }),
+
+          /*
+           * completedAt intentionally absent.
+           *
+           * It is controlled by completion
+           * approval workflow.
+           */
+        },
+      );
+
+
+  return {
+    message:
+      "Project task updated successfully.",
+
+    projectTask:
+      updated,
+  };
+}
 
   /*
    * Soft delete / cancel.
@@ -998,4 +1260,276 @@ async findMyTasks(
         "Project task deleted successfully.",
     };
   }
+
+  async requestCompletion(
+  companyId: bigint | null,
+  projectUuid: string,
+  taskUuid: string,
+  userId: bigint,
+  employeeId: bigint | null,
+  dto: RequestProjectTaskCompletionDto,
+) {
+  if (
+    !companyId ||
+    !employeeId
+  ) {
+    throw new BadRequestException(
+      "Employee context is required.",
+    );
+  }
+
+
+  const message =
+    dto.message?.trim();
+
+
+  if (
+    !message
+  ) {
+    throw new BadRequestException(
+      "Completion message is required.",
+    );
+  }
+
+
+  try {
+    const result =
+      await this.projectTaskRepository
+        .requestCompletion(
+          companyId,
+          projectUuid,
+          taskUuid,
+          userId,
+          employeeId,
+          message,
+        );
+
+
+    return {
+      message:
+        "Completion request submitted successfully.",
+
+      task:
+        result.task,
+
+      completionRequest:
+        result.completionRequest,
+    };
+  } catch (
+    error
+  ) {
+    if (
+      error instanceof Error
+    ) {
+      if (
+        error.message ===
+        "TASK_NOT_AVAILABLE"
+      ) {
+        throw new NotFoundException(
+          "Task is not available or is not assigned to you.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "INVALID_STATUS"
+      ) {
+        throw new BadRequestException(
+          "Only an in-progress task can be submitted for completion.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "WORK_SESSION_OPEN"
+      ) {
+        throw new ConflictException(
+          "Stop the active work session before requesting completion.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "COMPLETION_ALREADY_REQUESTED"
+      ) {
+        throw new ConflictException(
+          "A completion request is already pending for this task.",
+        );
+      }
+    }
+
+
+    throw error;
+  }
+}
+
+
+async reviewCompletion(
+  companyId:
+    bigint | null,
+
+  projectUuid:
+    string,
+
+  taskUuid:
+    string,
+
+  reviewerUserId:
+    bigint,
+
+  reviewerEmployeeId:
+    bigint | null,
+
+  dto:
+    ReviewProjectTaskCompletionDto,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  const resolvedEmployeeId =
+    this.ensureEmployeeContext(
+      reviewerEmployeeId,
+    );
+
+
+  /*
+   * First resolve the project
+   * inside company boundary.
+   */
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
+
+
+  /*
+   * Completion review is PROJECT
+   * scoped.
+   *
+   * Reviewer must be active member
+   * of this project.
+   */
+  await this.ensureActiveProjectMembership(
+    resolvedCompanyId,
+    project.id,
+    resolvedEmployeeId,
+  );
+
+
+  const reviewNote =
+    dto.reviewNote?.trim() ||
+    undefined;
+
+
+  /*
+   * Reject requires reason.
+   */
+  if (
+    dto.decision ===
+      ProjectTaskCompletionDecision
+        .REJECTED &&
+    !reviewNote
+  ) {
+    throw new BadRequestException(
+      "Review note is required when rejecting a completion request.",
+    );
+  }
+
+
+  const decision =
+    dto.decision ===
+    ProjectTaskCompletionDecision
+      .APPROVED
+      ? ProjectTaskCompletionStatus
+          .APPROVED
+      : ProjectTaskCompletionStatus
+          .REJECTED;
+
+
+  try {
+    const result =
+      await this.projectTaskRepository
+        .reviewCompletion(
+          resolvedCompanyId,
+          projectUuid,
+          taskUuid,
+          reviewerUserId,
+          decision,
+          reviewNote,
+        );
+
+
+    return {
+      message:
+        decision ===
+        ProjectTaskCompletionStatus
+          .APPROVED
+          ? "Task completion approved successfully."
+          : "Task completion rejected successfully.",
+
+      task:
+        result.task,
+
+      completionRequest:
+        result.completionRequest,
+    };
+  } catch (
+    error
+  ) {
+    if (
+      error instanceof Error
+    ) {
+      if (
+        error.message ===
+        "TASK_NOT_AVAILABLE"
+      ) {
+        throw new NotFoundException(
+          "Task not found.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "INVALID_TASK_STATUS"
+      ) {
+        throw new ConflictException(
+          "This task is not awaiting completion review.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "PENDING_COMPLETION_REQUEST_NOT_FOUND"
+      ) {
+        throw new ConflictException(
+          "No pending completion request was found for this task.",
+        );
+      }
+
+
+      if (
+        error.message ===
+        "INVALID_DECISION"
+      ) {
+        throw new BadRequestException(
+          "Invalid completion review decision.",
+        );
+      }
+    }
+
+
+    throw error;
+  }
+}
+
+
 }

@@ -13,13 +13,19 @@ import {
   deleteProjectTask,
   getProjectTaskByUuid,
   getProjectTasks,
+  reviewProjectTaskCompletion,
   updateProjectTask,
+} from "../api/project-task.api";
+
+import type {
+  ReviewProjectTaskCompletionPayload,
 } from "../api/project-task.api";
 
 import type {
   CreateProjectTaskRequest,
   UpdateProjectTaskRequest,
 } from "../types/project-task.types";
+
 
 const getErrorMessage = (
   error: unknown,
@@ -41,12 +47,14 @@ const getErrorMessage = (
   );
 };
 
+
 export const useProjectTasks = (
   projectUuid?: string,
   enabled = true,
 ) => {
   const queryClient =
     useQueryClient();
+
 
   const tasksQuery =
     useQuery({
@@ -66,6 +74,7 @@ export const useProjectTasks = (
         ) &&
         enabled,
     });
+
 
   const fetchProjectTask =
     async (
@@ -102,6 +111,7 @@ export const useProjectTasks = (
         throw error;
       }
     };
+
 
   const createMutation =
     useMutation({
@@ -144,6 +154,7 @@ export const useProjectTasks = (
       },
     });
 
+
   const updateMutation =
     useMutation({
       mutationFn: ({
@@ -151,6 +162,7 @@ export const useProjectTasks = (
         payload,
       }: {
         taskUuid: string;
+
         payload:
           UpdateProjectTaskRequest;
       }) => {
@@ -203,6 +215,7 @@ export const useProjectTasks = (
       },
     });
 
+
   const deleteMutation =
     useMutation({
       mutationFn: (
@@ -254,6 +267,91 @@ export const useProjectTasks = (
       },
     });
 
+
+  /*
+   * Manager completion review.
+   *
+   * APPROVED
+   *   -> COMPLETED
+   *
+   * REJECTED
+   *   -> IN_PROGRESS
+   *
+   * UI me REJECTED ko
+   * "Request Changes" dikhayenge.
+   */
+  const reviewCompletionMutation =
+    useMutation({
+      mutationFn: ({
+        taskUuid,
+        payload,
+      }: {
+        taskUuid:
+          string;
+
+        payload:
+          ReviewProjectTaskCompletionPayload;
+      }) => {
+        if (!projectUuid) {
+          throw new Error(
+            "Project UUID is required.",
+          );
+        }
+
+        return reviewProjectTaskCompletion(
+          projectUuid,
+          taskUuid,
+          payload,
+        );
+      },
+
+      onSuccess: async (
+        _data,
+        variables,
+      ) => {
+        if (
+          variables.payload
+            .decision ===
+          "APPROVED"
+        ) {
+          notify.success(
+            "Task completion approved successfully.",
+          );
+        } else {
+          notify.success(
+            "Changes requested successfully.",
+          );
+        }
+
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-tasks",
+              projectUuid,
+            ],
+          }),
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "project-task",
+              projectUuid,
+              variables.taskUuid,
+            ],
+          }),
+        ]);
+      },
+
+      onError: (error) => {
+        notify.error(
+          getErrorMessage(
+            error,
+            "Failed to review task completion.",
+          ),
+        );
+      },
+    });
+
+
   return {
     projectTasks:
       tasksQuery.data ?? [],
@@ -272,8 +370,10 @@ export const useProjectTasks = (
 
     fetchProjectTask,
 
+
     create:
       createMutation.mutateAsync,
+
 
     update: (
       taskUuid: string,
@@ -285,8 +385,22 @@ export const useProjectTasks = (
         payload,
       }),
 
+
     remove:
       deleteMutation.mutateAsync,
+
+
+    reviewCompletion: (
+      taskUuid: string,
+      payload:
+        ReviewProjectTaskCompletionPayload,
+    ) =>
+      reviewCompletionMutation
+        .mutateAsync({
+          taskUuid,
+          payload,
+        }),
+
 
     saving:
       createMutation.isPending ||
@@ -294,5 +408,9 @@ export const useProjectTasks = (
 
     deleting:
       deleteMutation.isPending,
+
+    reviewing:
+      reviewCompletionMutation
+        .isPending,
   };
 };

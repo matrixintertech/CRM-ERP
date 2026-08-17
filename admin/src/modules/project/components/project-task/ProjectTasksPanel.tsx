@@ -4,23 +4,35 @@ import {
 
 import Button from "@/shared/components/Button";
 
+import {
+  useAuthorization,
+} from "@/shared/hooks/useAuthorization";
+
 import ProjectTaskForm from "./ProjectTaskForm";
 import ProjectTaskTable from "./ProjectTaskTable";
+import TaskCompletionReviewModal from "./TaskCompletionReviewModal";
 
 import {
   useProjectTasks,
 } from "../../hooks/useProjectTasks";
 
 import type {
+  ProjectTaskCompletionDecision,
+} from "../../api/project-task.api";
+
+import type {
   CreateProjectTaskRequest,
+  ProjectTask,
   ProjectTaskFormData,
   UpdateProjectTaskRequest,
 } from "../../types/project-task.types";
+
 
 interface ProjectMemberOption {
   uuid: string;
   label: string;
 }
+
 
 interface Props {
   projectUuid: string;
@@ -31,12 +43,12 @@ interface Props {
   loadingMembers?: boolean;
 }
 
+
 const initialFormData:
   ProjectTaskFormData = {
   title: "",
   description: "",
   priority: "MEDIUM",
-  status: "TODO",
   startDate: "",
   dueDate: "",
   assignedProjectMemberUuid: "",
@@ -44,11 +56,40 @@ const initialFormData:
   sortOrder: 0,
 };
 
+
 const ProjectTasksPanel = ({
   projectUuid,
   projectMembers,
   loadingMembers = false,
 }: Props) => {
+  const {
+    hasPermission,
+  } = useAuthorization();
+
+
+  const canCreateTask =
+    hasPermission(
+      "company.task.create",
+    );
+
+  const canUpdateTask =
+    hasPermission(
+      "company.task.update",
+    );
+
+  const canDeleteTask =
+    hasPermission(
+      "company.task.delete",
+    );
+
+  /*
+   * Completion review currently uses
+   * company.task.update.
+   */
+  const canReviewTask =
+    canUpdateTask;
+
+
   const {
     projectTasks,
 
@@ -61,16 +102,21 @@ const ProjectTasksPanel = ({
     update,
     remove,
 
+    reviewCompletion,
+
     saving,
     deleting,
+    reviewing,
   } = useProjectTasks(
     projectUuid,
   );
+
 
   const [
     showForm,
     setShowForm,
   ] = useState(false);
+
 
   const [
     editTaskUuid,
@@ -79,6 +125,15 @@ const ProjectTasksPanel = ({
     string | null
   >(null);
 
+
+  const [
+    reviewTask,
+    setReviewTask,
+  ] = useState<
+    ProjectTask | null
+  >(null);
+
+
   const [
     formData,
     setFormData,
@@ -86,6 +141,7 @@ const ProjectTasksPanel = ({
     useState<ProjectTaskFormData>({
       ...initialFormData,
     });
+
 
   const resetForm = () => {
     setEditTaskUuid(
@@ -97,27 +153,58 @@ const ProjectTasksPanel = ({
     });
   };
 
+
   const handleCreate = () => {
+    if (
+      !canCreateTask
+    ) {
+      return;
+    }
+
     resetForm();
 
-    setShowForm(true);
+    setShowForm(
+      true,
+    );
   };
+
 
   const handleCancel = () => {
     resetForm();
 
-    setShowForm(false);
+    setShowForm(
+      false,
+    );
   };
+
 
   const handleEdit =
     async (
       taskUuid: string,
     ) => {
+      if (
+        !canUpdateTask
+      ) {
+        return;
+      }
+
       try {
         const task =
           await fetchProjectTask(
             taskUuid,
           );
+
+        /*
+         * Completion review must go
+         * through review workflow,
+         * not normal task edit.
+         */
+        if (
+          task.status ===
+          "COMPLETION_REQUESTED"
+        ) {
+          return;
+        }
 
         setEditTaskUuid(
           taskUuid,
@@ -133,9 +220,6 @@ const ProjectTasksPanel = ({
 
           priority:
             task.priority,
-
-          status:
-            task.status,
 
           startDate:
             task.startDate
@@ -164,7 +248,9 @@ const ProjectTasksPanel = ({
             0,
         });
 
-        setShowForm(true);
+        setShowForm(
+          true,
+        );
       } catch (error) {
         console.error(
           "Failed to load project task:",
@@ -172,6 +258,7 @@ const ProjectTasksPanel = ({
         );
       }
     };
+
 
   const handleSubmit =
     async () => {
@@ -191,9 +278,16 @@ const ProjectTasksPanel = ({
           return;
         }
 
+
         if (
           editTaskUuid
         ) {
+          if (
+            !canUpdateTask
+          ) {
+            return;
+          }
+
           const payload:
             UpdateProjectTaskRequest = {
             title:
@@ -206,9 +300,6 @@ const ProjectTasksPanel = ({
 
             priority:
               formData.priority,
-
-            status:
-              formData.status,
 
             startDate:
               formData.startDate ||
@@ -240,6 +331,12 @@ const ProjectTasksPanel = ({
             payload,
           );
         } else {
+          if (
+            !canCreateTask
+          ) {
+            return;
+          }
+
           const payload:
             CreateProjectTaskRequest = {
             title:
@@ -252,9 +349,6 @@ const ProjectTasksPanel = ({
 
             priority:
               formData.priority,
-
-            status:
-              formData.status,
 
             startDate:
               formData.startDate ||
@@ -295,10 +389,17 @@ const ProjectTasksPanel = ({
       }
     };
 
+
   const handleDelete =
     async (
       taskUuid: string,
     ) => {
+      if (
+        !canDeleteTask
+      ) {
+        return;
+      }
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this task?",
@@ -320,18 +421,103 @@ const ProjectTasksPanel = ({
       }
     };
 
+
+  const handleOpenReview = (
+    task: ProjectTask,
+  ) => {
+    if (
+      !canReviewTask
+    ) {
+      return;
+    }
+
+    const pendingRequest =
+      task.completionRequests?.find(
+        (request) =>
+          request.status ===
+          "PENDING",
+      );
+
+    if (
+      task.status !==
+        "COMPLETION_REQUESTED" ||
+      !pendingRequest
+    ) {
+      return;
+    }
+
+    setReviewTask(
+      task,
+    );
+  };
+
+
+  const handleCloseReview =
+    () => {
+      if (
+        reviewing
+      ) {
+        return;
+      }
+
+      setReviewTask(
+        null,
+      );
+    };
+
+
+  const handleReviewCompletion =
+    async (
+      decision:
+        ProjectTaskCompletionDecision,
+
+      reviewNote?:
+        string,
+    ) => {
+      if (
+        !reviewTask ||
+        !canReviewTask
+      ) {
+        return;
+      }
+
+      try {
+        await reviewCompletion(
+          reviewTask.uuid,
+          {
+            decision,
+            reviewNote,
+          },
+        );
+
+        setReviewTask(
+          null,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to review task completion:",
+          error,
+        );
+      }
+    };
+
+
   if (showForm) {
     return (
       <>
         <div
           style={{
-            marginBottom: 18,
+            marginBottom:
+              18,
           }}
         >
           <div
             style={{
-              fontSize: 16,
-              fontWeight: 700,
+              fontSize:
+                16,
+
+              fontWeight:
+                700,
             }}
           >
             {editTaskUuid
@@ -341,9 +527,14 @@ const ProjectTasksPanel = ({
 
           <div
             style={{
-              marginTop: 4,
-              fontSize: 12,
-              color: "#6b7280",
+              marginTop:
+                4,
+
+              fontSize:
+                12,
+
+              color:
+                "#6b7280",
             }}
           >
             {editTaskUuid
@@ -351,6 +542,7 @@ const ProjectTasksPanel = ({
               : "Create a new task for this project."}
           </div>
         </div>
+
 
         <ProjectTaskForm
           formData={
@@ -372,18 +564,27 @@ const ProjectTasksPanel = ({
           }
         />
 
+
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
+
             justifyContent:
               "flex-end",
-            gap: 12,
-            marginTop: 24,
+
+            gap:
+              12,
+
+            marginTop:
+              24,
           }}
         >
           <Button
             variant="secondary"
-            disabled={saving}
+            disabled={
+              saving
+            }
             onClick={
               handleCancel
             }
@@ -392,9 +593,12 @@ const ProjectTasksPanel = ({
           </Button>
 
           <Button
-            loading={saving}
+            loading={
+              saving
+            }
             disabled={
-              !formData.title.trim()
+              !formData.title.trim() ||
+              saving
             }
             onClick={
               handleSubmit
@@ -409,23 +613,35 @@ const ProjectTasksPanel = ({
     );
   }
 
+
   return (
     <>
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
+          display:
+            "flex",
+
+          alignItems:
+            "center",
+
           justifyContent:
             "space-between",
-          gap: 12,
-          marginBottom: 16,
+
+          gap:
+            12,
+
+          marginBottom:
+            16,
         }}
       >
         <div>
           <div
             style={{
-              fontSize: 16,
-              fontWeight: 700,
+              fontSize:
+                16,
+
+              fontWeight:
+                700,
             }}
           >
             Tasks
@@ -433,9 +649,14 @@ const ProjectTasksPanel = ({
 
           <div
             style={{
-              marginTop: 3,
-              fontSize: 12,
-              color: "#6b7280",
+              marginTop:
+                3,
+
+              fontSize:
+                12,
+
+              color:
+                "#6b7280",
             }}
           >
             {projectTasks.length}{" "}
@@ -452,14 +673,18 @@ const ProjectTasksPanel = ({
           </div>
         </div>
 
-        <Button
-          onClick={
-            handleCreate
-          }
-        >
-          Create Task
-        </Button>
+
+        {canCreateTask && (
+          <Button
+            onClick={
+              handleCreate
+            }
+          >
+            Create Task
+          </Button>
+        )}
       </div>
+
 
       <ProjectTaskTable
         data={
@@ -468,27 +693,67 @@ const ProjectTasksPanel = ({
         loading={
           loading
         }
+        canEdit={
+          canUpdateTask
+        }
+        canDelete={
+          canDeleteTask
+        }
+        canReview={
+          canReviewTask
+        }
         onEdit={
           handleEdit
         }
         onDelete={
           handleDelete
         }
+        onReview={
+          handleOpenReview
+        }
       />
+
 
       {deleting && (
         <div
           style={{
-            marginTop: 8,
-            fontSize: 12,
-            color: "#6b7280",
+            marginTop:
+              8,
+
+            fontSize:
+              12,
+
+            color:
+              "#6b7280",
           }}
         >
           Deleting task...
         </div>
       )}
+
+
+      <TaskCompletionReviewModal
+        open={
+          Boolean(
+            reviewTask,
+          )
+        }
+        task={
+          reviewTask
+        }
+        loading={
+          reviewing
+        }
+        onClose={
+          handleCloseReview
+        }
+        onSubmit={
+          handleReviewCompletion
+        }
+      />
     </>
   );
 };
+
 
 export default ProjectTasksPanel;
