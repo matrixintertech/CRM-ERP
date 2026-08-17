@@ -633,42 +633,53 @@ const ProjectListPage = () => {
 
 
   const employeeOptions =
-    employees
-      .filter(
-        (
-          employee,
-        ) =>
-          employee.status ===
-          "ACTIVE",
-      )
-      .map(
-        (
-          employee,
-        ) => {
-          const fullName = [
-            employee.firstName,
-            employee.lastName,
-          ]
-            .filter(
-              Boolean,
-            )
-            .join(
-              " ",
-            );
+  employees
+    .filter(
+      (
+        employee,
+      ) =>
+        employee.status ===
+        "ACTIVE",
+    )
+    .map(
+      (
+        employee,
+      ) => {
+        const fullName = [
+          employee.firstName,
+          employee.lastName,
+        ]
+          .filter(
+            Boolean,
+          )
+          .join(
+            " ",
+          );
 
 
-          return {
-            uuid:
-              employee.uuid,
+        const employeeName =
+          employee.displayName ||
+          fullName ||
+          employee.employeeCode ||
+          "-";
 
-            label:
-              employee.displayName ||
-              fullName ||
-              employee.employeeCode ||
-              "-",
-          };
-        },
-      );
+
+        const designationName =
+          employee.designation
+            ?.name;
+
+
+        return {
+          uuid:
+            employee.uuid,
+
+          label:
+            designationName
+              ? `${employeeName} (${designationName})`
+              : employeeName,
+        };
+      },
+    );
 
 
   const projectRoleOptions =

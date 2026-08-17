@@ -3,10 +3,20 @@ import api from "@/shared/services/axios";
 import type {
   AssignRolePermissionsDto,
   CreateRoleDto,
+  Permission,
   Role,
   RolePermissionResponse,
   UpdateRoleDto,
 } from "../types/role.types";
+
+
+export interface RolePermissionCatalogGroup {
+  module: string;
+
+  permissions:
+    Permission[];
+}
+
 
 export const createRole = async (
   payload: CreateRoleDto,
@@ -23,6 +33,7 @@ export const createRole = async (
   );
 };
 
+
 export const getRoles =
   async (): Promise<Role[]> => {
     const { data } = await api.get(
@@ -37,6 +48,7 @@ export const getRoles =
     );
   };
 
+
 export const getRole = async (
   uuid: string,
 ): Promise<Role> => {
@@ -50,6 +62,7 @@ export const getRole = async (
     data.data
   );
 };
+
 
 export const updateRole = async (
   uuid: string,
@@ -67,6 +80,7 @@ export const updateRole = async (
   );
 };
 
+
 export const deleteRole = async (
   uuid: string,
 ) => {
@@ -77,6 +91,37 @@ export const deleteRole = async (
   return data;
 };
 
+
+/*
+ * Dedicated COMPANY permission
+ * catalog for Role Permission
+ * Management.
+ *
+ * Backend permission:
+ * company.role.update
+ *
+ * This intentionally does NOT use:
+ * /company/permissions/grouped
+ *
+ * and does NOT require:
+ * company.permission.view
+ */
+export const getRolePermissionCatalog =
+  async (): Promise<
+    RolePermissionCatalogGroup[]
+  > => {
+    const { data } = await api.get(
+      "/roles/permissions/catalog",
+    );
+
+    return (
+      data.data?.groups ??
+      data.groups ??
+      []
+    );
+  };
+
+
 export const getRolePermissions = async (
   uuid: string,
 ): Promise<RolePermissionResponse> => {
@@ -84,8 +129,12 @@ export const getRolePermissions = async (
     `/roles/${uuid}/permissions`,
   );
 
-  return data.data ?? data;
+  return (
+    data.data ??
+    data
+  );
 };
+
 
 export const assignRolePermissions = async (
   uuid: string,

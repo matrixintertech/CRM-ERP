@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -18,6 +20,7 @@ import {
   ProjectTaskRepository,
 } from "../repositories/project-task.repository";
 
+
 @Injectable()
 export class ProjectTaskService {
   constructor(
@@ -25,6 +28,10 @@ export class ProjectTaskService {
       ProjectTaskRepository,
   ) {}
 
+
+  /*
+   * Company boundary validation.
+   */
   private ensureCompanyContext(
     companyId?: bigint | null,
   ): bigint {
@@ -37,15 +44,38 @@ export class ProjectTaskService {
     return companyId;
   }
 
+
+  /*
+   * Employee execution actions
+   * require an employee-linked user.
+   */
+private ensureEmployeeContext(
+  employeeId?: bigint | null,
+): bigint {
+  if (!employeeId) {
+    throw new ForbiddenException(
+      "Employee context is required for this action.",
+    );
+  }
+
+  return employeeId;
+}
+
+
+  /*
+   * Resolve project within
+   * current company boundary.
+   */
   private async getProject(
     companyId: bigint,
     projectUuid: string,
   ) {
     const project =
-      await this.projectTaskRepository.findProjectByUuid(
-        companyId,
-        projectUuid,
-      );
+      await this.projectTaskRepository
+        .findProjectByUuid(
+          companyId,
+          projectUuid,
+        );
 
     if (!project) {
       throw new NotFoundException(
@@ -56,6 +86,11 @@ export class ProjectTaskService {
     return project;
   }
 
+
+  /*
+   * Resolve active project member
+   * during task assignment.
+   */
   private async getAssignedProjectMember(
     companyId: bigint,
     projectId: bigint,
@@ -66,11 +101,12 @@ export class ProjectTaskService {
     }
 
     const projectMember =
-      await this.projectTaskRepository.findActiveProjectMemberByUuid(
-        companyId,
-        projectId,
-        memberUuid,
-      );
+      await this.projectTaskRepository
+        .findActiveProjectMemberByUuid(
+          companyId,
+          projectId,
+          memberUuid,
+        );
 
     if (!projectMember) {
       throw new BadRequestException(
@@ -81,6 +117,90 @@ export class ProjectTaskService {
     return projectMember;
   }
 
+
+  /*
+   * Resolve task execution context.
+   *
+   * Employee execution is allowed
+   * only when:
+   *
+   * - task exists
+   * - task has an assignee
+   * - project member is active
+   * - assigned employee is the
+   *   currently logged-in employee
+   */
+  private async getExecutionContext(
+    companyId: bigint,
+    projectUuid: string,
+    taskUuid: string,
+    employeeId: bigint,
+  ) {
+    const project =
+      await this.getProject(
+        companyId,
+        projectUuid,
+      );
+
+
+    const projectTask =
+      await this.projectTaskRepository
+        .findByUuid(
+          companyId,
+          project.id,
+          taskUuid,
+        );
+
+
+    if (!projectTask) {
+      throw new NotFoundException(
+        "Project task not found.",
+      );
+    }
+
+
+    const assignedProjectMember =
+      projectTask
+        .assignedProjectMember;
+
+
+    if (!assignedProjectMember) {
+      throw new ForbiddenException(
+        "This task is not assigned to you.",
+      );
+    }
+
+
+    if (
+      !assignedProjectMember.isActive
+    ) {
+      throw new ForbiddenException(
+        "Your project membership is not active.",
+      );
+    }
+
+
+    if (
+      assignedProjectMember.employeeId !==
+      employeeId
+    ) {
+      throw new ForbiddenException(
+        "This task is assigned to another employee.",
+      );
+    }
+
+
+    return {
+      project,
+      projectTask,
+      assignedProjectMember,
+    };
+  }
+
+
+  /*
+   * Validate planning dates.
+   */
   private validateDates(
     startDate?: string,
     dueDate?: string,
@@ -92,31 +212,50 @@ export class ProjectTaskService {
       return;
     }
 
+
     const start =
-      new Date(startDate);
+      new Date(
+        startDate,
+      );
+
 
     const due =
-      new Date(dueDate);
+      new Date(
+        dueDate,
+      );
 
-    if (due < start) {
+
+    if (
+      due <
+      start
+    ) {
       throw new BadRequestException(
         "Due date cannot be earlier than start date.",
       );
     }
   }
 
+
+  /*
+   * Create task.
+   */
   async create(
     companyId:
       | bigint
       | null
       | undefined,
-    projectUuid: string,
-    dto: CreateProjectTaskDto,
+
+    projectUuid:
+      string,
+
+    dto:
+      CreateProjectTaskDto,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
         companyId,
       );
+
 
     const project =
       await this.getProject(
@@ -124,10 +263,12 @@ export class ProjectTaskService {
         projectUuid,
       );
 
+
     this.validateDates(
       dto.startDate,
       dto.dueDate,
     );
+
 
     const assignedProjectMember =
       await this.getAssignedProjectMember(
@@ -136,76 +277,82 @@ export class ProjectTaskService {
         dto.assignedProjectMemberUuid,
       );
 
+
     const status =
       dto.status ??
       ProjectTaskStatus.TODO;
 
+
     const projectTask =
-      await this.projectTaskRepository.create({
-        company: {
-          connect: {
-            id:
-              resolvedCompanyId,
-          },
-        },
-
-        project: {
-          connect: {
-            id:
-              project.id,
-          },
-        },
-
-        ...(assignedProjectMember && {
-          assignedProjectMember: {
+      await this.projectTaskRepository
+        .create({
+          company: {
             connect: {
               id:
-                assignedProjectMember.id,
+                resolvedCompanyId,
             },
           },
-        }),
 
-        title:
-          dto.title.trim(),
+          project: {
+            connect: {
+              id:
+                project.id,
+            },
+          },
 
-        description:
-          dto.description?.trim() ||
-          null,
+          ...(assignedProjectMember && {
+            assignedProjectMember: {
+              connect: {
+                id:
+                  assignedProjectMember.id,
+              },
+            },
+          }),
 
-        priority:
-          dto.priority ??
-          TaskPriority.MEDIUM,
+          title:
+            dto.title.trim(),
 
-        status,
+          description:
+            dto.description
+              ?.trim() ||
+            null,
 
-        startDate:
-          dto.startDate
-            ? new Date(
-                dto.startDate,
-              )
-            : null,
+          priority:
+            dto.priority ??
+            TaskPriority.MEDIUM,
 
-        dueDate:
-          dto.dueDate
-            ? new Date(
-                dto.dueDate,
-              )
-            : null,
+          status,
 
-        completedAt:
-          status ===
-          ProjectTaskStatus.COMPLETED
-            ? new Date()
-            : null,
+          startDate:
+            dto.startDate
+              ? new Date(
+                  dto.startDate,
+                )
+              : null,
 
-        remarks:
-          dto.remarks?.trim() ||
-          null,
+          dueDate:
+            dto.dueDate
+              ? new Date(
+                  dto.dueDate,
+                )
+              : null,
 
-        sortOrder:
-          dto.sortOrder ??
-          0,
-      });
+          completedAt:
+            status ===
+            ProjectTaskStatus.COMPLETED
+              ? new Date()
+              : null,
+
+          remarks:
+            dto.remarks
+              ?.trim() ||
+            null,
+
+          sortOrder:
+            dto.sortOrder ??
+            0,
+        });
+
 
     return {
       message:
@@ -215,17 +362,24 @@ export class ProjectTaskService {
     };
   }
 
+
+  /*
+   * List project tasks.
+   */
   async findAll(
     companyId:
       | bigint
       | null
       | undefined,
-    projectUuid: string,
+
+    projectUuid:
+      string,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
         companyId,
       );
+
 
     const project =
       await this.getProject(
@@ -233,11 +387,14 @@ export class ProjectTaskService {
         projectUuid,
       );
 
+
     const projectTasks =
-      await this.projectTaskRepository.findAllByProject(
-        resolvedCompanyId,
-        project.id,
-      );
+      await this.projectTaskRepository
+        .findAllByProject(
+          resolvedCompanyId,
+          project.id,
+        );
+
 
     return {
       message:
@@ -247,18 +404,77 @@ export class ProjectTaskService {
     };
   }
 
+
+  /*
+ * Logged-in employee ke
+ * assigned tasks across projects.
+ *
+ * Ownership:
+ *
+ * ProjectTask
+ *   -> assignedProjectMember
+ *   -> employeeId
+ */
+async findMyTasks(
+  companyId:
+    | bigint
+    | null
+    | undefined,
+
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  const resolvedEmployeeId =
+    this.ensureEmployeeContext(
+      employeeId,
+    );
+
+
+  const projectTasks =
+    await this.projectTaskRepository
+      .findMyTasks(
+        resolvedCompanyId,
+        resolvedEmployeeId,
+      );
+
+
+  return {
+    message:
+      "My tasks fetched successfully.",
+
+    projectTasks,
+  };
+}
+
+
+  /*
+   * Task details.
+   */
   async findByUuid(
     companyId:
       | bigint
       | null
       | undefined,
-    projectUuid: string,
-    taskUuid: string,
+
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
         companyId,
       );
+
 
     const project =
       await this.getProject(
@@ -266,12 +482,15 @@ export class ProjectTaskService {
         projectUuid,
       );
 
+
     const projectTask =
-      await this.projectTaskRepository.findByUuid(
-        resolvedCompanyId,
-        project.id,
-        taskUuid,
-      );
+      await this.projectTaskRepository
+        .findByUuid(
+          resolvedCompanyId,
+          project.id,
+          taskUuid,
+        );
+
 
     if (!projectTask) {
       throw new NotFoundException(
@@ -279,22 +498,272 @@ export class ProjectTaskService {
       );
     }
 
+
     return projectTask;
   }
 
-  async updateByUuid(
+
+  /*
+   * Start Work
+   *
+   * Employee execution action.
+   *
+   * First work session:
+   *
+   * TODO
+   *   ->
+   * IN_PROGRESS
+   *
+   * Later work sessions can start
+   * while task is already IN_PROGRESS.
+   */
+  async startWork(
     companyId:
       | bigint
       | null
       | undefined,
-    projectUuid: string,
-    taskUuid: string,
-    dto: UpdateProjectTaskDto,
+
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+
+    userId:
+      bigint,
+
+    employeeId:
+      | bigint
+      | null
+      | undefined,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
         companyId,
       );
+
+
+    const resolvedEmployeeId =
+      this.ensureEmployeeContext(
+        employeeId,
+      );
+
+
+    const {
+      project,
+      projectTask,
+      assignedProjectMember,
+    } =
+      await this.getExecutionContext(
+        resolvedCompanyId,
+        projectUuid,
+        taskUuid,
+        resolvedEmployeeId,
+      );
+
+
+    /*
+     * Friendly service-level
+     * validation.
+     *
+     * Repository checks this again
+     * inside transaction.
+     */
+    if (
+      projectTask.status !==
+        ProjectTaskStatus.TODO &&
+      projectTask.status !==
+        ProjectTaskStatus.IN_PROGRESS
+    ) {
+      throw new BadRequestException(
+        `Task cannot be started while status is ${projectTask.status}.`,
+      );
+    }
+
+
+    const result =
+      await this.projectTaskRepository
+        .startWork(
+          resolvedCompanyId,
+          project.id,
+          projectTask.id,
+          assignedProjectMember.id,
+          userId,
+        );
+
+
+    /*
+     * Task was reassigned/deleted
+     * between service validation and
+     * repository transaction.
+     */
+    if (
+      result.outcome ===
+      "TASK_NOT_AVAILABLE"
+    ) {
+      throw new ConflictException(
+        "Task assignment changed. Refresh the task and try again.",
+      );
+    }
+
+
+    /*
+     * Repository performs another
+     * status check inside transaction.
+     */
+    if (
+      result.outcome ===
+      "INVALID_STATUS"
+    ) {
+      throw new BadRequestException(
+        `Task cannot be started while status is ${result.status}.`,
+      );
+    }
+
+
+    /*
+     * Prevent duplicate OPEN sessions.
+     */
+    if (
+      result.outcome ===
+      "ALREADY_OPEN"
+    ) {
+      throw new ConflictException(
+        "Work is already in progress for this task.",
+      );
+    }
+
+
+    return {
+      message:
+        "Work started successfully.",
+
+      projectTask:
+        result.projectTask,
+
+      workSession:
+        result.workSession,
+    };
+  }
+
+
+  /*
+   * Stop Work
+   *
+   * Closes employee's OPEN
+   * work session.
+   *
+   * Task status remains
+   * IN_PROGRESS.
+   */
+  async stopWork(
+    companyId:
+      | bigint
+      | null
+      | undefined,
+
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+
+    userId:
+      bigint,
+
+    employeeId:
+      | bigint
+      | null
+      | undefined,
+  ) {
+    const resolvedCompanyId =
+      this.ensureCompanyContext(
+        companyId,
+      );
+
+
+    const resolvedEmployeeId =
+      this.ensureEmployeeContext(
+        employeeId,
+      );
+
+
+    const {
+      projectTask,
+      assignedProjectMember,
+    } =
+      await this.getExecutionContext(
+        resolvedCompanyId,
+        projectUuid,
+        taskUuid,
+        resolvedEmployeeId,
+      );
+
+
+    /*
+     * Do NOT require IN_PROGRESS here.
+     *
+     * If task status was changed by
+     * manager while employee still had
+     * an OPEN session, employee should
+     * still be able to safely close it.
+     */
+    const result =
+      await this.projectTaskRepository
+        .stopWork(
+          resolvedCompanyId,
+          projectTask.id,
+          assignedProjectMember.id,
+          userId,
+        );
+
+
+    if (
+      result.outcome ===
+      "NO_OPEN_SESSION"
+    ) {
+      throw new BadRequestException(
+        "No active work session found for this task.",
+      );
+    }
+
+
+    return {
+      message:
+        "Work stopped successfully.",
+
+      workSession:
+        result.workSession,
+    };
+  }
+
+
+  /*
+   * Manager / planning update.
+   *
+   * Employee execution should
+   * NOT use this method.
+   */
+  async updateByUuid(
+    companyId:
+      | bigint
+      | null
+      | undefined,
+
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+
+    dto:
+      UpdateProjectTaskDto,
+  ) {
+    const resolvedCompanyId =
+      this.ensureCompanyContext(
+        companyId,
+      );
+
 
     const project =
       await this.getProject(
@@ -302,12 +771,15 @@ export class ProjectTaskService {
         projectUuid,
       );
 
+
     const existing =
-      await this.projectTaskRepository.findByUuid(
-        resolvedCompanyId,
-        project.id,
-        taskUuid,
-      );
+      await this.projectTaskRepository
+        .findByUuid(
+          resolvedCompanyId,
+          project.id,
+          taskUuid,
+        );
+
 
     if (!existing) {
       throw new NotFoundException(
@@ -315,32 +787,42 @@ export class ProjectTaskService {
       );
     }
 
+
     const nextStartDate =
-      dto.startDate !== undefined
+      dto.startDate !==
+      undefined
         ? dto.startDate
         : existing.startDate
-          ? existing.startDate.toISOString()
+          ? existing.startDate
+              .toISOString()
           : undefined;
 
+
     const nextDueDate =
-      dto.dueDate !== undefined
+      dto.dueDate !==
+      undefined
         ? dto.dueDate
         : existing.dueDate
-          ? existing.dueDate.toISOString()
+          ? existing.dueDate
+              .toISOString()
           : undefined;
+
 
     this.validateDates(
       nextStartDate,
       nextDueDate,
     );
 
+
     let assignedProjectMember:
       | Awaited<
           ReturnType<
-            typeof this.getAssignedProjectMember
+            typeof this
+              .getAssignedProjectMember
           >
         >
       | undefined;
+
 
     if (
       dto.assignedProjectMemberUuid !==
@@ -354,96 +836,102 @@ export class ProjectTaskService {
         );
     }
 
+
     const nextStatus =
       dto.status ??
       existing.status;
 
+
     const updated =
-      await this.projectTaskRepository.update(
-        existing.id,
-        {
-          ...(dto.title !==
-            undefined && {
-            title:
-              dto.title.trim(),
-          }),
+      await this.projectTaskRepository
+        .update(
+          existing.id,
+          {
+            ...(dto.title !==
+              undefined && {
+              title:
+                dto.title.trim(),
+            }),
 
-          ...(dto.description !==
-            undefined && {
-            description:
-              dto.description?.trim() ||
-              null,
-          }),
+            ...(dto.description !==
+              undefined && {
+              description:
+                dto.description
+                  ?.trim() ||
+                null,
+            }),
 
-          ...(dto.priority !==
-            undefined && {
-            priority:
-              dto.priority,
-          }),
+            ...(dto.priority !==
+              undefined && {
+              priority:
+                dto.priority,
+            }),
 
-          ...(dto.status !==
-            undefined && {
-            status:
-              dto.status,
-          }),
+            ...(dto.status !==
+              undefined && {
+              status:
+                dto.status,
+            }),
 
-          ...(dto.startDate !==
-            undefined && {
-            startDate:
-              dto.startDate
-                ? new Date(
-                    dto.startDate,
-                  )
-                : null,
-          }),
+            ...(dto.startDate !==
+              undefined && {
+              startDate:
+                dto.startDate
+                  ? new Date(
+                      dto.startDate,
+                    )
+                  : null,
+            }),
 
-          ...(dto.dueDate !==
-            undefined && {
-            dueDate:
-              dto.dueDate
-                ? new Date(
-                    dto.dueDate,
-                  )
-                : null,
-          }),
+            ...(dto.dueDate !==
+              undefined && {
+              dueDate:
+                dto.dueDate
+                  ? new Date(
+                      dto.dueDate,
+                    )
+                  : null,
+            }),
 
-          ...(dto.remarks !==
-            undefined && {
-            remarks:
-              dto.remarks?.trim() ||
-              null,
-          }),
+            ...(dto.remarks !==
+              undefined && {
+              remarks:
+                dto.remarks
+                  ?.trim() ||
+                null,
+            }),
 
-          ...(dto.sortOrder !==
-            undefined && {
-            sortOrder:
-              dto.sortOrder,
-          }),
+            ...(dto.sortOrder !==
+              undefined && {
+              sortOrder:
+                dto.sortOrder,
+            }),
 
-          ...(dto.assignedProjectMemberUuid !==
-            undefined && {
-            assignedProjectMember:
-              assignedProjectMember
-                ? {
-                    connect: {
-                      id:
-                        assignedProjectMember.id,
+            ...(dto.assignedProjectMemberUuid !==
+              undefined && {
+              assignedProjectMember:
+                assignedProjectMember
+                  ? {
+                      connect: {
+                        id:
+                          assignedProjectMember.id,
+                      },
+                    }
+                  : {
+                      disconnect:
+                        true,
                     },
-                  }
-                : {
-                    disconnect:
-                      true,
-                  },
-          }),
+            }),
 
-          completedAt:
-            nextStatus ===
-            ProjectTaskStatus.COMPLETED
-              ? existing.completedAt ??
-                new Date()
-              : null,
-        },
-      );
+            completedAt:
+              nextStatus ===
+              ProjectTaskStatus.COMPLETED
+                ? existing.completedAt ??
+                  new Date()
+                : null,
+          },
+        );
+
 
     return {
       message:
@@ -454,18 +942,27 @@ export class ProjectTaskService {
     };
   }
 
+
+  /*
+   * Soft delete / cancel.
+   */
   async deleteByUuid(
     companyId:
       | bigint
       | null
       | undefined,
-    projectUuid: string,
-    taskUuid: string,
+
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
         companyId,
       );
+
 
     const project =
       await this.getProject(
@@ -473,12 +970,15 @@ export class ProjectTaskService {
         projectUuid,
       );
 
+
     const projectTask =
-      await this.projectTaskRepository.findByUuid(
-        resolvedCompanyId,
-        project.id,
-        taskUuid,
-      );
+      await this.projectTaskRepository
+        .findByUuid(
+          resolvedCompanyId,
+          project.id,
+          taskUuid,
+        );
+
 
     if (!projectTask) {
       throw new NotFoundException(
@@ -486,9 +986,12 @@ export class ProjectTaskService {
       );
     }
 
-    await this.projectTaskRepository.softDelete(
-      projectTask.id,
-    );
+
+    await this.projectTaskRepository
+      .softDelete(
+        projectTask.id,
+      );
+
 
     return {
       message:

@@ -2,35 +2,37 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
 import {
   Prisma,
-} from '@prisma/client';
+} from "@prisma/client";
 
 import {
   CreateRoleDto,
-} from '../dto/create-role.dto';
+} from "../dto/create-role.dto";
 
 import {
   UpdateRoleDto,
-} from '../dto/update-role.dto';
+} from "../dto/update-role.dto";
 
 import {
   AssignRolePermissionsDto,
-} from '../dto/assign-role-permissions.dto';
+} from "../dto/assign-role-permissions.dto";
 
 import {
   RoleRepository,
-} from '../repositories/role.repository';
+} from "../repositories/role.repository";
 
 import {
   CompanyBoundaryService,
-} from '../../authorization/services/company-boundary.service';
+} from "../../authorization/services/company-boundary.service";
+
 
 interface AuthUser {
   id: bigint;
 }
+
 
 @Injectable()
 export class RoleService {
@@ -42,13 +44,16 @@ export class RoleService {
       CompanyBoundaryService,
   ) {}
 
+
   private async getCompanyId(
     user: AuthUser,
   ) {
-    return this.companyBoundaryService.getCompanyId(
-      user.id,
-    );
+    return this.companyBoundaryService
+      .getCompanyId(
+        user.id,
+      );
   }
+
 
   async create(
     user: AuthUser,
@@ -60,19 +65,24 @@ export class RoleService {
         user,
       );
 
+
     const company =
-      await this.roleRepository.findCompanyById(
-        companyId,
-      );
+      await this.roleRepository
+        .findCompanyById(
+          companyId,
+        );
+
 
     if (!company) {
       throw new NotFoundException(
-        'Company not found.',
+        "Company not found.",
       );
     }
 
+
     const normalizedName =
       dto.name.trim();
+
 
     const normalizedCode =
       dto.code
@@ -80,32 +90,39 @@ export class RoleService {
         .toUpperCase()
         .replace(
           /\s+/g,
-          '_',
+          "_",
         );
 
+
     const existingCode =
-      await this.roleRepository.findByCode(
-        companyId,
-        normalizedCode,
-      );
+      await this.roleRepository
+        .findByCode(
+          companyId,
+          normalizedCode,
+        );
+
 
     if (existingCode) {
       throw new ConflictException(
-        'Role code already exists.',
+        "Role code already exists.",
       );
     }
 
+
     const existingName =
-      await this.roleRepository.findByName(
-        companyId,
-        normalizedName,
-      );
+      await this.roleRepository
+        .findByName(
+          companyId,
+          normalizedName,
+        );
+
 
     if (existingName) {
       throw new ConflictException(
-        'Role name already exists.',
+        "Role name already exists.",
       );
     }
+
 
     const role =
       await this.roleRepository.create(
@@ -127,18 +144,25 @@ export class RoleService {
             dto.description
               ?.trim(),
 
-          isSystem: false,
+          /*
+           * Client cannot create
+           * system roles.
+           */
+          isSystem:
+            false,
         },
         tx,
       );
 
+
     return {
       message:
-        'Role created successfully.',
+        "Role created successfully.",
 
       role,
     };
   }
+
 
   async findAll(
     user: AuthUser,
@@ -148,29 +172,36 @@ export class RoleService {
         user,
       );
 
+
     const company =
-      await this.roleRepository.findCompanyById(
-        companyId,
-      );
+      await this.roleRepository
+        .findCompanyById(
+          companyId,
+        );
+
 
     if (!company) {
       throw new NotFoundException(
-        'Company not found.',
+        "Company not found.",
       );
     }
 
+
     const roles =
-      await this.roleRepository.findByCompanyId(
-        companyId,
-      );
+      await this.roleRepository
+        .findByCompanyId(
+          companyId,
+        );
+
 
     return {
       message:
-        'Roles fetched successfully.',
+        "Roles fetched successfully.",
 
       roles,
     };
   }
+
 
   async findDropdown(
     user: AuthUser,
@@ -180,18 +211,116 @@ export class RoleService {
         user,
       );
 
+
     const roles =
-      await this.roleRepository.findActiveByCompanyId(
-        companyId,
-      );
+      await this.roleRepository
+        .findActiveByCompanyId(
+          companyId,
+        );
+
 
     return {
       message:
-        'Role dropdown fetched successfully.',
+        "Role dropdown fetched successfully.",
 
       roles,
     };
   }
+
+
+  /*
+   * Dedicated COMPANY permission
+   * catalog for Role Permission
+   * Management.
+   *
+   * Controller permission:
+   * company.role.update
+   *
+   * This intentionally does not
+   * depend on:
+   * company.permission.view
+   */
+  async findPermissionCatalog(
+    user: AuthUser,
+  ) {
+    /*
+     * Resolve company boundary first.
+     *
+     * Even though permission records
+     * themselves are global COMPANY
+     * permission definitions, only a
+     * valid company user can access
+     * this catalog through this flow.
+     */
+    await this.getCompanyId(
+      user,
+    );
+
+
+    const permissions =
+      await this.roleRepository
+        .findPermissionCatalog();
+
+
+    /*
+     * Group permissions by module
+     * for Role Permission UI.
+     */
+    const groupedPermissionMap =
+      new Map<
+        string,
+        typeof permissions
+      >();
+
+
+    for (
+      const permission
+      of permissions
+    ) {
+      const existing =
+        groupedPermissionMap.get(
+          permission.module,
+        ) ?? [];
+
+
+      existing.push(
+        permission,
+      );
+
+
+      groupedPermissionMap.set(
+        permission.module,
+        existing,
+      );
+    }
+
+
+    const groups =
+      Array.from(
+        groupedPermissionMap.entries(),
+      ).map(
+        (
+          [
+            module,
+            modulePermissions,
+          ],
+        ) => ({
+          module,
+
+          permissions:
+            modulePermissions,
+        }),
+      );
+
+
+    return {
+      message:
+        "Company role permission catalog fetched successfully.",
+
+      groups,
+    };
+  }
+
 
   async findOne(
     user: AuthUser,
@@ -202,25 +331,30 @@ export class RoleService {
         user,
       );
 
+
     const role =
-      await this.roleRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+      await this.roleRepository
+        .findByUuid(
+          companyId,
+          uuid,
+        );
+
 
     if (!role) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     return {
       message:
-        'Role fetched successfully.',
+        "Role fetched successfully.",
 
       role,
     };
   }
+
 
   async update(
     user: AuthUser,
@@ -232,20 +366,25 @@ export class RoleService {
         user,
       );
 
+
     const existingRole =
-      await this.roleRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+      await this.roleRepository
+        .findByUuid(
+          companyId,
+          uuid,
+        );
+
 
     if (!existingRole) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     const normalizedName =
       dto.name?.trim();
+
 
     const normalizedCode =
       dto.code
@@ -253,8 +392,9 @@ export class RoleService {
         .toUpperCase()
         .replace(
           /\s+/g,
-          '_',
+          "_",
         );
+
 
     if (
       normalizedCode !==
@@ -263,10 +403,12 @@ export class RoleService {
         existingRole.code
     ) {
       const duplicateCode =
-        await this.roleRepository.findByCode(
-          companyId,
-          normalizedCode,
-        );
+        await this.roleRepository
+          .findByCode(
+            companyId,
+            normalizedCode,
+          );
+
 
       if (
         duplicateCode &&
@@ -274,10 +416,11 @@ export class RoleService {
           uuid
       ) {
         throw new ConflictException(
-          'Role code already exists.',
+          "Role code already exists.",
         );
       }
     }
+
 
     if (
       normalizedName !==
@@ -286,10 +429,12 @@ export class RoleService {
         existingRole.name
     ) {
       const duplicateName =
-        await this.roleRepository.findByName(
-          companyId,
-          normalizedName,
-        );
+        await this.roleRepository
+          .findByName(
+            companyId,
+            normalizedName,
+          );
+
 
       if (
         duplicateName &&
@@ -297,10 +442,11 @@ export class RoleService {
           uuid
       ) {
         throw new ConflictException(
-          'Role name already exists.',
+          "Role name already exists.",
         );
       }
     }
+
 
     const updatedRole =
       await this.roleRepository.update(
@@ -335,20 +481,23 @@ export class RoleService {
         },
       );
 
+
     if (!updatedRole) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     return {
       message:
-        'Role updated successfully.',
+        "Role updated successfully.",
 
       role:
         updatedRole,
     };
   }
+
 
   async delete(
     user: AuthUser,
@@ -359,49 +508,62 @@ export class RoleService {
         user,
       );
 
+
     const role =
-      await this.roleRepository.findByUuid(
-        companyId,
-        uuid,
-      );
+      await this.roleRepository
+        .findByUuid(
+          companyId,
+          uuid,
+        );
+
 
     if (!role) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
-    if (role.isSystem) {
+
+    if (
+      role.isSystem
+    ) {
       throw new ConflictException(
-        'System role cannot be deleted.',
+        "System role cannot be deleted.",
       );
     }
+
 
     const userCount =
-      await this.roleRepository.countUsers(
-        companyId,
-        uuid,
-      );
+      await this.roleRepository
+        .countUsers(
+          companyId,
+          uuid,
+        );
+
 
     if (
       userCount >
       0
     ) {
       throw new ConflictException(
-        'Role cannot be deleted because users are assigned to it.',
+        "Role cannot be deleted because users are assigned to it.",
       );
     }
 
-    await this.roleRepository.softDelete(
-      companyId,
-      uuid,
-    );
+
+    await this.roleRepository
+      .softDelete(
+        companyId,
+        uuid,
+      );
+
 
     return {
       message:
-        'Role deleted successfully.',
+        "Role deleted successfully.",
     };
   }
+
 
   async findRolePermissions(
     user: AuthUser,
@@ -412,27 +574,35 @@ export class RoleService {
         user,
       );
 
+
     const role =
-      await this.roleRepository.findByUuid(
-        companyId,
-        roleUuid,
-      );
+      await this.roleRepository
+        .findByUuid(
+          companyId,
+          roleUuid,
+        );
+
 
     if (!role) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     const rolePermissions =
-      await this.roleRepository.findRolePermissions(
-        companyId,
-        roleUuid,
-      );
+      await this.roleRepository
+        .findRolePermissions(
+          companyId,
+          roleUuid,
+        );
+
 
     const permissions =
       rolePermissions.map(
-        (item) => ({
+        (
+          item,
+        ) => ({
           ...item.permission,
 
           scope:
@@ -440,9 +610,10 @@ export class RoleService {
         }),
       );
 
+
     return {
       message:
-        'Role permissions fetched successfully.',
+        "Role permissions fetched successfully.",
 
       role: {
         uuid:
@@ -459,6 +630,7 @@ export class RoleService {
     };
   }
 
+
   async assignPermissions(
     user: AuthUser,
     roleUuid: string,
@@ -469,34 +641,41 @@ export class RoleService {
         user,
       );
 
+
     const role =
-      await this.roleRepository.findByUuid(
-        companyId,
-        roleUuid,
-      );
+      await this.roleRepository
+        .findByUuid(
+          companyId,
+          roleUuid,
+        );
+
 
     if (!role) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     const result =
-      await this.roleRepository.assignPermissions(
-        companyId,
-        roleUuid,
-        dto.permissions,
-      );
+      await this.roleRepository
+        .assignPermissions(
+          companyId,
+          roleUuid,
+          dto.permissions,
+        );
+
 
     if (!result) {
       throw new NotFoundException(
-        'Role not found.',
+        "Role not found.",
       );
     }
 
+
     return {
       message:
-        'Permissions assigned successfully.',
+        "Permissions assigned successfully.",
 
       roleUuid,
 

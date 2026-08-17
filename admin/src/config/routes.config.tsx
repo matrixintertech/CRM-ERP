@@ -53,6 +53,8 @@ import PermissionRoute from "@/shared/components/guards/PermissionRoute";
 
 import PortalRoute from "@/shared/components/guards/PortalRoute";
 
+import MyTaskPage from "@/modules/project-task/pages/MyTaskPage";
+
 
 export interface AppRoute {
   path: string;
@@ -372,6 +374,21 @@ export const protectedRoutes:
       </PortalRoute>
     ),
   },
+
+
+  {
+  path: "/my-tasks",
+
+  element: (
+    <PortalRoute portal="COMPANY">
+      <PermissionRoute
+        permission="company.task.view"
+      >
+        <MyTaskPage />
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
 
 
   {

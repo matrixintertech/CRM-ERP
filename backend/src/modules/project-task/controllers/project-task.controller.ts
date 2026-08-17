@@ -30,6 +30,14 @@ import {
 } from "@prisma/client";
 
 import {
+  PermissionGuard,
+} from "../../authorization/guards/permission.guard";
+
+import {
+  RequirePermission,
+} from "../../authorization/decorators/require-permission.decorator";
+
+import {
   CreateProjectTaskDto,
   UpdateProjectTaskDto,
 } from "../dto";
@@ -38,22 +46,37 @@ import {
   ProjectTaskService,
 } from "../services/project-task.service";
 
+
 interface AuthenticatedRequest
   extends Request {
   user: User;
 }
 
+
 @ApiTags("Project Tasks")
 @ApiBearerAuth("access-token")
-@UseGuards(AuthGuard("jwt"))
-@Controller("projects/:projectUuid/tasks")
+@UseGuards(
+  AuthGuard("jwt"),
+  PermissionGuard,
+)
+@Controller(
+  "projects/:projectUuid/tasks",
+)
 export class ProjectTaskController {
   constructor(
     private readonly projectTaskService:
       ProjectTaskService,
   ) {}
 
+
+  /*
+   * Manager / authorized user:
+   * Create task.
+   */
   @Post()
+  @RequirePermission(
+    "company.task.create",
+  )
   @ApiOperation({
     summary:
       "Create project task",
@@ -80,7 +103,14 @@ export class ProjectTaskController {
     );
   }
 
+
+  /*
+   * View project tasks.
+   */
   @Get()
+  @RequirePermission(
+    "company.task.view",
+  )
   @ApiOperation({
     summary:
       "Get project tasks",
@@ -103,7 +133,114 @@ export class ProjectTaskController {
     );
   }
 
-  @Get(":taskUuid")
+
+  /*
+   * Employee:
+   * Start working on assigned task.
+   *
+   * Service will verify that:
+   * - employee exists
+   * - task belongs to company/project
+   * - employee is assigned to task
+   * - task can be started
+   * - no OPEN work session exists
+   */
+  @Post(
+    ":taskUuid/start-work",
+  )
+  @RequirePermission(
+    "company.task.execute",
+  )
+  @ApiOperation({
+    summary:
+      "Start work on assigned project task",
+  })
+  @ApiParam({
+    name: "projectUuid",
+    description:
+      "Project UUID",
+  })
+  @ApiParam({
+    name: "taskUuid",
+    description:
+      "Project Task UUID",
+  })
+  startWork(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param("projectUuid")
+    projectUuid: string,
+
+    @Param("taskUuid")
+    taskUuid: string,
+  ) {
+    return this.projectTaskService.startWork(
+      req.user.companyId,
+      projectUuid,
+      taskUuid,
+      req.user.id,
+      req.user.employeeId,
+    );
+  }
+
+
+  /*
+   * Employee:
+   * Stop current work session.
+   *
+   * Task remains IN_PROGRESS.
+   * Only current OPEN work session closes.
+   */
+  @Post(
+    ":taskUuid/stop-work",
+  )
+  @RequirePermission(
+    "company.task.execute",
+  )
+  @ApiOperation({
+    summary:
+      "Stop work on assigned project task",
+  })
+  @ApiParam({
+    name: "projectUuid",
+    description:
+      "Project UUID",
+  })
+  @ApiParam({
+    name: "taskUuid",
+    description:
+      "Project Task UUID",
+  })
+  stopWork(
+    @Req()
+    req: AuthenticatedRequest,
+
+    @Param("projectUuid")
+    projectUuid: string,
+
+    @Param("taskUuid")
+    taskUuid: string,
+  ) {
+    return this.projectTaskService.stopWork(
+      req.user.companyId,
+      projectUuid,
+      taskUuid,
+      req.user.id,
+      req.user.employeeId,
+    );
+  }
+
+
+  /*
+   * View task details.
+   */
+  @Get(
+    ":taskUuid",
+  )
+  @RequirePermission(
+    "company.task.view",
+  )
   @ApiOperation({
     summary:
       "Get project task details",
@@ -135,7 +272,20 @@ export class ProjectTaskController {
     );
   }
 
-  @Patch(":taskUuid")
+
+  /*
+   * Manager / authorized user:
+   * Edit planning fields.
+   *
+   * Employee execution should NOT
+   * use this endpoint.
+   */
+  @Patch(
+    ":taskUuid",
+  )
+  @RequirePermission(
+    "company.task.update",
+  )
   @ApiOperation({
     summary:
       "Update project task",
@@ -171,7 +321,17 @@ export class ProjectTaskController {
     );
   }
 
-  @Delete(":taskUuid")
+
+  /*
+   * Manager / authorized user:
+   * Delete task.
+   */
+  @Delete(
+    ":taskUuid",
+  )
+  @RequirePermission(
+    "company.task.delete",
+  )
   @ApiOperation({
     summary:
       "Delete project task",

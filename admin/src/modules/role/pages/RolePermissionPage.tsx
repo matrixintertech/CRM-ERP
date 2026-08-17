@@ -5,6 +5,10 @@ import {
 } from "react";
 
 import {
+  useQuery,
+} from "@tanstack/react-query";
+
+import {
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -26,8 +30,8 @@ import Input from "@/shared/components/Input";
 import RolePermissionGroup from "../components/RolePermissionGroup";
 
 import {
-  useCompanyPermissions,
-} from "../../permission/hooks/useCompanyPermissions";
+  getRolePermissionCatalog,
+} from "../api/role.api";
 
 import {
   useRole,
@@ -46,12 +50,16 @@ import type {
   RolePermissionAssignment,
 } from "../../role-permission/types/role-permission.types";
 
+
 const RolePermissionPage = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
+
 
   useDocumentTitle(
     "Role Permissions",
   );
+
 
   const {
     uuid,
@@ -59,16 +67,48 @@ const RolePermissionPage = () => {
     uuid: string;
   }>();
 
-  /*
-   * Company roles should only see
-   * COMPANY permissions.
-   */
-const {
-  loading:
-    permissionLoading,
 
-  groupedPermissions,
-} = useCompanyPermissions();
+  /*
+   * Dedicated COMPANY permission
+   * catalog for Role Permission
+   * Management.
+   *
+   * Backend:
+   *
+   * GET /roles/permissions/catalog
+   *
+   * Permission:
+   * company.role.update
+   *
+   * This intentionally does NOT use:
+   * /company/permissions/grouped
+   *
+   * and does NOT depend on:
+   * company.permission.view
+   */
+  const permissionCatalogQuery =
+    useQuery({
+      queryKey: [
+        "company-role-permission-catalog",
+      ],
+
+      queryFn:
+        getRolePermissionCatalog,
+
+      staleTime:
+        5 * 60 * 1000,
+    });
+
+
+  const groupedPermissions:
+    PermissionGroup[] =
+    permissionCatalogQuery.data ??
+    [];
+
+
+  const permissionLoading =
+    permissionCatalogQuery.isLoading;
+
 
   const {
     fetchRolePermissions,
@@ -78,6 +118,7 @@ const {
     savingPermissions,
   } = useRole();
 
+
   const [
     rolePermissionData,
     setRolePermissionData,
@@ -85,10 +126,12 @@ const {
     RolePermissionResponse | null
   >(null);
 
+
   const [
     rolePermissionLoading,
     setRolePermissionLoading,
   ] = useState(false);
+
 
   /*
    * Selected permissions store
@@ -101,6 +144,7 @@ const {
     RolePermissionAssignment[]
   >([]);
 
+
   const [
     initialPermissions,
     setInitialPermissions,
@@ -108,15 +152,22 @@ const {
     RolePermissionAssignment[]
   >([]);
 
+
   const [
     search,
     setSearch,
   ] = useState("");
 
+
+  /*
+   * Load permissions currently
+   * assigned to selected role.
+   */
   useEffect(() => {
     if (!uuid) {
       return;
     }
+
 
     const loadRolePermissions =
       async () => {
@@ -125,21 +176,26 @@ const {
             true,
           );
 
+
           const response =
             await fetchRolePermissions(
               uuid,
             );
 
+
           setRolePermissionData(
             response,
           );
+
 
           const permissions:
             RolePermissionAssignment[] =
             response
               ?.permissions
               ?.map(
-                (permission) => ({
+                (
+                  permission,
+                ) => ({
                   permissionUuid:
                     permission.uuid,
 
@@ -148,22 +204,30 @@ const {
                 }),
               ) ?? [];
 
+
           setSelectedPermissions(
             permissions.map(
-              (permission) => ({
+              (
+                permission,
+              ) => ({
                 ...permission,
               }),
             ),
           );
 
+
           setInitialPermissions(
             permissions.map(
-              (permission) => ({
+              (
+                permission,
+              ) => ({
                 ...permission,
               }),
             ),
           );
-        } catch (error: any) {
+        } catch (
+          error: any
+        ) {
           console.error(
             error?.response?.data ??
               error,
@@ -175,10 +239,12 @@ const {
         }
       };
 
+
     void loadRolePermissions();
   }, [
     uuid,
   ]);
+
 
   /*
    * Selected permission UUIDs.
@@ -197,9 +263,13 @@ const {
       ],
     );
 
+
   /*
    * Fast lookup:
-   * permissionUuid -> selected scope
+   *
+   * permissionUuid
+   * ->
+   * selected scope
    */
   const permissionScopes =
     useMemo(
@@ -222,6 +292,7 @@ const {
       ],
     );
 
+
   /*
    * Search/filter permission groups.
    */
@@ -234,11 +305,13 @@ const {
           .trim()
           .toLowerCase();
 
+
       if (
         !normalizedSearch
       ) {
         return groupedPermissions;
       }
+
 
       return groupedPermissions
         .map(
@@ -284,6 +357,7 @@ const {
       search,
     ]);
 
+
   /*
    * Fast permission lookup.
    *
@@ -312,9 +386,11 @@ const {
       groupedPermissions,
     ]);
 
+
   /*
-   * Jab permission first time select hoti hai,
-   * uska first configured allowed scope
+   * Jab permission first time
+   * select hoti hai, uska first
+   * configured allowed scope
    * default selected hoga.
    *
    * Example:
@@ -335,15 +411,18 @@ const {
         permissionUuid,
       );
 
+
     const allowedScopes =
       permission?.allowedScopes ??
       [];
+
 
     return (
       allowedScopes[0] ??
       null
     );
   };
+
 
   /*
    * All permissions count.
@@ -368,12 +447,14 @@ const {
       ],
     );
 
+
   /*
    * Visible permissions which can
    * actually be assigned.
    *
    * COMPANY permission with
-   * allowedScopes = [] is not selectable.
+   * allowedScopes = []
+   * is not selectable.
    */
   const visiblePermissions =
     useMemo(
@@ -392,13 +473,15 @@ const {
                     .allowedScopes
                     ?.length ??
                   0
-                ) > 0,
+                ) >
+                0,
             ),
         ),
       [
         filteredGroups,
       ],
     );
+
 
   const visiblePermissionUuids =
     useMemo(
@@ -414,6 +497,7 @@ const {
       ],
     );
 
+
   const isAllVisibleSelected =
     visiblePermissionUuids.length >
       0 &&
@@ -426,9 +510,13 @@ const {
         ),
     );
 
+
   /*
-   * Permission + scope both compare karo.
-   * Scope change bhi Save enable karega.
+   * Permission + scope both
+   * compare karo.
+   *
+   * Scope change bhi Save
+   * enable karega.
    */
   const hasChanges =
     useMemo(() => {
@@ -438,6 +526,7 @@ const {
       ) {
         return true;
       }
+
 
       return initialPermissions.some(
         (
@@ -454,11 +543,13 @@ const {
                   .permissionUuid,
             );
 
+
           if (
             !currentPermission
           ) {
             return true;
           }
+
 
           return (
             currentPermission.scope !==
@@ -470,6 +561,7 @@ const {
       initialPermissions,
       selectedPermissions,
     ]);
+
 
   /*
    * Single permission toggle.
@@ -491,6 +583,7 @@ const {
               permissionUuid,
           );
 
+
         if (exists) {
           return previous.filter(
             (
@@ -502,10 +595,12 @@ const {
           );
         }
 
+
         const defaultScope =
           getDefaultScope(
             permissionUuid,
           );
+
 
         /*
          * allowedScopes configured
@@ -515,6 +610,7 @@ const {
         if (!defaultScope) {
           return previous;
         }
+
 
         return [
           ...previous,
@@ -530,8 +626,10 @@ const {
     );
   };
 
+
   /*
-   * Selected permission ka scope change.
+   * Selected permission ka
+   * scope change.
    */
   const handleScopeChange = (
     permissionUuid: string,
@@ -558,6 +656,7 @@ const {
     );
   };
 
+
   /*
    * Whole module/group toggle.
    */
@@ -579,8 +678,10 @@ const {
               .allowedScopes
               ?.length ??
             0
-          ) > 0,
+          ) >
+          0,
       );
+
 
     const groupPermissionUuids =
       selectablePermissions.map(
@@ -589,6 +690,7 @@ const {
         ) =>
           permission.uuid,
       );
+
 
     const allGroupSelected =
       groupPermissionUuids.length >
@@ -601,6 +703,7 @@ const {
             permissionUuid,
           ),
       );
+
 
     setSelectedPermissions(
       (
@@ -620,6 +723,7 @@ const {
           );
         }
 
+
         const alreadySelected =
           new Set(
             previous.map(
@@ -631,9 +735,11 @@ const {
             ),
           );
 
+
         const newPermissions:
           RolePermissionAssignment[] =
           [];
+
 
         for (
           const permission
@@ -647,14 +753,17 @@ const {
             continue;
           }
 
+
           const defaultScope =
             getDefaultScope(
               permission.uuid,
             );
 
+
           if (!defaultScope) {
             continue;
           }
+
 
           newPermissions.push({
             permissionUuid:
@@ -665,6 +774,7 @@ const {
           });
         }
 
+
         return [
           ...previous,
           ...newPermissions,
@@ -672,6 +782,7 @@ const {
       },
     );
   };
+
 
   /*
    * Select/Clear all currently
@@ -694,6 +805,7 @@ const {
               ),
             );
 
+
           const allVisibleSelected =
             visiblePermissionUuids.length >
               0 &&
@@ -705,6 +817,7 @@ const {
                   permissionUuid,
                 ),
             );
+
 
           if (
             allVisibleSelected
@@ -720,9 +833,11 @@ const {
             );
           }
 
+
           const newPermissions:
             RolePermissionAssignment[] =
             [];
+
 
           for (
             const permission
@@ -736,14 +851,17 @@ const {
               continue;
             }
 
+
             const defaultScope =
               getDefaultScope(
                 permission.uuid,
               );
 
+
             if (!defaultScope) {
               continue;
             }
+
 
             newPermissions.push({
               permissionUuid:
@@ -754,6 +872,7 @@ const {
             });
           }
 
+
           return [
             ...previous,
             ...newPermissions,
@@ -762,11 +881,16 @@ const {
       );
     };
 
+
+  /*
+   * Save role permissions.
+   */
   const handleSave =
     async () => {
       if (!uuid) {
         return;
       }
+
 
       try {
         await assignPermissions(
@@ -776,6 +900,7 @@ const {
               selectedPermissions,
           },
         );
+
 
         setInitialPermissions(
           selectedPermissions.map(
@@ -797,6 +922,10 @@ const {
       }
     };
 
+
+  /*
+   * Restore last saved state.
+   */
   const handleReset =
     () => {
       setSelectedPermissions(
@@ -810,16 +939,20 @@ const {
       );
     };
 
+
   const loading =
     permissionLoading ||
     rolePermissionLoading;
 
+
   const actionLoading =
     savingPermissions;
+
 
   const role =
     rolePermissionData
       ?.role;
+
 
   if (!uuid) {
     return (
@@ -841,12 +974,14 @@ const {
           }
         />
 
+
         <Card>
           Role UUID is missing.
         </Card>
       </>
     );
   }
+
 
   return (
     <>
@@ -862,7 +997,10 @@ const {
             style={{
               display:
                 "flex",
-              gap: 12,
+
+              gap:
+                12,
+
               flexWrap:
                 "wrap",
             }}
@@ -878,6 +1016,7 @@ const {
               Back
             </Button>
 
+
             <Button
               variant="secondary"
               disabled={
@@ -891,6 +1030,7 @@ const {
             >
               Reset
             </Button>
+
 
             <Button
               loading={
@@ -911,32 +1051,43 @@ const {
         }
       />
 
+
       <Card>
         <div
           style={{
             display:
               "flex",
+
             flexDirection:
               "column",
-            gap: 20,
+
+            gap:
+              20,
           }}
         >
           <div
             style={{
               display:
                 "flex",
+
               justifyContent:
                 "space-between",
+
               alignItems:
                 "center",
-              gap: 16,
+
+              gap:
+                16,
+
               flexWrap:
                 "wrap",
             }}
           >
             <div
               style={{
-                flex: 1,
+                flex:
+                  1,
+
                 minWidth:
                   240,
               }}
@@ -959,11 +1110,13 @@ const {
               />
             </div>
 
+
             <Button
               variant="secondary"
               disabled={
                 loading ||
-                visiblePermissionUuids.length ===
+                visiblePermissionUuids
+                  .length ===
                   0
               }
               onClick={
@@ -973,7 +1126,9 @@ const {
               {isAllVisibleSelected ? (
                 <>
                   <CheckSquare
-                    size={16}
+                    size={
+                      16
+                    }
                   />
 
                   Clear Visible
@@ -981,7 +1136,9 @@ const {
               ) : (
                 <>
                   <Square
-                    size={16}
+                    size={
+                      16
+                    }
                   />
 
                   Select Visible
@@ -990,17 +1147,24 @@ const {
             </Button>
           </div>
 
+
           <div
             style={{
               display:
                 "flex",
+
               justifyContent:
                 "space-between",
+
               alignItems:
                 "center",
-              gap: 12,
+
+              gap:
+                12,
+
               flexWrap:
                 "wrap",
+
               fontSize:
                 14,
             }}
@@ -1009,20 +1173,24 @@ const {
               Selected permissions:{" "}
               <strong>
                 {
-                  selectedPermissions.length
+                  selectedPermissions
+                    .length
                 }
               </strong>
             </span>
+
 
             <span>
               Total permissions:{" "}
               <strong>
                 {
-                  allPermissionUuids.length
+                  allPermissionUuids
+                    .length
                 }
               </strong>
             </span>
           </div>
+
 
           {loading &&
           groupedPermissions.length ===
@@ -1090,13 +1258,18 @@ const {
         </div>
       </Card>
 
+
       {hasChanges && (
         <div
           style={{
             position:
               "sticky",
-            bottom: 16,
-            zIndex: 10,
+
+            bottom:
+              16,
+
+            zIndex:
+              10,
 
             display:
               "flex",
@@ -1119,7 +1292,8 @@ const {
               alignItems:
                 "center",
 
-              gap: 12,
+              gap:
+                12,
 
               padding:
                 "12px 16px",
@@ -1144,6 +1318,7 @@ const {
               Unsaved permission changes
             </span>
 
+
             <Button
               variant="secondary"
               disabled={
@@ -1156,6 +1331,7 @@ const {
             >
               Reset
             </Button>
+
 
             <Button
               loading={
@@ -1177,5 +1353,6 @@ const {
     </>
   );
 };
+
 
 export default RolePermissionPage;

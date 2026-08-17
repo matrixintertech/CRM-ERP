@@ -165,82 +165,78 @@ const RolePage = () => {
     };
 
 
-  const handleSubmit =
-    async () => {
-      if (
-        editUuid &&
-        !canUpdateRole
-      ) {
-        return;
-      }
+ const handleSubmit =
+  async () => {
+    if (
+      editUuid &&
+      !canUpdateRole
+    ) {
+      return;
+    }
 
 
-      if (
-        !editUuid &&
-        !canCreateRole
-      ) {
-        return;
-      }
+    if (
+      !editUuid &&
+      !canCreateRole
+    ) {
+      return;
+    }
 
 
-      try {
-        if (editUuid) {
-          const payload:
-            UpdateRoleDto = {
-            name:
-              formData.name.trim(),
+    try {
+      if (editUuid) {
+        const payload:
+          UpdateRoleDto = {
+          name:
+            formData.name.trim(),
 
-            code:
-              formData.code
-                .trim()
-                .toUpperCase(),
+          code:
+            formData.code
+              .trim()
+              .toUpperCase(),
 
-            description:
-              formData.description
-                .trim() ||
-              undefined,
+          description:
+            formData.description
+              .trim() ||
+            undefined,
 
-            status:
-              formData.status,
-          };
-
-
-          await update(
-            editUuid,
-            payload,
-          );
-        } else {
-          await create({
-            name:
-              formData.name.trim(),
-
-            code:
-              formData.code
-                .trim()
-                .toUpperCase(),
-
-            description:
-              formData.description
-                .trim() ||
-              undefined,
-
-            isSystem:
-              false,
-          });
-        }
+          status:
+            formData.status,
+        };
 
 
-        handleClose();
-      } catch (
-        error: any
-      ) {
-        console.error(
-          error?.response?.data ??
-            error,
+        await update(
+          editUuid,
+          payload,
         );
-      }
-    };
+      } else {
+        await create({
+          name:
+            formData.name.trim(),
 
+          code:
+            formData.code
+              .trim()
+              .toUpperCase(),
+
+          description:
+            formData.description
+              .trim() ||
+            undefined,
+        });
+      }
+
+
+      handleClose();
+    } catch (
+      error: any
+    ) {
+      console.error(
+        error?.response?.data ??
+          error,
+      );
+    }
+  };
 
   const handleEdit =
     async (

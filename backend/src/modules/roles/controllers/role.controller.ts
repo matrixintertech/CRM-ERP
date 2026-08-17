@@ -10,15 +10,15 @@ import {
   Put,
   Req,
   UseGuards,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
 import type {
   Request,
-} from 'express';
+} from "express";
 
 import type {
   User,
-} from '@prisma/client';
+} from "@prisma/client";
 
 import {
   ApiBearerAuth,
@@ -26,65 +26,69 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
 import {
   AuthGuard,
-} from '@nestjs/passport';
+} from "@nestjs/passport";
 
 import {
   CreateRoleDto,
-} from '../dto/create-role.dto';
+} from "../dto/create-role.dto";
 
 import {
   UpdateRoleDto,
-} from '../dto/update-role.dto';
+} from "../dto/update-role.dto";
 
 import {
   AssignRolePermissionsDto,
-} from '../dto/assign-role-permissions.dto';
+} from "../dto/assign-role-permissions.dto";
 
 import {
   RoleService,
-} from '../services/role.service';
+} from "../services/role.service";
 
 import {
   PermissionGuard,
-} from '../../authorization/guards/permission.guard';
+} from "../../authorization/guards/permission.guard";
 
 import {
   RequirePermission,
-} from '../../authorization/decorators/require-permission.decorator';
+} from "../../authorization/decorators/require-permission.decorator";
 
-interface AuthenticatedRequest extends Request {
+
+interface AuthenticatedRequest
+  extends Request {
   user: User;
 }
 
-@ApiTags('Role')
-@ApiBearerAuth('access-token')
+
+@ApiTags("Role")
+@ApiBearerAuth("access-token")
 @UseGuards(
-  AuthGuard('jwt'),
+  AuthGuard("jwt"),
   PermissionGuard,
 )
-@Controller('roles')
+@Controller("roles")
 export class RoleController {
   constructor(
     private readonly roleService:
       RoleService,
   ) {}
 
+
   @Post()
   @RequirePermission(
-    'company.role.create',
+    "company.role.create",
   )
   @ApiOperation({
     summary:
-      'Create Role',
+      "Create Role",
   })
   @ApiResponse({
     status: 201,
     description:
-      'Role created successfully.',
+      "Role created successfully.",
   })
   create(
     @Req()
@@ -99,18 +103,19 @@ export class RoleController {
     );
   }
 
+
   @Get()
   @RequirePermission(
-    'company.role.view',
+    "company.role.view",
   )
   @ApiOperation({
     summary:
-      'Get Roles',
+      "Get Roles",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Roles fetched successfully.',
+      "Roles fetched successfully.",
   })
   findAll(
     @Req()
@@ -121,22 +126,23 @@ export class RoleController {
     );
   }
 
+
   /*
-   * Static route ko :uuid route
-   * se pehle rakho.
+   * Static routes must come before
+   * dynamic :uuid routes.
    */
-  @Get('dropdown')
+  @Get("dropdown")
   @RequirePermission(
-    'company.role.view',
+    "company.role.view",
   )
   @ApiOperation({
     summary:
-      'Get Active Role Dropdown',
+      "Get Active Role Dropdown",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Role dropdown fetched successfully.',
+      "Role dropdown fetched successfully.",
   })
   findDropdown(
     @Req()
@@ -147,33 +153,84 @@ export class RoleController {
     );
   }
 
+
   /*
-   * Permission routes ko general
-   * :uuid route se pehle rakho.
+   * Dedicated permission catalog
+   * for Role Permission Management.
+   *
+   * Important:
+   *
+   * This intentionally does NOT require:
+   * company.permission.view
+   *
+   * Assigning permissions to a role
+   * is part of role management and is
+   * therefore controlled by:
+   *
+   * company.role.update
    */
-  @Get(':uuid/permissions')
+  @Get(
+    "permissions/catalog",
+  )
   @RequirePermission(
-    'company.role.view',
+    "company.role.update",
   )
   @ApiOperation({
     summary:
-      'Get Role Permissions',
-  })
-  @ApiParam({
-    name: 'uuid',
-    type: String,
+      "Get Company Role Permission Catalog",
   })
   @ApiResponse({
     status: 200,
     description:
-      'Role permissions fetched successfully.',
+      "Company role permission catalog fetched successfully.",
+  })
+  findPermissionCatalog(
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    return this.roleService
+      .findPermissionCatalog(
+        req.user,
+      );
+  }
+
+
+  /*
+   * Get permissions currently
+   * assigned to a role.
+   *
+   * This endpoint belongs to
+   * role permission management,
+   * so update capability is used.
+   */
+  @Get(
+    ":uuid/permissions",
+  )
+  @RequirePermission(
+    "company.role.update",
+  )
+  @ApiOperation({
+    summary:
+      "Get Role Permissions",
+  })
+  @ApiParam({
+    name:
+      "uuid",
+
+    type:
+      String,
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Role permissions fetched successfully.",
   })
   findRolePermissions(
     @Req()
     req: AuthenticatedRequest,
 
     @Param(
-      'uuid',
+      "uuid",
       ParseUUIDPipe,
     )
     uuid: string,
@@ -185,29 +242,39 @@ export class RoleController {
       );
   }
 
-  @Put(':uuid/permissions')
+
+  /*
+   * Assign/replace role permissions
+   * with scopes.
+   */
+  @Put(
+    ":uuid/permissions",
+  )
   @RequirePermission(
-    'company.role.update',
+    "company.role.update",
   )
   @ApiOperation({
     summary:
-      'Assign Role Permissions With Scope',
+      "Assign Role Permissions With Scope",
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      "uuid",
+
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
     description:
-      'Permissions assigned successfully.',
+      "Permissions assigned successfully.",
   })
   assignPermissions(
     @Req()
     req: AuthenticatedRequest,
 
     @Param(
-      'uuid',
+      "uuid",
       ParseUUIDPipe,
     )
     uuid: string,
@@ -224,29 +291,35 @@ export class RoleController {
       );
   }
 
-  @Get(':uuid')
+
+  @Get(
+    ":uuid",
+  )
   @RequirePermission(
-    'company.role.view',
+    "company.role.view",
   )
   @ApiOperation({
     summary:
-      'Get Role By UUID',
+      "Get Role By UUID",
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      "uuid",
+
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
     description:
-      'Role fetched successfully.',
+      "Role fetched successfully.",
   })
   findOne(
     @Req()
     req: AuthenticatedRequest,
 
     @Param(
-      'uuid',
+      "uuid",
       ParseUUIDPipe,
     )
     uuid: string,
@@ -257,29 +330,35 @@ export class RoleController {
     );
   }
 
-  @Patch(':uuid')
+
+  @Patch(
+    ":uuid",
+  )
   @RequirePermission(
-    'company.role.update',
+    "company.role.update",
   )
   @ApiOperation({
     summary:
-      'Update Role',
+      "Update Role",
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      "uuid",
+
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
     description:
-      'Role updated successfully.',
+      "Role updated successfully.",
   })
   update(
     @Req()
     req: AuthenticatedRequest,
 
     @Param(
-      'uuid',
+      "uuid",
       ParseUUIDPipe,
     )
     uuid: string,
@@ -294,29 +373,35 @@ export class RoleController {
     );
   }
 
-  @Delete(':uuid')
+
+  @Delete(
+    ":uuid",
+  )
   @RequirePermission(
-    'company.role.delete',
+    "company.role.delete",
   )
   @ApiOperation({
     summary:
-      'Delete Role',
+      "Delete Role",
   })
   @ApiParam({
-    name: 'uuid',
-    type: String,
+    name:
+      "uuid",
+
+    type:
+      String,
   })
   @ApiResponse({
     status: 200,
     description:
-      'Role deleted successfully.',
+      "Role deleted successfully.",
   })
   remove(
     @Req()
     req: AuthenticatedRequest,
 
     @Param(
-      'uuid',
+      "uuid",
       ParseUUIDPipe,
     )
     uuid: string,

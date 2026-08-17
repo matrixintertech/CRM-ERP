@@ -54,12 +54,8 @@ export interface Role {
 
 export interface CreateRoleDto {
   name: string;
-
   code: string;
-
   description?: string;
-
-  isSystem?: boolean;
 }
 
 export interface UpdateRoleDto {

@@ -307,6 +307,71 @@ export class RoleRepository {
     });
   }
 
+
+  /*
+ * Active COMPANY permission catalog
+ * used specifically for Company Role
+ * permission management.
+ *
+ * Access control controller level par:
+ * company.role.update
+ */
+async findPermissionCatalog() {
+  return this.prisma.permission.findMany({
+    where: {
+      type:
+        PermissionType.COMPANY,
+
+      status:
+        Status.ACTIVE,
+
+      deletedAt:
+        null,
+    },
+
+    select: {
+      id:
+        true,
+
+      uuid:
+        true,
+
+      module:
+        true,
+
+      name:
+        true,
+
+      code:
+        true,
+
+      description:
+        true,
+
+      type:
+        true,
+
+      allowedScopes:
+        true,
+
+      status:
+        true,
+    },
+
+    orderBy: [
+      {
+        module:
+          'asc',
+      },
+
+      {
+        name:
+          'asc',
+      },
+    ],
+  });
+}
+
   async findRolePermissions(
     companyId: bigint,
     roleUuid: string,

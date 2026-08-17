@@ -24,6 +24,8 @@ import {
   UserRound,
   Users,
   UsersRound,
+  ClipboardList,
+  ListChecks
 } from "lucide-react";
 
 
@@ -355,6 +357,74 @@ export const menu:
       },
     ],
   },
+
+
+
+  {
+  id:
+    "tasks",
+
+  title:
+    "Tasks",
+
+  path:
+    "#",
+
+  icon:
+    ClipboardList,
+
+  portals:
+    COMPANY_PORTAL,
+
+  children: [
+    {
+      id:
+        "my-tasks",
+
+      title:
+        "My Tasks",
+
+      path:
+        "/my-tasks",
+
+      icon:
+        ListChecks,
+
+      portals:
+        COMPANY_PORTAL,
+
+      permissions: [
+        "company.task.view",
+      ],
+    },
+
+
+    {
+      id:
+        "all-tasks",
+
+      title:
+        "All Tasks",
+
+      path:
+        "/tasks",
+
+      icon:
+        ClipboardList,
+
+      portals:
+        COMPANY_PORTAL,
+
+      permissions: [
+        "company.task.view",
+      ],
+    },
+  ],
+},
+
+
+
+
 
 
   {
