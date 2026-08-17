@@ -1,6 +1,13 @@
+import type {
+  PermissionGroup,
+  PermissionModule,
+} from "../../permission/types/permission.types";
+
+
 export type RoleStatus =
   | "ACTIVE"
   | "INACTIVE";
+
 
 export type PermissionScope =
   | "OWN"
@@ -9,21 +16,28 @@ export type PermissionScope =
   | "PROJECT"
   | "COMPANY";
 
+
 export interface Permission {
   uuid: string;
 
-  module: string;
+  module:
+    PermissionModule;
 
   name: string;
 
   code: string;
 
-  description?: string | null;
+  description?:
+    | string
+    | null;
 
-  status: RoleStatus;
+  status:
+    RoleStatus;
 
-  scope?: PermissionScope;
+  scope?:
+    PermissionScope;
 }
+
 
 export interface Role {
   id: string;
@@ -32,41 +46,61 @@ export interface Role {
   name: string;
   code: string;
 
-  description?: string | null;
+  description?:
+    | string
+    | null;
 
-  isSystem: boolean;
+  isSystem:
+    boolean;
 
-  status: RoleStatus;
+  status:
+    RoleStatus;
 
   rolePermissions?: Array<{
-    scope: PermissionScope;
+    scope:
+      PermissionScope;
 
-    permission: Permission;
+    permission:
+      Permission;
   }>;
 
   _count?: {
-    employees: number;
+    employees:
+      number;
   };
 
-  createdAt: string;
-  updatedAt: string;
+  createdAt:
+    string;
+
+  updatedAt:
+    string;
 }
+
 
 export interface CreateRoleDto {
   name: string;
+
   code: string;
-  description?: string;
+
+  description?:
+    string;
 }
+
 
 export interface UpdateRoleDto {
-  name?: string;
+  name?:
+    string;
 
-  code?: string;
+  code?:
+    string;
 
-  description?: string;
+  description?:
+    string;
 
-  status?: RoleStatus;
+  status?:
+    RoleStatus;
 }
+
 
 export interface RoleFormData {
   name: string;
@@ -75,32 +109,62 @@ export interface RoleFormData {
 
   description: string;
 
-  status: RoleStatus;
+  status:
+    RoleStatus;
 }
+
 
 export interface RolePermissionAssignment {
-  permissionUuid: string;
+  permissionUuid:
+    string;
 
-  scope: PermissionScope;
+  scope:
+    PermissionScope;
 }
+
 
 export interface AssignRolePermissionsDto {
   permissions:
     RolePermissionAssignment[];
 }
 
+
 export interface RolePermissionItem
   extends Permission {
-  scope: PermissionScope;
+  scope:
+    PermissionScope;
 }
+
 
 export interface RolePermissionResponse {
   role: {
-    uuid: string;
-    name: string;
-    code: string;
+    uuid:
+      string;
+
+    name:
+      string;
+
+    code:
+      string;
   };
 
   permissions:
     RolePermissionItem[];
 }
+
+
+/*
+ * Role permission catalog intentionally
+ * reuses the canonical permission group
+ * contract.
+ *
+ * This prevents module from becoming
+ * string here while PermissionGroup
+ * expects PermissionModule.
+ */
+export type RolePermissionCatalogGroup =
+  PermissionGroup;
+
+
+export type RolePermissionCatalogItem =
+  PermissionGroup["permissions"][number];

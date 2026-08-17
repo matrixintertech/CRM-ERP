@@ -3,28 +3,21 @@ import api from "@/shared/services/axios";
 import type {
   AssignRolePermissionsDto,
   CreateRoleDto,
-  Permission,
   Role,
+  RolePermissionCatalogGroup,
   RolePermissionResponse,
   UpdateRoleDto,
 } from "../types/role.types";
 
 
-export interface RolePermissionCatalogGroup {
-  module: string;
-
-  permissions:
-    Permission[];
-}
-
-
 export const createRole = async (
   payload: CreateRoleDto,
 ) => {
-  const { data } = await api.post(
-    "/roles",
-    payload,
-  );
+  const { data } =
+    await api.post(
+      "/roles",
+      payload,
+    );
 
   return (
     data.data?.role ??
@@ -36,9 +29,10 @@ export const createRole = async (
 
 export const getRoles =
   async (): Promise<Role[]> => {
-    const { data } = await api.get(
-      "/roles",
-    );
+    const { data } =
+      await api.get(
+        "/roles",
+      );
 
     return (
       data.data?.roles ??
@@ -52,9 +46,10 @@ export const getRoles =
 export const getRole = async (
   uuid: string,
 ): Promise<Role> => {
-  const { data } = await api.get(
-    `/roles/${uuid}`,
-  );
+  const { data } =
+    await api.get(
+      `/roles/${uuid}`,
+    );
 
   return (
     data.data?.role ??
@@ -68,10 +63,11 @@ export const updateRole = async (
   uuid: string,
   payload: UpdateRoleDto,
 ) => {
-  const { data } = await api.patch(
-    `/roles/${uuid}`,
-    payload,
-  );
+  const { data } =
+    await api.patch(
+      `/roles/${uuid}`,
+      payload,
+    );
 
   return (
     data.data?.role ??
@@ -84,9 +80,10 @@ export const updateRole = async (
 export const deleteRole = async (
   uuid: string,
 ) => {
-  const { data } = await api.delete(
-    `/roles/${uuid}`,
-  );
+  const { data } =
+    await api.delete(
+      `/roles/${uuid}`,
+    );
 
   return data;
 };
@@ -110,9 +107,10 @@ export const getRolePermissionCatalog =
   async (): Promise<
     RolePermissionCatalogGroup[]
   > => {
-    const { data } = await api.get(
-      "/roles/permissions/catalog",
-    );
+    const { data } =
+      await api.get(
+        "/roles/permissions/catalog",
+      );
 
     return (
       data.data?.groups ??
@@ -122,28 +120,33 @@ export const getRolePermissionCatalog =
   };
 
 
-export const getRolePermissions = async (
-  uuid: string,
-): Promise<RolePermissionResponse> => {
-  const { data } = await api.get(
-    `/roles/${uuid}/permissions`,
-  );
+export const getRolePermissions =
+  async (
+    uuid: string,
+  ): Promise<RolePermissionResponse> => {
+    const { data } =
+      await api.get(
+        `/roles/${uuid}/permissions`,
+      );
 
-  return (
-    data.data ??
-    data
-  );
-};
+    return (
+      data.data ??
+      data
+    );
+  };
 
 
-export const assignRolePermissions = async (
-  uuid: string,
-  payload: AssignRolePermissionsDto,
-) => {
-  const { data } = await api.put(
-    `/roles/${uuid}/permissions`,
-    payload,
-  );
+export const assignRolePermissions =
+  async (
+    uuid: string,
+    payload:
+      AssignRolePermissionsDto,
+  ) => {
+    const { data } =
+      await api.put(
+        `/roles/${uuid}/permissions`,
+        payload,
+      );
 
-  return data;
-};
+    return data;
+  };
