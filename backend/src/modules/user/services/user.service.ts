@@ -57,6 +57,8 @@ export interface CreateUserContext {
 
   companyId?: bigint;
 
+  roleId?: bigint;
+
   status?: UserStatus;
 }
 
@@ -85,77 +87,87 @@ export class UserService {
    * Calling service server-controlled
    * context provide karegi.
    */
-  async create(
-    dto: CreateUserDto,
-    context: CreateUserContext,
-    tx?: Prisma.TransactionClient,
-  ) {
-    const normalizedEmail =
-      dto.email
-        ?.trim()
-        .toLowerCase();
+ async create(
+  dto: CreateUserDto,
+  context: CreateUserContext,
+  tx?: Prisma.TransactionClient,
+) {
+  const normalizedEmail =
+    dto.email
+      ?.trim()
+      .toLowerCase();
 
-    const normalizedMobile =
-      dto.mobile
-        ?.trim();
+  const normalizedMobile =
+    dto.mobile
+      ?.trim();
 
-    if (normalizedEmail) {
-      const existingEmail =
-        await this.userRepository.findByEmail(
-          normalizedEmail,
-        );
+  if (normalizedEmail) {
+    const existingEmail =
+      await this.userRepository.findByEmail(
+        normalizedEmail,
+      );
 
-      if (existingEmail) {
-        throw new ConflictException(
-          "Email already exists.",
-        );
-      }
+    if (existingEmail) {
+      throw new ConflictException(
+        "Email already exists.",
+      );
     }
-
-    if (normalizedMobile) {
-      const existingMobile =
-        await this.userRepository.findByMobile(
-          normalizedMobile,
-        );
-
-      if (existingMobile) {
-        throw new ConflictException(
-          "Mobile already exists.",
-        );
-      }
-    }
-
-    return this.userRepository.create(
-      {
-        displayName:
-          dto.displayName.trim(),
-
-        email:
-          normalizedEmail,
-
-        mobile:
-          normalizedMobile,
-
-        userType:
-          context.userType,
-
-        status:
-          context.status ??
-          UserStatus.ACTIVE,
-
-        ...(context.companyId !==
-          undefined && {
-          company: {
-            connect: {
-              id:
-                context.companyId,
-            },
-          },
-        }),
-      },
-      tx,
-    );
   }
+
+  if (normalizedMobile) {
+    const existingMobile =
+      await this.userRepository.findByMobile(
+        normalizedMobile,
+      );
+
+    if (existingMobile) {
+      throw new ConflictException(
+        "Mobile already exists.",
+      );
+    }
+  }
+
+  return this.userRepository.create(
+    {
+      displayName:
+        dto.displayName.trim(),
+
+      email:
+        normalizedEmail,
+
+      mobile:
+        normalizedMobile,
+
+      userType:
+        context.userType,
+
+      status:
+        context.status ??
+        UserStatus.ACTIVE,
+
+      ...(context.companyId !==
+        undefined && {
+        company: {
+          connect: {
+            id:
+              context.companyId,
+          },
+        },
+      }),
+
+      ...(context.roleId !==
+        undefined && {
+        role: {
+          connect: {
+            id:
+              context.roleId,
+          },
+        },
+      }),
+    },
+    tx,
+  );
+}
 
   /*
    * Internal company bootstrap helper.

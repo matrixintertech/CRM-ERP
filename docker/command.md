@@ -73,6 +73,9 @@ docker compose \
 
   <!-- Local Dev -->
 
+  Postgre shell
+  docker compose -f docker/docker-compose.yml exec postgres psql -U admin -d matrix_crm
+
 docker compose -f docker/docker-compose.yml down
 docker compose -f docker/docker-compose.yml up -d
 
