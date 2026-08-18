@@ -23,12 +23,16 @@ import {
 } from "./services/company-boundary.service";
 
 import {
+  CompanyAuthorizationBootstrapService,
+} from "./services/company-authorization-bootstrap.service";
+
+import {
   ProjectPolicy,
-} from './policies/project.policy';
+} from "./policies/project.policy";
 
 import {
   DepartmentPolicy,
-} from './policies/department.policy';
+} from "./policies/department.policy";
 
 import {
   DesignationPolicy,
@@ -42,6 +46,7 @@ import {
   PermissionGuard,
 } from "./guards/permission.guard";
 
+
 @Module({
   imports: [
     PrismaModule,
@@ -49,29 +54,46 @@ import {
 
   providers: [
     AuthorizationRepository,
-    EffectivePermissionService,
-    PermissionScopeService,
-    CompanyBoundaryService,
-    PermissionGuard,
-     ProjectPolicy,
-     DepartmentPolicy,
-     DesignationPolicy,
-  DesignationPolicy,
-  UserPolicy
 
+    EffectivePermissionService,
+
+    PermissionScopeService,
+
+    CompanyBoundaryService,
+
+    PermissionGuard,
+
+    ProjectPolicy,
+
+    DepartmentPolicy,
+
+    DesignationPolicy,
+
+    UserPolicy,
+
+    CompanyAuthorizationBootstrapService,
   ],
 
   exports: [
     AuthorizationRepository,
-    EffectivePermissionService,
-     PermissionScopeService,
-     CompanyBoundaryService,
-    PermissionGuard,
-     ProjectPolicy,
-     DepartmentPolicy,
-  DesignationPolicy,
-  UserPolicy
 
+    EffectivePermissionService,
+
+    PermissionScopeService,
+
+    CompanyBoundaryService,
+
+    PermissionGuard,
+
+    ProjectPolicy,
+
+    DepartmentPolicy,
+
+    DesignationPolicy,
+
+    UserPolicy,
+
+    CompanyAuthorizationBootstrapService,
   ],
 })
 export class AuthorizationModule {}
