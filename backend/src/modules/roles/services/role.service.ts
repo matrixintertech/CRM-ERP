@@ -28,10 +28,25 @@ import {
   CompanyBoundaryService,
 } from "../../authorization/services/company-boundary.service";
 
+import {
+  COMPANY_ADMIN_PERMISSION_TEMPLATE,
+} from "../../authorization/permissions/company-admin-template";
+
+import {
+  COMPANY_ADMIN_ROLE_CODE,
+} from "../../authorization/services/company-authorization-bootstrap.service";
+
 
 interface AuthUser {
   id: bigint;
 }
+
+
+const REQUIRED_COMPANY_ADMIN_PERMISSIONS =
+  COMPANY_ADMIN_PERMISSION_TEMPLATE.filter(
+    (permission) =>
+      permission.required,
+  );
 
 
 @Injectable()
@@ -55,6 +70,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * CREATE ROLE
+   * =========================================================
+   */
   async create(
     user: AuthUser,
     dto: CreateRoleDto,
@@ -92,6 +112,23 @@ export class RoleService {
           /\s+/g,
           "_",
         );
+
+
+    /*
+     * COMPANY_ADMIN is reserved for the
+     * system-created Company Admin role.
+     *
+     * Company users cannot manually create
+     * another role using this code.
+     */
+    if (
+      normalizedCode ===
+      COMPANY_ADMIN_ROLE_CODE
+    ) {
+      throw new ConflictException(
+        "COMPANY_ADMIN is a reserved system role code.",
+      );
+    }
 
 
     const existingCode =
@@ -164,6 +201,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * GET ALL ROLES
+   * =========================================================
+   */
   async findAll(
     user: AuthUser,
   ) {
@@ -203,6 +245,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * ROLE DROPDOWN
+   * =========================================================
+   */
   async findDropdown(
     user: AuthUser,
   ) {
@@ -229,15 +276,17 @@ export class RoleService {
 
 
   /*
-   * Dedicated COMPANY permission
-   * catalog for Role Permission
-   * Management.
+   * =========================================================
+   * ROLE PERMISSION CATALOG
+   * =========================================================
+   *
+   * Dedicated COMPANY permission catalog for
+   * Role Permission Management.
    *
    * Controller permission:
    * company.role.update
    *
-   * This intentionally does not
-   * depend on:
+   * This intentionally does not depend on:
    * company.permission.view
    */
   async findPermissionCatalog(
@@ -246,11 +295,10 @@ export class RoleService {
     /*
      * Resolve company boundary first.
      *
-     * Even though permission records
-     * themselves are global COMPANY
-     * permission definitions, only a
-     * valid company user can access
-     * this catalog through this flow.
+     * Permission records themselves are global
+     * COMPANY permission definitions, but only a
+     * valid company user can access this catalog
+     * through this flow.
      */
     await this.getCompanyId(
       user,
@@ -322,6 +370,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * GET ROLE
+   * =========================================================
+   */
   async findOne(
     user: AuthUser,
     uuid: string,
@@ -356,6 +409,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * UPDATE ROLE
+   * =========================================================
+   */
   async update(
     user: AuthUser,
     uuid: string,
@@ -383,7 +441,8 @@ export class RoleService {
 
 
     const normalizedName =
-      dto.name?.trim();
+      dto.name
+        ?.trim();
 
 
     const normalizedCode =
@@ -394,6 +453,68 @@ export class RoleService {
           /\s+/g,
           "_",
         );
+
+
+    const isCompanyAdminSystemRole =
+      existingRole.isSystem &&
+      existingRole.code ===
+        COMPANY_ADMIN_ROLE_CODE;
+
+
+    /*
+     * -------------------------------------------------------
+     * Company Admin system role protection
+     * -------------------------------------------------------
+     */
+    if (
+      isCompanyAdminSystemRole
+    ) {
+      /*
+       * COMPANY_ADMIN code is immutable.
+       */
+      if (
+        normalizedCode !==
+          undefined &&
+        normalizedCode !==
+          existingRole.code
+      ) {
+        throw new ConflictException(
+          "Company Admin system role code cannot be changed.",
+        );
+      }
+
+
+      /*
+       * Company Admin role must always
+       * remain active.
+       */
+      if (
+        dto.status !==
+          undefined &&
+        dto.status !==
+          "ACTIVE"
+      ) {
+        throw new ConflictException(
+          "Company Admin system role cannot be deactivated.",
+        );
+      }
+    }
+
+
+    /*
+     * Custom/non-system roles cannot be
+     * renamed to the reserved COMPANY_ADMIN code.
+     */
+    if (
+      normalizedCode ===
+        COMPANY_ADMIN_ROLE_CODE &&
+      existingRole.code !==
+        COMPANY_ADMIN_ROLE_CODE
+    ) {
+      throw new ConflictException(
+        "COMPANY_ADMIN is a reserved system role code.",
+      );
+    }
 
 
     if (
@@ -499,6 +620,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * DELETE ROLE
+   * =========================================================
+   */
   async delete(
     user: AuthUser,
     uuid: string,
@@ -524,6 +650,10 @@ export class RoleService {
     }
 
 
+    /*
+     * All system roles are protected
+     * from deletion.
+     */
     if (
       role.isSystem
     ) {
@@ -565,6 +695,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * GET ROLE PERMISSIONS
+   * =========================================================
+   */
   async findRolePermissions(
     user: AuthUser,
     roleUuid: string,
@@ -631,6 +766,11 @@ export class RoleService {
   }
 
 
+  /*
+   * =========================================================
+   * ASSIGN ROLE PERMISSIONS
+   * =========================================================
+   */
   async assignPermissions(
     user: AuthUser,
     roleUuid: string,
@@ -654,6 +794,100 @@ export class RoleService {
       throw new NotFoundException(
         "Role not found.",
       );
+    }
+
+
+    const isCompanyAdminSystemRole =
+      role.isSystem &&
+      role.code ===
+        COMPANY_ADMIN_ROLE_CODE;
+
+
+    /*
+     * -------------------------------------------------------
+     * Company Admin lockout protection
+     * -------------------------------------------------------
+     *
+     * Required permissions:
+     *
+     * - cannot be removed
+     * - required scope cannot be changed
+     *
+     * Optional permissions remain configurable.
+     */
+    if (
+      isCompanyAdminSystemRole
+    ) {
+      const permissionCatalog =
+        await this.roleRepository
+          .findPermissionCatalog();
+
+
+      const permissionByCode =
+        new Map(
+          permissionCatalog.map(
+            (permission) => [
+              permission.code,
+              permission,
+            ],
+          ),
+        );
+
+
+      for (
+        const requiredPermission
+        of REQUIRED_COMPANY_ADMIN_PERMISSIONS
+      ) {
+        const catalogPermission =
+          permissionByCode.get(
+            requiredPermission.code,
+          );
+
+
+        /*
+         * Required permission missing from
+         * active COMPANY catalog means server
+         * configuration is inconsistent.
+         */
+        if (!catalogPermission) {
+          throw new ConflictException(
+            `Required Company Admin permission is unavailable: ${requiredPermission.code}`,
+          );
+        }
+
+
+        const requestedAssignment =
+          dto.permissions.find(
+            (assignment) =>
+              assignment.permissionUuid ===
+              catalogPermission.uuid,
+          );
+
+
+        /*
+         * Required permission cannot be
+         * removed from the replacement set.
+         */
+        if (!requestedAssignment) {
+          throw new ConflictException(
+            `Required Company Admin permission cannot be removed: ${requiredPermission.code}`,
+          );
+        }
+
+
+        /*
+         * Required permission scope is
+         * also locked.
+         */
+        if (
+          requestedAssignment.scope !==
+          requiredPermission.scope
+        ) {
+          throw new ConflictException(
+            `Required Company Admin permission ${requiredPermission.code} must use ${requiredPermission.scope} scope.`,
+          );
+        }
+      }
     }
 
 
