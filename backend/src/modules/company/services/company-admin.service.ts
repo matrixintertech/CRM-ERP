@@ -145,6 +145,21 @@ export class CompanyAdminService {
               );
 
 
+              console.log(
+  "COMPANY_ADMIN_CREATE_DEBUG",
+  {
+    companyId:
+      companyId.toString(),
+
+    roleId:
+      companyAdminRole.id.toString(),
+
+    roleCode:
+      companyAdminRole.code,
+  },
+);
+
+
           /*
            * Create actual admin account.
            *
@@ -157,6 +172,8 @@ export class CompanyAdminService {
            *   -> RolePermission
            *   -> Permission
            */
+   
+        
           return this.userService.create(
             {
               displayName:

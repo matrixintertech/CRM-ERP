@@ -127,6 +127,20 @@ export class UserService {
     }
   }
 
+  console.log(
+  "USER_CREATE_DEBUG",
+  {
+    companyId:
+      context.companyId?.toString(),
+
+    roleId:
+      context.roleId?.toString(),
+
+    userType:
+      context.userType,
+  },
+);
+
   return this.userRepository.create(
     {
       displayName:
