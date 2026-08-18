@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  PermissionScope,
   ProjectTaskReportType,
   ProjectTaskStatus,
   TaskPriority,
@@ -33,12 +34,19 @@ import {
   ProjectTaskRepository,
 } from "../repositories/project-task.repository";
 
+import {
+  EffectivePermissionService,
+} from "../../authorization/services/effective-permission.service";
+
 
 @Injectable()
 export class ProjectTaskService {
   constructor(
     private readonly projectTaskRepository:
       ProjectTaskRepository,
+
+      private readonly effectivePermissionService:
+    EffectivePermissionService,
   ) {}
 
 
@@ -431,6 +439,9 @@ async findAll(
   projectUuid:
     string,
 
+  userId:
+    bigint,
+
   employeeId:
     | bigint
     | null
@@ -442,12 +453,10 @@ async findAll(
     );
 
 
-  const resolvedEmployeeId =
-    this.ensureEmployeeContext(
-      employeeId,
-    );
-
-
+  /*
+   * Project must always belong to
+   * current company.
+   */
   const project =
     await this.getProject(
       resolvedCompanyId,
@@ -456,31 +465,155 @@ async findAll(
 
 
   /*
-   * Manager can see tasks only
-   * for projects where manager
-   * is an active ProjectMember.
+   * Resolve effective authorization.
+   *
+   * Do NOT authorize based on UserType.
    */
-  await this.ensureActiveProjectMembership(
-    resolvedCompanyId,
-    project.id,
-    resolvedEmployeeId,
-  );
-
-
-  const projectTasks =
-    await this.projectTaskRepository
-      .findAllByProject(
-        resolvedCompanyId,
-        project.id,
+  const authorization =
+    await this.effectivePermissionService
+      .getAuthorization(
+        userId,
       );
 
 
-  return {
-    message:
-      "Project tasks fetched successfully.",
+  /*
+   * Defensive tenant boundary check.
+   */
+  if (
+    !authorization.user.companyId ||
+    authorization.user.companyId !==
+      resolvedCompanyId
+  ) {
+    throw new ForbiddenException(
+      "Project task access is not allowed outside your company.",
+    );
+  }
 
-    projectTasks,
-  };
+
+  /*
+   * Same permission may come from
+   * role + direct user grants with
+   * different scopes.
+   */
+  const scopes =
+    Array.from(
+      new Set(
+        authorization
+          .companyPermissions
+          .filter(
+            (permission) =>
+              permission.code ===
+              "company.task.view",
+          )
+          .map(
+            (permission) =>
+              permission.scope,
+          ),
+      ),
+    );
+
+
+  if (
+    scopes.length ===
+    0
+  ) {
+    throw new ForbiddenException(
+      "You do not have permission to view project tasks.",
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * COMPANY SCOPE
+   * =========================================================
+   *
+   * Company Admin normally reaches
+   * this branch through its RolePermission.
+   *
+   * No employee context required.
+   * No ProjectMember requirement.
+   *
+   * Project itself is already hard-filtered
+   * by current company above.
+   */
+  if (
+    scopes.includes(
+      PermissionScope.COMPANY,
+    )
+  ) {
+    const projectTasks =
+      await this.projectTaskRepository
+        .findAllByProject(
+          resolvedCompanyId,
+          project.id,
+        );
+
+
+    return {
+      message:
+        "Project tasks fetched successfully.",
+
+      projectTasks,
+    };
+  }
+
+
+  /*
+   * =========================================================
+   * PROJECT SCOPE
+   * =========================================================
+   *
+   * Project-scoped manager must be
+   * an active member of this project.
+   */
+  if (
+    scopes.includes(
+      PermissionScope.PROJECT,
+    )
+  ) {
+    const resolvedEmployeeId =
+      this.ensureEmployeeContext(
+        employeeId,
+      );
+
+
+    await this.ensureActiveProjectMembership(
+      resolvedCompanyId,
+      project.id,
+      resolvedEmployeeId,
+    );
+
+
+    const projectTasks =
+      await this.projectTaskRepository
+        .findAllByProject(
+          resolvedCompanyId,
+          project.id,
+        );
+
+
+    return {
+      message:
+        "Project tasks fetched successfully.",
+
+      projectTasks,
+    };
+  }
+
+
+  /*
+   * OWN / TEAM / ORGANIZATION_UNIT
+   *
+   * Project workspace list ke liye
+   * dedicated filtered behavior abhi
+   * implement nahi hai.
+   *
+   * Broad access dene ke bajay fail closed.
+   */
+  throw new ForbiddenException(
+    "Your permission scope does not allow viewing all tasks for this project.",
+  );
 }
 
   /*

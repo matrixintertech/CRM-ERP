@@ -148,11 +148,12 @@ export class ProjectTaskController {
     projectUuid: string,
   ) {
     return this.projectTaskService
-      .findAll(
-        req.user.companyId,
-        projectUuid,
-        req.user.employeeId,
-      );
+  .findAll(
+    req.user.companyId,
+    projectUuid,
+    req.user.id,
+    req.user.employeeId,
+  );
   }
 
 
