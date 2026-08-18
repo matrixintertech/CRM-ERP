@@ -115,6 +115,43 @@ export interface PresignedDownload {
 
 /*
  * =========================================================
+ * HEAD / OBJECT METADATA
+ * =========================================================
+ *
+ * Presigned upload ke baad backend R2/S3 se
+ * verify karega ki:
+ *
+ * - object actually exist karta hai
+ * - actual content type kya hai
+ * - actual size kitna hai
+ * - object ka ETag kya hai
+ *
+ * Client-provided metadata ko blindly
+ * trust nahi karenge.
+ */
+export interface HeadObjectInput {
+  key: string;
+}
+
+
+export interface StoredObjectMetadata {
+  key: string;
+
+  contentType?: string;
+
+  size?: number;
+
+  etag?: string;
+
+  metadata?: Record<
+    string,
+    string
+  >;
+}
+
+
+/*
+ * =========================================================
  * DELETE
  * =========================================================
  */
@@ -134,21 +171,47 @@ export interface DeleteObjectInput {
  * They will depend only on this contract.
  */
 export interface StorageProvider {
+  /*
+   * Backend-side direct upload.
+   */
   putObject(
     input: PutObjectInput,
   ): Promise<StoredObjectReference>;
 
 
+  /*
+   * Browser/mobile direct upload URL.
+   */
   createUploadUrl(
     input: CreateUploadUrlInput,
   ): Promise<PresignedUpload>;
 
 
+  /*
+   * Private object temporary download URL.
+   */
   createDownloadUrl(
     input: CreateDownloadUrlInput,
   ): Promise<PresignedDownload>;
 
 
+  /*
+   * Verify uploaded object and read
+   * actual storage metadata.
+   *
+   * null:
+   * object does not exist.
+   */
+  headObject(
+    input: HeadObjectInput,
+  ): Promise<
+    StoredObjectMetadata | null
+  >;
+
+
+  /*
+   * Delete object from storage.
+   */
   deleteObject(
     input: DeleteObjectInput,
   ): Promise<void>;

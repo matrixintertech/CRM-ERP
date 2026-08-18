@@ -7,6 +7,10 @@ import {
 } from "../authorization/authorization.module";
 
 import {
+  StorageModule,
+} from "../storage/storage.module";
+
+import {
   MyTaskController,
 } from "./controllers/my-task.controller";
 
@@ -19,6 +23,10 @@ import {
 } from "./repositories/project-task.repository";
 
 import {
+  ProjectTaskReportAttachmentService,
+} from "./services/project-task-report-attachment.service";
+
+import {
   ProjectTaskService,
 } from "./services/project-task.service";
 
@@ -26,6 +34,7 @@ import {
 @Module({
   imports: [
     AuthorizationModule,
+    StorageModule,
   ],
 
   controllers: [
@@ -36,11 +45,13 @@ import {
   providers: [
     ProjectTaskService,
     ProjectTaskRepository,
+    ProjectTaskReportAttachmentService,
   ],
 
   exports: [
     ProjectTaskService,
     ProjectTaskRepository,
+    ProjectTaskReportAttachmentService,
   ],
 })
 export class ProjectTaskModule {}

@@ -4,6 +4,7 @@ import {
 
 import {
   Prisma,
+  ProjectTaskAttachmentType,
   ProjectTaskCompletionStatus,
   ProjectTaskReportType,
   ProjectTaskStatus,
@@ -14,6 +15,23 @@ import {
   PrismaService,
 } from "src/database/prisma.service";
 
+
+interface CreateTaskReportAttachmentInput {
+  type:
+    ProjectTaskAttachmentType;
+
+  originalName:
+    string;
+
+  mimeType:
+    string;
+
+  sizeBytes:
+    bigint;
+
+  storageKey:
+    string;
+}
 
 @Injectable()
 export class ProjectTaskRepository {
@@ -479,6 +497,10 @@ async findMyTasks(
        * PROGRESS, BLOCKER, NOTE aur
        * future COMPLETION reports
        * show karne ke liye.
+       *
+       * Attachments metadata bhi return
+       * hogi so frontend later signed
+       * download URL request kar sake.
        */
       reports: {
         orderBy: {
@@ -504,6 +526,45 @@ async findMyTasks(
 
           createdAt:
             true,
+
+          /*
+           * Report evidence attachments.
+           *
+           * Private R2/S3 URL DB me store
+           * nahi hota.
+           *
+           * Sirf storageKey + metadata
+           * return karte hain.
+           */
+          attachments: {
+            orderBy: {
+              createdAt:
+                "asc",
+            },
+
+            select: {
+              uuid:
+                true,
+
+              type:
+                true,
+
+              originalName:
+                true,
+
+              mimeType:
+                true,
+
+              sizeBytes:
+                true,
+
+              storageKey:
+                true,
+
+              createdAt:
+                true,
+            },
+          },
 
           projectMember: {
             select: {
@@ -1014,6 +1075,9 @@ async createTaskReport(
   userId: bigint,
   type: ProjectTaskReportType,
   message: string,
+  attachments:
+    CreateTaskReportAttachmentInput[] =
+      [],
 ) {
   return this.prisma.$transaction(
     async (
@@ -1066,15 +1130,6 @@ async createTaskReport(
        * Employee work updates are only
        * allowed while task is actively
        * IN_PROGRESS.
-       *
-       * TODO:
-       * employee must Start Work first.
-       *
-       * COMPLETION_REQUESTED:
-       * waiting for manager review.
-       *
-       * COMPLETED / CANCELLED:
-       * execution is closed.
        */
       if (
         task.status !==
@@ -1090,65 +1145,144 @@ async createTaskReport(
       }
 
 
-      const report =
-        await tx.projectTaskReport.create({
-          data: {
-            company: {
-              connect: {
-                id:
-                  companyId,
-              },
+      /*
+       * =====================================================
+       * REPORT + ATTACHMENTS
+       * =====================================================
+       *
+       * Storage objects were already
+       * verified by service through HEAD.
+       *
+       * DB report and attachment metadata
+       * are now saved atomically.
+       */
+    const report =
+  await tx.projectTaskReport.create({
+    data: {
+      company: {
+        connect: {
+          id:
+            companyId,
+        },
+      },
+
+      task: {
+        connect: {
+          id:
+            taskId,
+        },
+      },
+
+      projectMember: {
+        connect: {
+          id:
+            projectMemberId,
+        },
+      },
+
+      user: {
+        connect: {
+          id:
+            userId,
+        },
+      },
+
+      type,
+
+      message:
+        message.trim(),
+
+      taskStatusSnapshot:
+        task.status,
+
+      /*
+       * Empty attachment array:
+       * relation create omitted.
+       */
+      ...(attachments.length >
+        0 && {
+        attachments: {
+          create:
+            attachments.map(
+              (
+                attachment,
+              ) => ({
+                type:
+                  attachment.type,
+
+                originalName:
+                  attachment
+                    .originalName
+                    .trim(),
+
+                mimeType:
+                  attachment
+                    .mimeType
+                    .trim()
+                    .toLowerCase(),
+
+                sizeBytes:
+                  attachment
+                    .sizeBytes,
+
+                storageKey:
+                  attachment
+                    .storageKey
+                    .trim(),
+              }),
+            ),
+        },
+      }),
+    },
+
+    include: {
+      projectMember: {
+        include: {
+          employee: {
+            include: {
+              designation:
+                true,
+
+              department:
+                true,
             },
-
-            task: {
-              connect: {
-                id:
-                  taskId,
-              },
-            },
-
-            projectMember: {
-              connect: {
-                id:
-                  projectMemberId,
-              },
-            },
-
-            user: {
-              connect: {
-                id:
-                  userId,
-              },
-            },
-
-            type,
-
-            message:
-              message.trim(),
-
-            taskStatusSnapshot:
-              task.status,
           },
 
-          include: {
-            projectMember: {
-              include: {
-                employee: {
-                  include: {
-                    designation:
-                      true,
+          projectRole:
+            true,
+        },
+      },
 
-                    department:
-                      true,
-                  },
-                },
+      /*
+       * Created attachment metadata
+       * response me bhi return karo.
+       */
+      attachments: {
+        select: {
+          uuid:
+            true,
 
-                projectRole:
-                  true,
-              },
-            },
-          },
-        });
+          type:
+            true,
+
+          originalName:
+            true,
+
+          mimeType:
+            true,
+
+          sizeBytes:
+            true,
+
+          storageKey:
+            true,
+
+          createdAt:
+            true,
+        },
+      },
+    },
+  });
 
 
       return {
@@ -1166,7 +1300,6 @@ async createTaskReport(
     },
   );
 }
-
 
   async softDelete(
     id: bigint,

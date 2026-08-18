@@ -8,6 +8,7 @@ import {
 
 import {
   PermissionScope,
+  ProjectTaskAttachmentType,
   ProjectTaskReportType,
   ProjectTaskStatus,
   TaskPriority,
@@ -38,6 +39,10 @@ import {
   EffectivePermissionService,
 } from "../../authorization/services/effective-permission.service";
 
+import {
+  ProjectTaskReportAttachmentService,
+} from "./project-task-report-attachment.service";
+
 
 @Injectable()
 export class ProjectTaskService {
@@ -47,6 +52,9 @@ export class ProjectTaskService {
 
       private readonly effectivePermissionService:
     EffectivePermissionService,
+
+     private readonly projectTaskReportAttachmentService:
+    ProjectTaskReportAttachmentService,
   ) {}
 
 
@@ -1045,9 +1053,6 @@ async createTaskReport(
   /*
    * Employee must start the task
    * before posting execution reports.
-   *
-   * Repository re-checks this status
-   * inside transaction as well.
    */
   if (
     projectTask.status !==
@@ -1059,6 +1064,117 @@ async createTaskReport(
   }
 
 
+  /*
+   * =========================================================
+   * ATTACHMENT VALIDATION
+   * =========================================================
+   */
+  const requestedAttachments =
+    dto.attachments ??
+    [];
+
+
+  /*
+   * DTO already limits this to five,
+   * but service also fails closed.
+   */
+  if (
+    requestedAttachments.length >
+    5
+  ) {
+    throw new BadRequestException(
+      "A maximum of 5 images can be attached to a task report.",
+    );
+  }
+
+
+  /*
+   * Same storage key must not appear
+   * twice in a single request.
+   */
+  const storageKeys =
+    requestedAttachments.map(
+      (attachment) =>
+        attachment.storageKey.trim(),
+    );
+
+
+  if (
+    new Set(
+      storageKeys,
+    ).size !==
+    storageKeys.length
+  ) {
+    throw new BadRequestException(
+      "Duplicate task report attachments are not allowed.",
+    );
+  }
+
+
+  /*
+   * R2/S3 verification:
+   *
+   * - object belongs to this task
+   * - object exists
+   * - MIME type matches
+   * - actual size matches
+   * - <= 5 MB
+   * - object is not already attached
+   */
+  const verifiedAttachments =
+    await Promise.all(
+      requestedAttachments.map(
+        async (
+          attachment,
+        ) => {
+          const verified =
+            await this
+              .projectTaskReportAttachmentService
+              .verifyImageUpload(
+                resolvedCompanyId,
+                taskUuid,
+                resolvedEmployeeId,
+                {
+                  storageKey:
+                    attachment.storageKey,
+
+                  contentType:
+                    attachment.contentType,
+
+                  fileSize:
+                    attachment.fileSize,
+                },
+              );
+
+
+          return {
+            type:
+              ProjectTaskAttachmentType.IMAGE,
+
+            originalName:
+              attachment.originalName
+                .trim(),
+
+            mimeType:
+              verified.contentType,
+
+            sizeBytes:
+              BigInt(
+                verified.sizeBytes,
+              ),
+
+            storageKey:
+              verified.storageKey,
+          };
+        },
+      ),
+    );
+
+
+  /*
+   * Report + attachments should be
+   * created atomically by repository.
+   */
   const result =
     await this.projectTaskRepository
       .createTaskReport(
@@ -1069,6 +1185,7 @@ async createTaskReport(
         userId,
         dto.type,
         message,
+        verifiedAttachments,
       );
 
 

@@ -5,6 +5,7 @@ import {
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -18,10 +19,12 @@ import type {
   CreateDownloadUrlInput,
   CreateUploadUrlInput,
   DeleteObjectInput,
+  HeadObjectInput,
   PresignedDownload,
   PresignedUpload,
   PutObjectInput,
   StorageProvider,
+  StoredObjectMetadata,
   StoredObjectReference,
 } from "../types/storage.types";
 
@@ -376,6 +379,94 @@ export class S3StorageService
 
   /*
    * =========================================================
+   * HEAD / VERIFY OBJECT
+   * =========================================================
+   *
+   * Presigned PUT ke baad backend
+   * object ko verify kar sakta hai.
+   *
+   * Client ke supplied size / MIME type
+   * ko blindly trust nahi karenge.
+   *
+   * Object missing:
+   * null
+   *
+   * Other storage/network/auth error:
+   * rethrow
+   */
+  async headObject(
+    input:
+      HeadObjectInput,
+  ): Promise<
+    StoredObjectMetadata | null
+  > {
+    const key =
+      this.normalizeKey(
+        input.key,
+      );
+
+
+    try {
+      const result =
+        await this.client.send(
+          new HeadObjectCommand({
+            Bucket:
+              this.bucket,
+
+            Key:
+              key,
+          }),
+        );
+
+
+      return {
+        key,
+
+        contentType:
+          result.ContentType
+            ?.trim()
+            .toLowerCase(),
+
+        size:
+          result.ContentLength,
+
+        etag:
+          result.ETag
+            ? this.normalizeEtag(
+                result.ETag,
+              )
+            : undefined,
+
+        metadata:
+          result.Metadata,
+      };
+    } catch (
+      error
+    ) {
+      /*
+       * S3-compatible providers HEAD
+       * request par missing object ke liye
+       * slightly different error names
+       * return kar sakte hain.
+       *
+       * HTTP 404 is source of truth.
+       */
+      if (
+        this.isObjectNotFoundError(
+          error,
+        )
+      ) {
+        return null;
+      }
+
+
+      throw error;
+    }
+  }
+
+
+  /*
+   * =========================================================
    * DELETE OBJECT
    * =========================================================
    */
@@ -554,10 +645,6 @@ export class S3StorageService
     value:
       number,
   ): number {
-    /*
-     * R2 presigned URLs allow
-     * 1 second → 7 days.
-     */
     return Math.min(
       Math.max(
         value,
@@ -595,6 +682,58 @@ export class S3StorageService
     return (
       sanitized ||
       "download"
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * OBJECT NOT FOUND DETECTION
+   * =========================================================
+   *
+   * AWS S3 / R2 / S3-compatible providers
+   * different error names use kar sakte hain.
+   *
+   * HTTP status 404 ko primary check
+   * rakhte hain.
+   */
+  private isObjectNotFoundError(
+    error:
+      unknown,
+  ): boolean {
+    if (
+      !error ||
+      typeof error !==
+        "object"
+    ) {
+      return false;
+    }
+
+
+    const candidate =
+      error as {
+        name?: string;
+
+        $metadata?: {
+          httpStatusCode?: number;
+        };
+      };
+
+
+    if (
+      candidate.$metadata
+        ?.httpStatusCode ===
+      404
+    ) {
+      return true;
+    }
+
+
+    return (
+      candidate.name ===
+        "NotFound" ||
+      candidate.name ===
+        "NoSuchKey"
     );
   }
 }

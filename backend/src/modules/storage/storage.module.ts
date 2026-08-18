@@ -6,32 +6,19 @@ import {
   S3StorageService,
 } from "./services/s3-storage.service";
 
+import {
+  STORAGE_PROVIDER,
+} from "./storage.constants";
 
-export const STORAGE_PROVIDER =
-  Symbol(
-    "STORAGE_PROVIDER",
-  );
+import {
+  StorageService,
+} from "./storage.service";
 
 
 @Module({
   providers: [
-    /*
-     * Concrete S3-compatible implementation.
-     *
-     * Supports:
-     * - Cloudflare R2
-     * - AWS S3
-     * - MinIO
-     * - other S3-compatible providers
-     */
     S3StorageService,
 
-
-    /*
-     * Business modules should depend
-     * on STORAGE_PROVIDER instead of
-     * S3StorageService directly.
-     */
     {
       provide:
         STORAGE_PROVIDER,
@@ -39,11 +26,12 @@ export const STORAGE_PROVIDER =
       useExisting:
         S3StorageService,
     },
+
+    StorageService,
   ],
 
-
   exports: [
-    STORAGE_PROVIDER,
+    StorageService,
   ],
 })
 export class StorageModule {}
