@@ -11,6 +11,7 @@ import type {
   RolePermissionScopeMap,
 } from "../../role-permission/types/role-permission.types";
 
+
 interface Props {
   group: PermissionGroup;
 
@@ -19,6 +20,13 @@ interface Props {
 
   permissionScopes:
     RolePermissionScopeMap;
+
+  /*
+   * COMPANY_ADMIN ke required
+   * permission UUIDs.
+   */
+  lockedPermissionUuids:
+    string[];
 
   disabled?: boolean;
 
@@ -36,6 +44,7 @@ interface Props {
   ) => void;
 }
 
+
 const formatModuleName = (
   module: string,
 ) =>
@@ -51,10 +60,12 @@ const formatModuleName = (
         character.toUpperCase(),
     );
 
+
 const RolePermissionGroup = ({
   group,
   selectedPermissionUuids,
   permissionScopes,
+  lockedPermissionUuids,
   disabled = false,
   onTogglePermission,
   onScopeChange,
@@ -75,11 +86,13 @@ const RolePermissionGroup = ({
         ) > 0,
     );
 
+
   const selectablePermissionUuids =
     selectablePermissions.map(
       (permission) =>
         permission.uuid,
     );
+
 
   const selectedCount =
     selectablePermissionUuids.filter(
@@ -89,11 +102,40 @@ const RolePermissionGroup = ({
         ),
     ).length;
 
+
   const allGroupSelected =
     selectablePermissionUuids.length >
       0 &&
     selectedCount ===
       selectablePermissionUuids.length;
+
+
+  /*
+   * Group ke andar kitni required /
+   * locked permissions hain.
+   */
+  const lockedCount =
+    selectablePermissionUuids.filter(
+      (permissionUuid) =>
+        lockedPermissionUuids.includes(
+          permissionUuid,
+        ),
+    ).length;
+
+
+  /*
+   * Agar group me sirf locked permissions
+   * hain to group clear/select button ka
+   * koi useful action nahi hai.
+   */
+  const hasEditablePermissions =
+    selectablePermissionUuids.some(
+      (permissionUuid) =>
+        !lockedPermissionUuids.includes(
+          permissionUuid,
+        ),
+    );
+
 
   return (
     <div
@@ -144,6 +186,7 @@ const RolePermissionGroup = ({
             )}
           </div>
 
+
           <div
             style={{
               fontSize:
@@ -161,8 +204,17 @@ const RolePermissionGroup = ({
               selectablePermissions.length
             }{" "}
             selected
+
+            {lockedCount > 0 && (
+              <>
+                {" "}
+                ·{" "}
+                {lockedCount} required
+              </>
+            )}
           </div>
         </div>
+
 
         <Button
           size="sm"
@@ -170,7 +222,8 @@ const RolePermissionGroup = ({
           disabled={
             disabled ||
             selectablePermissions.length ===
-              0
+              0 ||
+            !hasEditablePermissions
           }
           onClick={() =>
             onToggleGroup(
@@ -179,10 +232,11 @@ const RolePermissionGroup = ({
           }
         >
           {allGroupSelected
-            ? "Clear"
+            ? "Clear Optional"
             : "Select All"}
         </Button>
       </div>
+
 
       <div
         style={{
@@ -202,19 +256,12 @@ const RolePermissionGroup = ({
                 permission.uuid,
               );
 
+
             const allowedScopes =
               permission.allowedScopes ??
               [];
 
-            /*
-             * Selected role scope.
-             *
-             * Agar permission selected nahi hai
-             * to UI ke liye first allowed scope
-             * use kar sakte hain.
-             *
-             * OWN hardcoded fallback nahi.
-             */
+
             const scope =
               permissionScopes[
                 permission.uuid
@@ -222,40 +269,98 @@ const RolePermissionGroup = ({
               allowedScopes[0] ??
               null;
 
-            /*
-             * Legacy/misconfigured permission:
-             * COMPANY permission but no
-             * allowedScopes configured.
-             */
+
             const hasAllowedScopes =
               allowedScopes.length >
               0;
 
+
+            /*
+             * Required Company Admin permission.
+             */
+            const locked =
+              lockedPermissionUuids.includes(
+                permission.uuid,
+              );
+
+
             return (
-              <RolePermissionCard
+              <div
                 key={
                   permission.uuid
                 }
-                permission={
-                  permission
-                }
-                checked={
-                  checked
-                }
-                scope={
-                  scope
-                }
-                disabled={
-                  disabled ||
-                  !hasAllowedScopes
-                }
-                onToggle={
-                  onTogglePermission
-                }
-                onScopeChange={
-                  onScopeChange
-                }
-              />
+                style={{
+                  position:
+                    "relative",
+                }}
+              >
+                {locked && (
+                  <div
+                    style={{
+                      position:
+                        "absolute",
+
+                      top:
+                        10,
+
+                      right:
+                        12,
+
+                      zIndex:
+                        1,
+
+                      padding:
+                        "2px 7px",
+
+                      borderRadius:
+                        999,
+
+                      fontSize:
+                        11,
+
+                      fontWeight:
+                        600,
+
+                      background:
+                        "var(--surface-muted, #f1f5f9)",
+
+                      border:
+                        "1px solid var(--border-color, #e5e7eb)",
+                    }}
+                  >
+                    Required
+                  </div>
+                )}
+
+
+                <RolePermissionCard
+                  permission={
+                    permission
+                  }
+
+                  checked={
+                    checked
+                  }
+
+                  scope={
+                    scope
+                  }
+
+                  disabled={
+                    disabled ||
+                    locked ||
+                    !hasAllowedScopes
+                  }
+
+                  onToggle={
+                    onTogglePermission
+                  }
+
+                  onScopeChange={
+                    onScopeChange
+                  }
+                />
+              </div>
             );
           },
         )}
@@ -263,5 +368,6 @@ const RolePermissionGroup = ({
     </div>
   );
 };
+
 
 export default RolePermissionGroup;

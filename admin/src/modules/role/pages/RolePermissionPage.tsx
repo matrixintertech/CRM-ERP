@@ -51,6 +51,41 @@ import type {
 } from "../../role-permission/types/role-permission.types";
 
 
+/*
+ * =========================================================
+ * COMPANY ADMIN REQUIRED PERMISSIONS
+ * =========================================================
+ *
+ * IMPORTANT:
+ *
+ * Ye frontend UX lock hai.
+ *
+ * Backend RoleService is list ka actual security
+ * enforcement already company-admin-template.ts
+ * ke through karta hai.
+ *
+ * Frontend bypass hone par bhi backend required
+ * permission removal reject karega.
+ */
+const COMPANY_ADMIN_REQUIRED_PERMISSION_CODES =
+  new Set<string>([
+    "company.employee.view",
+    "company.employee.update",
+
+    "company.permission.view",
+
+    "company.role.view",
+    "company.role.update",
+
+    "company.user.view",
+    "company.user.update",
+  ]);
+
+
+const COMPANY_ADMIN_ROLE_CODE =
+  "COMPANY_ADMIN";
+
+
 const RolePermissionPage = () => {
   const navigate =
     useNavigate();
@@ -69,22 +104,7 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Dedicated COMPANY permission
-   * catalog for Role Permission
-   * Management.
-   *
-   * Backend:
-   *
-   * GET /roles/permissions/catalog
-   *
-   * Permission:
-   * company.role.update
-   *
-   * This intentionally does NOT use:
-   * /company/permissions/grouped
-   *
-   * and does NOT depend on:
-   * company.permission.view
+   * Dedicated COMPANY permission catalog.
    */
   const permissionCatalogQuery =
     useQuery({
@@ -133,10 +153,6 @@ const RolePermissionPage = () => {
   ] = useState(false);
 
 
-  /*
-   * Selected permissions store
-   * permission UUID + selected scope.
-   */
   const [
     selectedPermissions,
     setSelectedPermissions,
@@ -160,8 +176,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Load permissions currently
-   * assigned to selected role.
+   * =========================================================
+   * LOAD CURRENT ROLE PERMISSIONS
+   * =========================================================
    */
   useEffect(() => {
     if (!uuid) {
@@ -246,8 +263,121 @@ const RolePermissionPage = () => {
   ]);
 
 
+  const role =
+    rolePermissionData
+      ?.role;
+
+
   /*
-   * Selected permission UUIDs.
+   * COMPANY_ADMIN code reserved backend side hai.
+   *
+   * Isliye code check UX identification ke liye
+   * safe hai. Authorization bypass ke liye nahi.
+   */
+  const isCompanyAdminRole =
+    role?.code ===
+    COMPANY_ADMIN_ROLE_CODE;
+
+
+  /*
+   * =========================================================
+   * PERMISSION LOOKUP
+   * =========================================================
+   */
+  const permissionByUuid =
+    useMemo(() => {
+      return new Map(
+        groupedPermissions.flatMap(
+          (
+            group,
+          ) =>
+            group.permissions.map(
+              (
+                permission,
+              ) =>
+                [
+                  permission.uuid,
+                  permission,
+                ] as const,
+            ),
+        ),
+      );
+    }, [
+      groupedPermissions,
+    ]);
+
+
+  /*
+   * =========================================================
+   * LOCKED / REQUIRED PERMISSION UUIDS
+   * =========================================================
+   *
+   * Normal role:
+   * []
+   *
+   * COMPANY_ADMIN:
+   * required codes -> catalog UUIDs
+   */
+  const lockedPermissionUuids =
+    useMemo(() => {
+      if (
+        !isCompanyAdminRole
+      ) {
+        return [];
+      }
+
+
+      return groupedPermissions
+        .flatMap(
+          (
+            group,
+          ) =>
+            group.permissions,
+        )
+        .filter(
+          (
+            permission,
+          ) =>
+            COMPANY_ADMIN_REQUIRED_PERMISSION_CODES.has(
+              permission.code,
+            ),
+        )
+        .map(
+          (
+            permission,
+          ) =>
+            permission.uuid,
+        );
+    }, [
+      groupedPermissions,
+      isCompanyAdminRole,
+    ]);
+
+
+  const lockedPermissionUuidSet =
+    useMemo(
+      () =>
+        new Set(
+          lockedPermissionUuids,
+        ),
+      [
+        lockedPermissionUuids,
+      ],
+    );
+
+
+  const isPermissionLocked = (
+    permissionUuid: string,
+  ) =>
+    lockedPermissionUuidSet.has(
+      permissionUuid,
+    );
+
+
+  /*
+   * =========================================================
+   * SELECTED PERMISSIONS
+   * =========================================================
    */
   const selectedPermissionUuids =
     useMemo(
@@ -264,13 +394,6 @@ const RolePermissionPage = () => {
     );
 
 
-  /*
-   * Fast lookup:
-   *
-   * permissionUuid
-   * ->
-   * selected scope
-   */
   const permissionScopes =
     useMemo(
       () =>
@@ -294,7 +417,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Search/filter permission groups.
+   * =========================================================
+   * SEARCH
+   * =========================================================
    */
   const filteredGroups =
     useMemo<
@@ -359,49 +484,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Fast permission lookup.
-   *
-   * Isse kisi permission ka
-   * allowedScopes easily mil jayega.
-   */
-  const permissionByUuid =
-    useMemo(() => {
-      return new Map(
-        groupedPermissions.flatMap(
-          (
-            group,
-          ) =>
-            group.permissions.map(
-              (
-                permission,
-              ) =>
-                [
-                  permission.uuid,
-                  permission,
-                ] as const,
-            ),
-        ),
-      );
-    }, [
-      groupedPermissions,
-    ]);
-
-
-  /*
-   * Jab permission first time
-   * select hoti hai, uska first
-   * configured allowed scope
-   * default selected hoga.
-   *
-   * Example:
-   *
-   * Project Category:
-   * [COMPANY]
-   * -> COMPANY
-   *
-   * Project:
-   * [PROJECT, COMPANY]
-   * -> PROJECT
+   * =========================================================
+   * DEFAULT SCOPE
+   * =========================================================
    */
   const getDefaultScope = (
     permissionUuid: string,
@@ -425,7 +510,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * All permissions count.
+   * =========================================================
+   * COUNTS
+   * =========================================================
    */
   const allPermissionUuids =
     useMemo(
@@ -449,12 +536,7 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Visible permissions which can
-   * actually be assigned.
-   *
-   * COMPANY permission with
-   * allowedScopes = []
-   * is not selectable.
+   * Permissions currently visible and assignable.
    */
   const visiblePermissions =
     useMemo(
@@ -498,10 +580,38 @@ const RolePermissionPage = () => {
     );
 
 
+  /*
+   * Visible permissions which are actually editable.
+   *
+   * Required Company Admin permissions excluded.
+   */
+  const editableVisiblePermissionUuids =
+    useMemo(
+      () =>
+        visiblePermissionUuids.filter(
+          (
+            permissionUuid,
+          ) =>
+            !lockedPermissionUuidSet.has(
+              permissionUuid,
+            ),
+        ),
+      [
+        visiblePermissionUuids,
+        lockedPermissionUuidSet,
+      ],
+    );
+
+
+  /*
+   * Button state based on editable permissions.
+   *
+   * Locked grants do not affect Clear Optional state.
+   */
   const isAllVisibleSelected =
-    visiblePermissionUuids.length >
+    editableVisiblePermissionUuids.length >
       0 &&
-    visiblePermissionUuids.every(
+    editableVisiblePermissionUuids.every(
       (
         permissionUuid,
       ) =>
@@ -512,11 +622,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Permission + scope both
-   * compare karo.
-   *
-   * Scope change bhi Save
-   * enable karega.
+   * =========================================================
+   * CHANGE DETECTION
+   * =========================================================
    */
   const hasChanges =
     useMemo(() => {
@@ -564,11 +672,26 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Single permission toggle.
+   * =========================================================
+   * SINGLE PERMISSION TOGGLE
+   * =========================================================
    */
   const togglePermission = (
     permissionUuid: string,
   ) => {
+    /*
+     * Required Company Admin permission
+     * cannot be manually toggled.
+     */
+    if (
+      isPermissionLocked(
+        permissionUuid,
+      )
+    ) {
+      return;
+    }
+
+
     setSelectedPermissions(
       (
         previous,
@@ -602,11 +725,6 @@ const RolePermissionPage = () => {
           );
 
 
-        /*
-         * allowedScopes configured
-         * nahi hai to permission
-         * assign nahi hogi.
-         */
         if (!defaultScope) {
           return previous;
         }
@@ -628,13 +746,27 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Selected permission ka
-   * scope change.
+   * =========================================================
+   * SCOPE CHANGE
+   * =========================================================
    */
   const handleScopeChange = (
     permissionUuid: string,
     scope: PermissionScope,
   ) => {
+    /*
+     * Required Company Admin permission
+     * scope is immutable.
+     */
+    if (
+      isPermissionLocked(
+        permissionUuid,
+      )
+    ) {
+      return;
+    }
+
+
     setSelectedPermissions(
       (
         previous,
@@ -658,16 +790,14 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Whole module/group toggle.
+   * =========================================================
+   * GROUP TOGGLE
+   * =========================================================
    */
   const toggleGroup = (
     group:
       PermissionGroup,
   ) => {
-    /*
-     * Empty allowedScopes wale
-     * permissions selectable nahi hain.
-     */
     const selectablePermissions =
       group.permissions.filter(
         (
@@ -683,8 +813,23 @@ const RolePermissionPage = () => {
       );
 
 
-    const groupPermissionUuids =
-      selectablePermissions.map(
+    /*
+     * Required permissions group clear/select
+     * operation se excluded hain.
+     */
+    const editablePermissions =
+      selectablePermissions.filter(
+        (
+          permission,
+        ) =>
+          !isPermissionLocked(
+            permission.uuid,
+          ),
+      );
+
+
+    const editablePermissionUuids =
+      editablePermissions.map(
         (
           permission,
         ) =>
@@ -692,10 +837,16 @@ const RolePermissionPage = () => {
       );
 
 
-    const allGroupSelected =
-      groupPermissionUuids.length >
-        0 &&
-      groupPermissionUuids.every(
+    if (
+      editablePermissionUuids.length ===
+      0
+    ) {
+      return;
+    }
+
+
+    const allEditableSelected =
+      editablePermissionUuids.every(
         (
           permissionUuid,
         ) =>
@@ -709,14 +860,19 @@ const RolePermissionPage = () => {
       (
         previous,
       ) => {
+        /*
+         * Clear optional permissions only.
+         *
+         * Locked permissions remain untouched.
+         */
         if (
-          allGroupSelected
+          allEditableSelected
         ) {
           return previous.filter(
             (
               permission,
             ) =>
-              !groupPermissionUuids.includes(
+              !editablePermissionUuids.includes(
                 permission
                   .permissionUuid,
               ),
@@ -743,7 +899,7 @@ const RolePermissionPage = () => {
 
         for (
           const permission
-          of selectablePermissions
+          of editablePermissions
         ) {
           if (
             alreadySelected.has(
@@ -785,11 +941,21 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Select/Clear all currently
-   * visible permissions.
+   * =========================================================
+   * SELECT / CLEAR VISIBLE
+   * =========================================================
    */
   const toggleAllVisible =
     () => {
+      if (
+        editableVisiblePermissionUuids
+          .length ===
+        0
+      ) {
+        return;
+      }
+
+
       setSelectedPermissions(
         (
           previous,
@@ -806,30 +972,35 @@ const RolePermissionPage = () => {
             );
 
 
-          const allVisibleSelected =
-            visiblePermissionUuids.length >
-              0 &&
-            visiblePermissionUuids.every(
-              (
-                permissionUuid,
-              ) =>
-                selectedUuids.has(
+          const allEditableVisibleSelected =
+            editableVisiblePermissionUuids
+              .every(
+                (
                   permissionUuid,
-                ),
-            );
+                ) =>
+                  selectedUuids.has(
+                    permissionUuid,
+                  ),
+              );
 
 
+          /*
+           * Clear visible OPTIONAL grants.
+           *
+           * Required permissions stay selected.
+           */
           if (
-            allVisibleSelected
+            allEditableVisibleSelected
           ) {
             return previous.filter(
               (
                 permission,
               ) =>
-                !visiblePermissionUuids.includes(
-                  permission
-                    .permissionUuid,
-                ),
+                !editableVisiblePermissionUuids
+                  .includes(
+                    permission
+                      .permissionUuid,
+                  ),
             );
           }
 
@@ -843,6 +1014,19 @@ const RolePermissionPage = () => {
             const permission
             of visiblePermissions
           ) {
+            /*
+             * Required permissions are not
+             * modified by bulk actions.
+             */
+            if (
+              isPermissionLocked(
+                permission.uuid,
+              )
+            ) {
+              continue;
+            }
+
+
             if (
               selectedUuids.has(
                 permission.uuid,
@@ -883,7 +1067,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Save role permissions.
+   * =========================================================
+   * SAVE
+   * =========================================================
    */
   const handleSave =
     async () => {
@@ -924,7 +1110,9 @@ const RolePermissionPage = () => {
 
 
   /*
-   * Restore last saved state.
+   * =========================================================
+   * RESET
+   * =========================================================
    */
   const handleReset =
     () => {
@@ -947,11 +1135,6 @@ const RolePermissionPage = () => {
 
   const actionLoading =
     savingPermissions;
-
-
-  const role =
-    rolePermissionData
-      ?.role;
 
 
   if (!uuid) {
@@ -1065,6 +1248,44 @@ const RolePermissionPage = () => {
               20,
           }}
         >
+          {isCompanyAdminRole && (
+            <div
+              style={{
+                padding:
+                  "12px 14px",
+
+                border:
+                  "1px solid var(--border-color, #e5e7eb)",
+
+                borderRadius:
+                  8,
+
+                background:
+                  "var(--surface-muted, #f8fafc)",
+
+                fontSize:
+                  13,
+
+                lineHeight:
+                  1.5,
+              }}
+            >
+              <strong>
+                Company Admin system role
+              </strong>
+
+              {" — "}
+
+              permissions marked as{" "}
+              <strong>
+                Required
+              </strong>{" "}
+              are protected from removal
+              and scope changes.
+            </div>
+          )}
+
+
           <div
             style={{
               display:
@@ -1115,7 +1336,7 @@ const RolePermissionPage = () => {
               variant="secondary"
               disabled={
                 loading ||
-                visiblePermissionUuids
+                editableVisiblePermissionUuids
                   .length ===
                   0
               }
@@ -1131,7 +1352,9 @@ const RolePermissionPage = () => {
                     }
                   />
 
-                  Clear Visible
+                  {isCompanyAdminRole
+                    ? "Clear Optional"
+                    : "Clear Visible"}
                 </>
               ) : (
                 <>
@@ -1178,6 +1401,19 @@ const RolePermissionPage = () => {
                 }
               </strong>
             </span>
+
+
+            {isCompanyAdminRole && (
+              <span>
+                Required permissions:{" "}
+                <strong>
+                  {
+                    lockedPermissionUuids
+                      .length
+                  }
+                </strong>
+              </span>
+            )}
 
 
             <span>
@@ -1228,25 +1464,36 @@ const RolePermissionPage = () => {
                     key={
                       group.module
                     }
+
                     group={
                       group
                     }
+
                     selectedPermissionUuids={
                       selectedPermissionUuids
                     }
+
                     permissionScopes={
                       permissionScopes
                     }
+
+                    lockedPermissionUuids={
+                      lockedPermissionUuids
+                    }
+
                     disabled={
                       loading ||
                       actionLoading
                     }
+
                     onTogglePermission={
                       togglePermission
                     }
+
                     onScopeChange={
                       handleScopeChange
                     }
+
                     onToggleGroup={
                       toggleGroup
                     }
