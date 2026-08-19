@@ -51,6 +51,51 @@ interface ReviewProjectTaskCompletionData {
 }
 
 
+/*
+ * =========================================================
+ * TASK REPORT ATTACHMENT VIEW
+ * =========================================================
+ *
+ * Manager / Company Admin project workspace
+ * ke liye private task report evidence.
+ *
+ * Backend temporary signed R2/S3 GET URL
+ * return karta hai.
+ */
+export interface ProjectTaskReportAttachmentViewAttachment {
+  uuid:
+    string;
+
+  type:
+    | "IMAGE"
+    | "DOCUMENT";
+
+  originalName:
+    string;
+
+  mimeType:
+    string;
+
+  fileSize:
+    number;
+
+  createdAt:
+    string;
+}
+
+
+export interface ProjectTaskReportAttachmentViewResponse {
+  attachment:
+    ProjectTaskReportAttachmentViewAttachment;
+
+  url:
+    string;
+
+  expiresInSeconds:
+    number;
+}
+
+
 export const getProjectTasks =
   async (
     projectUuid: string,
@@ -134,7 +179,9 @@ export const deleteProjectTask =
 
 
 /*
- * Manager completion review.
+ * =========================================================
+ * MANAGER COMPLETION REVIEW
+ * =========================================================
  *
  * APPROVED
  *   -> task becomes COMPLETED
@@ -162,6 +209,46 @@ export const reviewProjectTaskCompletion =
       >(
         `/projects/${projectUuid}/tasks/${taskUuid}/review-completion`,
         payload,
+      );
+
+    return data.data;
+  };
+
+
+/*
+ * =========================================================
+ * REPORT ATTACHMENT SIGNED VIEW URL
+ * =========================================================
+ *
+ * Project workspace:
+ *
+ * Manager / Company Admin report evidence
+ * ko private bucket se preview karne ke
+ * liye temporary signed GET URL.
+ *
+ * Important:
+ *
+ * - URL short-lived hai.
+ * - Frontend storageKey se public URL
+ *   construct nahi karega.
+ * - Authorization backend enforce karega.
+ */
+export const getProjectTaskReportAttachmentViewUrl =
+  async (
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+
+    attachmentUuid:
+      string,
+  ): Promise<ProjectTaskReportAttachmentViewResponse> => {
+    const { data } =
+      await api.get<
+        ApiResponse<ProjectTaskReportAttachmentViewResponse>
+      >(
+        `/projects/${projectUuid}/tasks/${taskUuid}/report-attachments/${attachmentUuid}/view-url`,
       );
 
     return data.data;

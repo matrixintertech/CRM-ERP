@@ -624,6 +624,252 @@ async findAll(
   );
 }
 
+
+/*
+ * =========================================================
+ * PROJECT TASK REPORT ATTACHMENT VIEW URL
+ * =========================================================
+ *
+ * Project workspace:
+ *
+ * Manager / Company Admin / authorized
+ * task viewer ke liye private evidence
+ * attachment ka temporary signed GET URL.
+ *
+ * Authorization:
+ *
+ * COMPANY
+ *   -> same company boundary enough
+ *
+ * PROJECT
+ *   -> active project membership required
+ *
+ * OWN / TEAM / ORGANIZATION_UNIT
+ *   -> project-wide workspace access
+ *      currently implemented nahi hai,
+ *      therefore fail closed.
+ *
+ * Important:
+ * Employee My Tasks attachment endpoint
+ * se separate authorization path hai.
+ */
+async getReportAttachmentViewUrl(
+  companyId:
+    | bigint
+    | null
+    | undefined,
+
+  projectUuid:
+    string,
+
+  taskUuid:
+    string,
+
+  attachmentUuid:
+    string,
+
+  userId:
+    bigint,
+
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  /*
+   * Project must belong to current
+   * company boundary.
+   */
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
+
+
+  /*
+   * Resolve fresh effective permissions.
+   *
+   * Do not authorize based on UserType.
+   */
+  const authorization =
+    await this.effectivePermissionService
+      .getAuthorization(
+        userId,
+      );
+
+
+  /*
+   * Defensive tenant boundary.
+   */
+  if (
+    !authorization.user.companyId ||
+    authorization.user.companyId !==
+      resolvedCompanyId
+  ) {
+    throw new ForbiddenException(
+      "Project task attachment access is not allowed outside your company.",
+    );
+  }
+
+
+  /*
+   * Same permission can be granted
+   * multiple times with different scopes.
+   */
+  const scopes =
+    Array.from(
+      new Set(
+        authorization
+          .companyPermissions
+          .filter(
+            (
+              permission,
+            ) =>
+              permission.code ===
+              "company.task.view",
+          )
+          .map(
+            (
+              permission,
+            ) =>
+              permission.scope,
+          ),
+      ),
+    );
+
+
+  if (
+    scopes.length ===
+    0
+  ) {
+    throw new ForbiddenException(
+      "You do not have permission to view project task attachments.",
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * COMPANY SCOPE
+   * =========================================================
+   *
+   * Company Admin normally reaches here
+   * through RolePermission.
+   *
+   * No employee context or project
+   * membership required.
+   */
+  if (
+    scopes.includes(
+      PermissionScope.COMPANY,
+    )
+  ) {
+    const projectTask =
+      await this.projectTaskRepository
+        .findByUuid(
+          resolvedCompanyId,
+          project.id,
+          taskUuid,
+        );
+
+
+    if (
+      !projectTask
+    ) {
+      throw new NotFoundException(
+        "Project task not found.",
+      );
+    }
+
+
+    return this
+      .projectTaskReportAttachmentService
+      .getProjectAttachmentViewUrl(
+        resolvedCompanyId,
+        taskUuid,
+        attachmentUuid,
+      );
+  }
+
+
+  /*
+   * =========================================================
+   * PROJECT SCOPE
+   * =========================================================
+   *
+   * Project manager must be active
+   * member of the requested project.
+   */
+  if (
+    scopes.includes(
+      PermissionScope.PROJECT,
+    )
+  ) {
+    const resolvedEmployeeId =
+      this.ensureEmployeeContext(
+        employeeId,
+      );
+
+
+    await this.ensureActiveProjectMembership(
+      resolvedCompanyId,
+      project.id,
+      resolvedEmployeeId,
+    );
+
+
+    /*
+     * Ensure requested task belongs
+     * to the same company + project.
+     */
+    const projectTask =
+      await this.projectTaskRepository
+        .findByUuid(
+          resolvedCompanyId,
+          project.id,
+          taskUuid,
+        );
+
+
+    if (
+      !projectTask
+    ) {
+      throw new NotFoundException(
+        "Project task not found.",
+      );
+    }
+
+
+    return this
+      .projectTaskReportAttachmentService
+      .getProjectAttachmentViewUrl(
+        resolvedCompanyId,
+        taskUuid,
+        attachmentUuid,
+      );
+  }
+
+
+  /*
+   * OWN / TEAM / ORGANIZATION_UNIT
+   *
+   * Project workspace visibility rules
+   * are not implemented for these scopes.
+   *
+   * Never widen access implicitly.
+   */
+  throw new ForbiddenException(
+    "Your permission scope does not allow viewing attachments for all tasks in this project.",
+  );
+}
+
   /*
  * Logged-in employee ke
  * assigned tasks across projects.

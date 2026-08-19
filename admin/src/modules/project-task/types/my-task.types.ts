@@ -25,9 +25,17 @@ export type MyTaskReportAttachmentType =
   | "DOCUMENT";
 
 
+export type MyTaskCompletionStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+
+
 export interface MyTaskProject {
   uuid: string;
+
   srn: string;
+
   name: string;
 }
 
@@ -47,11 +55,13 @@ export interface MyTaskEmployee {
 
   designation?: {
     uuid: string;
+
     name: string;
   } | null;
 
   department?: {
     uuid: string;
+
     name: string;
   } | null;
 }
@@ -59,7 +69,9 @@ export interface MyTaskEmployee {
 
 export interface MyTaskProjectRole {
   uuid: string;
+
   name: string;
+
   code: string;
 }
 
@@ -92,13 +104,32 @@ export interface MyTaskWorkSession {
 }
 
 
+/*
+ * =========================================================
+ * COMPLETION REQUEST HISTORY
+ * =========================================================
+ *
+ * Employee jab completion request karta hai
+ * to request PENDING hoti hai.
+ *
+ * Manager review ke baad:
+ *
+ * APPROVED
+ * ya
+ * REJECTED
+ *
+ * REJECTED ko frontend activity me
+ * "CHANGES REQUESTED" ke label se
+ * display kar sakte hain.
+ */
 export interface MyTaskCompletionRequest {
   uuid: string;
 
   status:
-    | "PENDING"
-    | "APPROVED"
-    | "REJECTED";
+    MyTaskCompletionStatus;
+
+  workedSeconds:
+    number;
 
   requestedAt:
     string;
@@ -108,6 +139,45 @@ export interface MyTaskCompletionRequest {
 
   reviewNote?:
     string | null;
+
+
+  /*
+   * Manager / reviewer user.
+   *
+   * Backend currently reviewer UUID
+   * return karega.
+   *
+   * Later displayName/email/profile
+   * add kiya ja sakta hai.
+   */
+  reviewedByUser?:
+    {
+      uuid:
+        string;
+    } | null;
+
+
+  /*
+   * Completion request jis dedicated
+   * COMPLETION report se linked hai.
+   */
+  report:
+    {
+      uuid:
+        string;
+
+      type:
+        "COMPLETION";
+
+      message:
+        string;
+
+      taskStatusSnapshot:
+        ProjectTaskStatus;
+
+      createdAt:
+        string;
+    };
 }
 
 
@@ -271,16 +341,34 @@ export interface MyTask {
 
 
   /*
-   * Backend currently returns
-   * latest OPEN session only.
+   * Backend returns latest
+   * OPEN work session only.
    */
   workSessions:
     MyTaskWorkSession[];
 
 
   /*
-   * Backend currently returns
-   * latest PENDING request only.
+   * =========================================================
+   * COMPLETION REQUEST HISTORY
+   * =========================================================
+   *
+   * Backend now returns recent completion
+   * requests, including reviewed requests.
+   *
+   * Activity timeline can use:
+   *
+   * PENDING
+   * APPROVED
+   * REJECTED
+   *
+   * Note:
+   * COMPLETION submission itself is already
+   * present in reports[].
+   *
+   * Therefore activity modal should mainly
+   * create manager review events from
+   * reviewed completion requests.
    */
   completionRequests:
     MyTaskCompletionRequest[];
@@ -292,7 +380,7 @@ export interface MyTask {
    *
    * Newest report first.
    *
-   * Each report can now contain
+   * Each report can contain
    * evidence attachments.
    */
   reports:

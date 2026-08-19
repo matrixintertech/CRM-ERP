@@ -127,7 +127,7 @@ export class ProjectTaskRepository {
   }
 
 
- async findAllByProject(
+async findAllByProject(
   companyId: bigint,
   projectId: bigint,
 ) {
@@ -142,6 +142,11 @@ export class ProjectTaskRepository {
     },
 
     include: {
+      /*
+       * =====================================================
+       * ASSIGNED PROJECT MEMBER
+       * =====================================================
+       */
       assignedProjectMember: {
         include: {
           employee: {
@@ -161,24 +166,39 @@ export class ProjectTaskRepository {
 
 
       /*
-       * Manager review ke liye
-       * latest PENDING completion
-       * request return karo.
+       * =====================================================
+       * COMPLETION REQUEST HISTORY
+       * =====================================================
+       *
+       * Earlier:
+       * sirf latest PENDING request return
+       * hoti thi.
+       *
+       * Now:
+       * recent completion request history
+       * return hogi:
+       *
+       * PENDING
+       * APPROVED
+       * REJECTED
+       *
+       * Manager review UI:
+       * COMPLETION_REQUESTED task ka latest
+       * request normally PENDING hi hoga.
+       *
+       * Activity timeline:
+       * APPROVED / REJECTED reviews ko
+       * manager activity event ke roop me
+       * show kar sakti hai.
        */
       completionRequests: {
-        where: {
-          status:
-            ProjectTaskCompletionStatus
-              .PENDING,
-        },
-
         orderBy: {
           requestedAt:
             "desc",
         },
 
         take:
-          1,
+          20,
 
         select: {
           uuid:
@@ -193,13 +213,31 @@ export class ProjectTaskRepository {
           requestedAt:
             true,
 
+          reviewedAt:
+            true,
+
           reviewNote:
             true,
 
+
           /*
-           * Employee jis project
-           * membership se request
-           * submit kiya.
+           * Manager / reviewer.
+           *
+           * Currently UUID return kar rahe
+           * hain.
+           */
+          reviewedByUser: {
+            select: {
+              uuid:
+                true,
+            },
+          },
+
+
+          /*
+           * Employee jis project membership
+           * se completion request submit
+           * ki thi.
            */
           requestedByProjectMember: {
             select: {
@@ -262,9 +300,8 @@ export class ProjectTaskRepository {
 
 
           /*
-           * Completion summary
-           * employee ne request ke
-           * time submit ki thi.
+           * Completion request jis dedicated
+           * COMPLETION report se linked hai.
            */
           report: {
             select: {
@@ -284,6 +321,151 @@ export class ProjectTaskRepository {
                 true,
             },
           },
+        },
+      },
+
+
+      /*
+       * =====================================================
+       * TASK ACTIVITY REPORTS
+       * =====================================================
+       *
+       * Manager / Company Admin project
+       * workspace activity modal ke liye.
+       *
+       * PROGRESS
+       * BLOCKER
+       * NOTE
+       * COMPLETION
+       *
+       * Evidence attachment metadata bhi
+       * return hoti hai.
+       */
+      reports: {
+        orderBy: {
+          createdAt:
+            "desc",
+        },
+
+        take:
+          20,
+
+        select: {
+          uuid:
+            true,
+
+          type:
+            true,
+
+          message:
+            true,
+
+          taskStatusSnapshot:
+            true,
+
+          createdAt:
+            true,
+
+
+          /*
+           * Report evidence.
+           *
+           * Private signed URL yahan nahi
+           * return hota.
+           *
+           * Frontend attachment UUID se
+           * signed view URL request karega.
+           */
+          attachments: {
+            orderBy: {
+              createdAt:
+                "asc",
+            },
+
+            select: {
+              uuid:
+                true,
+
+              type:
+                true,
+
+              originalName:
+                true,
+
+              mimeType:
+                true,
+
+              sizeBytes:
+                true,
+
+              storageKey:
+                true,
+
+              createdAt:
+                true,
+            },
+          },
+
+
+          /*
+           * Report kis employee/project
+           * member ne create kiya.
+           */
+          projectMember: {
+            select: {
+              uuid:
+                true,
+
+              employee: {
+                select: {
+                  uuid:
+                    true,
+
+                  displayName:
+                    true,
+
+                  firstName:
+                    true,
+
+                  lastName:
+                    true,
+                },
+              },
+
+              projectRole: {
+                select: {
+                  uuid:
+                    true,
+
+                  name:
+                    true,
+
+                  code:
+                    true,
+                },
+              },
+            },
+          },
+        },
+      },
+
+
+      /*
+       * =====================================================
+       * ACTIVITY COUNT
+       * =====================================================
+       *
+       * Frontend:
+       * View Activity (5)
+       *
+       * Ye actual report count hai.
+       * completion review events separate
+       * history hain.
+       */
+      _count: {
+        select: {
+          reports:
+            true,
         },
       },
     },
@@ -471,24 +653,100 @@ async findMyTasks(
       },
 
       /*
-       * Pending completion request
-       * frontend ko "Waiting Review"
-       * state show karne ke liye.
-       */
-      completionRequests: {
-        where: {
-          status:
-            ProjectTaskCompletionStatus.PENDING,
-        },
+ * =========================================================
+ * COMPLETION REQUEST HISTORY
+ * =========================================================
+ *
+ * My Tasks ko sirf current PENDING request
+ * nahi, recent completion review history bhi
+ * chahiye.
+ *
+ * Isse activity timeline me:
+ *
+ * - pending completion request
+ * - manager requested changes / rejected
+ * - manager approved
+ *
+ * show kiya ja sakta hai.
+ *
+ * COMPLETION submission itself already
+ * reports[] me COMPLETION report ke form me
+ * present hai.
+ *
+ * completionRequests[] ko primarily manager
+ * review outcome/activity ke liye use karenge.
+ */
+completionRequests: {
+  orderBy: {
+    requestedAt:
+      "desc",
+  },
 
-        orderBy: {
-          requestedAt:
-            "desc",
-        },
+  take:
+    20,
 
-        take:
-          1,
+  select: {
+    uuid:
+      true,
+
+    status:
+      true,
+
+    workedSeconds:
+      true,
+
+    requestedAt:
+      true,
+
+    reviewedAt:
+      true,
+
+    reviewNote:
+      true,
+
+
+    /*
+     * Manager / reviewer identity.
+     *
+     * Abhi UUID enough hai.
+     * Frontend generic "Manager" label
+     * dikha sakta hai.
+     *
+     * Later reviewer display name bhi
+     * expose kar sakte hain.
+     */
+    reviewedByUser: {
+      select: {
+        uuid:
+          true,
       },
+    },
+
+
+    /*
+     * Kis COMPLETION report ke against
+     * ye request/review hua tha.
+     */
+    report: {
+      select: {
+        uuid:
+          true,
+
+        type:
+          true,
+
+        message:
+          true,
+
+        taskStatusSnapshot:
+          true,
+
+        createdAt:
+          true,
+      },
+    },
+  },
+},
 
       /*
        * Latest task reports / activity.

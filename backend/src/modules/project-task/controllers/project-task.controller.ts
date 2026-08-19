@@ -508,6 +508,104 @@ export class ProjectTaskController {
       );
   }
 
+/*
+ * =========================================================
+ * PROJECT TASK REPORT ATTACHMENT VIEW
+ * =========================================================
+ *
+ * Manager / Company Admin / authorized
+ * project-task viewer:
+ *
+ * Private report evidence ke liye
+ * temporary signed GET URL generate karo.
+ *
+ * Authorization:
+ *
+ * - PermissionGuard:
+ *   company.task.view
+ *
+ * - Service:
+ *   effective permission scope enforce karega
+ *
+ * PROJECT:
+ *   active project membership required
+ *
+ * COMPANY:
+ *   same company project/task allowed
+ *
+ * OWN / TEAM / ORGANIZATION_UNIT:
+ *   existing task visibility rules ke
+ *   according service fail-closed karega.
+ *
+ * Important:
+ * Employee My Tasks endpoint se separate hai.
+ */
+@Get(
+  ":taskUuid/report-attachments/:attachmentUuid/view-url",
+)
+@RequirePermission(
+  "company.task.view",
+)
+@ApiOperation({
+  summary:
+    "Get temporary view URL for project task report attachment",
+})
+@ApiParam({
+  name:
+    "projectUuid",
+
+  description:
+    "Project UUID",
+})
+@ApiParam({
+  name:
+    "taskUuid",
+
+  description:
+    "Project Task UUID",
+})
+@ApiParam({
+  name:
+    "attachmentUuid",
+
+  description:
+    "Project Task Report Attachment UUID",
+})
+getReportAttachmentViewUrl(
+  @Req()
+  req: AuthenticatedRequest,
+
+  @Param(
+    "projectUuid",
+  )
+  projectUuid: string,
+
+  @Param(
+    "taskUuid",
+  )
+  taskUuid: string,
+
+  @Param(
+    "attachmentUuid",
+  )
+  attachmentUuid: string,
+) {
+  return this.projectTaskService
+    .getReportAttachmentViewUrl(
+      req.user.companyId,
+      projectUuid,
+      taskUuid,
+      attachmentUuid,
+      req.user.id,
+      req.user.employeeId,
+    );
+}
+
+
+
+
+
+
 
   /*
    * View task details.

@@ -1,6 +1,7 @@
 import {
   useEffect,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
@@ -16,16 +17,12 @@ import Modal from "@/shared/components/Modal";
 import Button from "@/shared/components/Button";
 
 import {
-  getMyTaskReportAttachmentViewUrl,
-} from "../api/my-task.api";
+  getProjectTaskReportAttachmentViewUrl,
+} from "../../api/project-task.api";
 
 import type {
-  MyTask,
-  MyTaskCompletionRequest,
-  MyTaskReport,
-  MyTaskReportAttachment,
-  MyTaskReportType,
-} from "../types/my-task.types";
+  ProjectTask,
+} from "../../types/project-task.types";
 
 
 const VISIBLE_EVIDENCE_COUNT =
@@ -33,11 +30,11 @@ const VISIBLE_EVIDENCE_COUNT =
 
 
 /*
- * Backend signed URL currently
- * expires after 300 seconds.
+ * Backend signed URL expires
+ * after 300 seconds.
  *
- * Keep cache slightly shorter
- * than signed URL lifetime.
+ * Keep frontend cache slightly
+ * shorter than URL lifetime.
  */
 const SIGNED_URL_STALE_TIME =
   4 * 60 * 1000;
@@ -46,19 +43,154 @@ const SIGNED_URL_GC_TIME =
   5 * 60 * 1000;
 
 
-interface TaskActivityModalProps {
-  open:
-    boolean;
+type ActivityReportType =
+  | "PROGRESS"
+  | "BLOCKER"
+  | "NOTE"
+  | "COMPLETION";
 
-  task:
-    MyTask | null;
 
-  onClose:
-    () => void;
+type ActivityCompletionStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
+
+
+interface ActivityAttachment {
+  uuid:
+    string;
+
+  type:
+    | "IMAGE"
+    | "DOCUMENT";
+
+  originalName:
+    string;
+
+  mimeType:
+    string;
+
+  sizeBytes:
+    string | number;
+
+  storageKey:
+    string;
+
+  createdAt:
+    string;
 }
 
 
-type TaskActivityTimelineItem =
+interface ActivityReport {
+  uuid:
+    string;
+
+  type:
+    ActivityReportType;
+
+  message:
+    string;
+
+  taskStatusSnapshot:
+    string;
+
+  createdAt:
+    string;
+
+  attachments?:
+    ActivityAttachment[];
+
+  projectMember?: {
+    uuid:
+      string;
+
+    employee?: {
+      uuid:
+        string;
+
+      displayName?:
+        string | null;
+
+      firstName?:
+        string | null;
+
+      lastName?:
+        string | null;
+    } | null;
+
+    projectRole?: {
+      uuid:
+        string;
+
+      name:
+        string;
+
+      code:
+        string;
+    } | null;
+  } | null;
+}
+
+
+interface ActivityCompletionRequest {
+  uuid:
+    string;
+
+  status:
+    ActivityCompletionStatus;
+
+  workedSeconds?:
+    number;
+
+  requestedAt:
+    string;
+
+  reviewedAt?:
+    string | null;
+
+  reviewNote?:
+    string | null;
+
+  reviewedByUser?: {
+    uuid:
+      string;
+  } | null;
+
+  report?: {
+    uuid:
+      string;
+
+    type:
+      ActivityReportType;
+
+    message:
+      string;
+
+    taskStatusSnapshot:
+      string;
+
+    createdAt:
+      string;
+  } | null;
+}
+
+
+type ProjectTaskWithActivity =
+  ProjectTask & {
+    reports?:
+      ActivityReport[];
+
+    completionRequests?:
+      ActivityCompletionRequest[];
+
+    _count?: {
+      reports:
+        number;
+    };
+  };
+
+
+type TimelineItem =
   | {
       kind:
         "REPORT";
@@ -70,7 +202,7 @@ type TaskActivityTimelineItem =
         string;
 
       report:
-        MyTaskReport;
+        ActivityReport;
     }
   | {
       kind:
@@ -83,22 +215,44 @@ type TaskActivityTimelineItem =
         string;
 
       completionRequest:
-        MyTaskCompletionRequest;
+        ActivityCompletionRequest;
     };
 
 
-const TaskActivityModal = ({
+interface Props {
+  open:
+    boolean;
+
+  projectUuid:
+    string;
+
+  task:
+    ProjectTask | null;
+
+  onClose:
+    () => void;
+}
+
+
+const ProjectTaskActivityModal = ({
   open,
+  projectUuid,
   task,
   onClose,
-}: TaskActivityModalProps) => {
- 
-   const activityItems =
-  task
-    ? buildTaskActivityTimeline(
-        task,
-      )
-    : [];
+}: Props) => {
+  const activityTask =
+    task as
+      | ProjectTaskWithActivity
+      | null;
+
+
+  const activityItems =
+    activityTask
+      ? buildActivityTimeline(
+          activityTask,
+        )
+      : [];
+
 
   return (
     <Modal
@@ -111,7 +265,7 @@ const TaskActivityModal = ({
       }
       size="lg"
     >
-      {!task ? (
+      {!activityTask ? (
         <div
           style={{
             padding:
@@ -136,8 +290,11 @@ const TaskActivityModal = ({
               20,
           }}
         >
-          {/* Task Header */}
-
+          {/*
+           * =================================================
+           * TASK HEADER
+           * =================================================
+           */}
           <section
             style={{
               padding:
@@ -166,31 +323,7 @@ const TaskActivityModal = ({
               }}
             >
               {
-                task.title
-              }
-            </div>
-
-
-            <div
-              style={{
-                marginTop:
-                  5,
-
-                color:
-                  "#6b7280",
-
-                fontSize:
-                  12,
-              }}
-            >
-              {
-                task.project.name
-              }
-
-              {" · "}
-
-              {
-                task.project.srn
+                activityTask.title
               }
             </div>
 
@@ -213,7 +346,9 @@ const TaskActivityModal = ({
               <InfoBadge
                 label="Status"
                 value={
-                  task.status.replace(
+                  String(
+                    activityTask.status,
+                  ).replace(
                     /_/g,
                     " ",
                   )
@@ -224,20 +359,18 @@ const TaskActivityModal = ({
               <InfoBadge
                 label="Priority"
                 value={
-                  task.priority
+                  String(
+                    activityTask.priority,
+                  )
                 }
               />
 
 
               <InfoBadge
-                label="Updates"
+                label="Activity"
                 value={
                   String(
-                    task._count
-                      ?.reports ??
-                    task.reports
-                      ?.length ??
-                    0,
+                    activityItems.length,
                   )
                 }
               />
@@ -245,8 +378,11 @@ const TaskActivityModal = ({
           </section>
 
 
-          {/* Activity Timeline */}
-
+          {/*
+           * =================================================
+           * ACTIVITY TIMELINE
+           * =================================================
+           */}
           <section>
             <div
               style={{
@@ -267,84 +403,90 @@ const TaskActivityModal = ({
             </div>
 
 
-         {activityItems.length ===
-  0 ? (
-  <div
-    style={{
-      padding:
-        "28px 16px",
+            {activityItems.length ===
+              0 ? (
+              <div
+                style={{
+                  padding:
+                    "28px 16px",
 
-      border:
-        "1px dashed #d1d5db",
+                  border:
+                    "1px dashed #d1d5db",
 
-      borderRadius:
-        10,
+                  borderRadius:
+                    10,
 
-      color:
-        "#6b7280",
+                  color:
+                    "#6b7280",
 
-      textAlign:
-        "center",
+                  textAlign:
+                    "center",
 
-      fontSize:
-        13,
-    }}
-  >
-    No task activity yet.
-  </div>
-) : (
-  <div
-    style={{
-      display:
-        "grid",
+                  fontSize:
+                    13,
+                }}
+              >
+                No task activity yet.
+              </div>
+            ) : (
+              <div
+                style={{
+                  display:
+                    "grid",
 
-      gap:
-        14,
-    }}
-  >
-    {activityItems.map(
-      (
-        item,
-      ) => {
-        if (
-          item.kind ===
-          "REPORT"
-        ) {
-          return (
-            <ActivityItem
-              key={
-                item.key
-              }
-              taskUuid={
-                task.uuid
-              }
-              report={
-                item.report
-              }
-            />
-          );
-        }
+                  gap:
+                    14,
+                }}
+              >
+                {activityItems.map(
+                  (
+                    item,
+                  ) => {
+                    if (
+                      item.kind ===
+                      "REPORT"
+                    ) {
+                      return (
+                        <ReportActivityItem
+                          key={
+                            item.key
+                          }
+                          projectUuid={
+                            projectUuid
+                          }
+                          taskUuid={
+                            activityTask.uuid
+                          }
+                          report={
+                            item.report
+                          }
+                        />
+                      );
+                    }
 
 
-        return (
-          <CompletionReviewActivityItem
-            key={
-              item.key
-            }
-            completionRequest={
-              item.completionRequest
-            }
-          />
-        );
-      },
-    )}
-  </div>
-)}
+                    return (
+                      <CompletionReviewActivityItem
+                        key={
+                          item.key
+                        }
+                        completionRequest={
+                          item.completionRequest
+                        }
+                      />
+                    );
+                  },
+                )}
+              </div>
+            )}
           </section>
 
 
-          {/* Footer */}
-
+          {/*
+           * =================================================
+           * FOOTER
+           * =================================================
+           */}
           <div
             style={{
               display:
@@ -379,21 +521,25 @@ const TaskActivityModal = ({
 
 /*
  * =========================================================
- * ACTIVITY ITEM
+ * REPORT ACTIVITY
  * =========================================================
  */
-const ActivityItem = ({
+const ReportActivityItem = ({
+  projectUuid,
   taskUuid,
   report,
 }: {
+  projectUuid:
+    string;
+
   taskUuid:
     string;
 
   report:
-    MyTaskReport;
+    ActivityReport;
 }) => {
   const config =
-    getActivityConfig(
+    getReportConfig(
       report.type,
     );
 
@@ -401,7 +547,8 @@ const ActivityItem = ({
   const employeeName =
     report.projectMember
       ?.employee
-      ?.displayName?.trim() ||
+      ?.displayName
+      ?.trim() ||
     [
       report.projectMember
         ?.employee
@@ -414,7 +561,9 @@ const ActivityItem = ({
       .filter(
         Boolean,
       )
-      .join(" ") ||
+      .join(
+        " ",
+      ) ||
     "Employee";
 
 
@@ -438,91 +587,27 @@ const ActivityItem = ({
 
 
   return (
-    <article
-      style={{
-        display:
-          "grid",
-
-        gridTemplateColumns:
-          "12px minmax(0, 1fr)",
-
-        gap:
-          12,
-      }}
+    <TimelineCard
+      color={
+        config.color
+      }
     >
-      {/* Timeline Marker */}
-
       <div
         style={{
           display:
             "flex",
 
-          flexDirection:
-            "column",
+          justifyContent:
+            "space-between",
 
           alignItems:
-            "center",
-        }}
-      >
-        <div
-          style={{
-            width:
-              10,
+            "flex-start",
 
-            height:
-              10,
+          flexWrap:
+            "wrap",
 
-            marginTop:
-              5,
-
-            borderRadius:
-              "50%",
-
-            background:
-              config.color,
-
-            flexShrink:
-              0,
-          }}
-        />
-
-
-        <div
-          style={{
-            width:
-              1,
-
-            minHeight:
-              75,
-
-            flex:
-              1,
-
-            marginTop:
-              5,
-
-            background:
-              "#e5e7eb",
-          }}
-        />
-      </div>
-
-
-      {/* Activity Content */}
-
-      <div
-        style={{
-          padding:
-            "12px 14px",
-
-          border:
-            "1px solid #e5e7eb",
-
-          borderRadius:
+          gap:
             10,
-
-          background:
-            "#ffffff",
         }}
       >
         <div
@@ -530,82 +615,27 @@ const ActivityItem = ({
             display:
               "flex",
 
-            justifyContent:
-              "space-between",
-
             alignItems:
-              "flex-start",
+              "center",
+
+            gap:
+              8,
 
             flexWrap:
               "wrap",
-
-            gap:
-              10,
           }}
         >
-          <div
-            style={{
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              gap:
-                8,
-
-              flexWrap:
-                "wrap",
-            }}
-          >
-            <span
-              style={{
-                padding:
-                  "4px 8px",
-
-                borderRadius:
-                  999,
-
-                background:
-                  config.background,
-
-                color:
-                  config.color,
-
-                fontSize:
-                  11,
-
-                fontWeight:
-                  700,
-              }}
-            >
-              {
-                config.label
-              }
-            </span>
-
-
-            <span
-              style={{
-                color:
-                  "#6b7280",
-
-                fontSize:
-                  11,
-              }}
-            >
-              Status:{" "}
-
-              {
-                report
-                  .taskStatusSnapshot
-                  .replace(
-                    /_/g,
-                    " ",
-                  )
-              }
-            </span>
-          </div>
+          <ActivityLabel
+            label={
+              config.label
+            }
+            color={
+              config.color
+            }
+            background={
+              config.background
+            }
+          />
 
 
           <span
@@ -615,126 +645,140 @@ const ActivityItem = ({
 
               fontSize:
                 11,
-
-              whiteSpace:
-                "nowrap",
             }}
           >
+            Status:{" "}
+
             {
-              formatDateTime(
-                report.createdAt,
+              String(
+                report
+                  .taskStatusSnapshot,
+              ).replace(
+                /_/g,
+                " ",
               )
             }
           </span>
         </div>
 
 
-        {/* Report Message */}
-
-        <div
+        <span
           style={{
-            marginTop:
-              12,
-
-            color:
-              "#374151",
-
-            fontSize:
-              14,
-
-            lineHeight:
-              1.6,
-
-            whiteSpace:
-              "pre-wrap",
-
-            overflowWrap:
-              "anywhere",
-          }}
-        >
-          {
-            report.message
-          }
-        </div>
-
-
-        {/* Evidence Gallery */}
-
-        {imageAttachments.length >
-          0 && (
-          <EvidenceGallery
-            taskUuid={
-              taskUuid
-            }
-            attachments={
-              imageAttachments
-            }
-          />
-        )}
-
-
-        {/* Employee */}
-
-        <div
-          style={{
-            marginTop:
-              12,
-
-            paddingTop:
-              10,
-
-            borderTop:
-              "1px solid #f3f4f6",
-
             color:
               "#6b7280",
 
             fontSize:
               11,
+
+            whiteSpace:
+              "nowrap",
           }}
         >
           {
-            employeeName
+            formatDateTime(
+              report.createdAt,
+            )
           }
-
-
-          {projectRole && (
-            <>
-              {" · "}
-
-              {
-                projectRole
-              }
-            </>
-          )}
-        </div>
+        </span>
       </div>
-    </article>
+
+
+      <div
+        style={{
+          marginTop:
+            12,
+
+          color:
+            "#374151",
+
+          fontSize:
+            14,
+
+          lineHeight:
+            1.6,
+
+          whiteSpace:
+            "pre-wrap",
+
+          overflowWrap:
+            "anywhere",
+        }}
+      >
+        {
+          report.message
+        }
+      </div>
+
+
+      {/*
+       * =====================================================
+       * EVIDENCE GALLERY
+       * =====================================================
+       */}
+      {imageAttachments.length >
+        0 && (
+        <EvidenceGallery
+          projectUuid={
+            projectUuid
+          }
+          taskUuid={
+            taskUuid
+          }
+          attachments={
+            imageAttachments
+          }
+        />
+      )}
+
+
+      <div
+        style={{
+          marginTop:
+            12,
+
+          paddingTop:
+            10,
+
+          borderTop:
+            "1px solid #f3f4f6",
+
+          color:
+            "#6b7280",
+
+          fontSize:
+            11,
+        }}
+      >
+        {
+          employeeName
+        }
+
+
+        {projectRole && (
+          <>
+            {" · "}
+
+            {
+              projectRole
+            }
+          </>
+        )}
+      </div>
+    </TimelineCard>
   );
 };
 
 
-
 /*
  * =========================================================
- * COMPLETION REVIEW ACTIVITY
+ * MANAGER REVIEW ACTIVITY
  * =========================================================
- *
- * Manager review:
- *
- * REJECTED
- *   ↓
- * CHANGES REQUESTED
- *
- * APPROVED
- *   ↓
- * APPROVED
  */
 const CompletionReviewActivityItem = ({
   completionRequest,
 }: {
   completionRequest:
-    MyTaskCompletionRequest;
+    ActivityCompletionRequest;
 }) => {
   const approved =
     completionRequest.status ===
@@ -784,95 +828,27 @@ const CompletionReviewActivityItem = ({
 
 
   return (
-    <article
-      style={{
-        display:
-          "grid",
-
-        gridTemplateColumns:
-          "12px minmax(0, 1fr)",
-
-        gap:
-          12,
-      }}
+    <TimelineCard
+      color={
+        color
+      }
     >
-      {/* Timeline Marker */}
-
       <div
         style={{
           display:
             "flex",
 
-          flexDirection:
-            "column",
+          justifyContent:
+            "space-between",
 
           alignItems:
-            "center",
-        }}
-      >
-        <div
-          style={{
-            width:
-              10,
+            "flex-start",
 
-            height:
-              10,
+          flexWrap:
+            "wrap",
 
-            marginTop:
-              5,
-
-            borderRadius:
-              "50%",
-
-            background:
-              color,
-
-            flexShrink:
-              0,
-          }}
-        />
-
-
-        <div
-          style={{
-            width:
-              1,
-
-            minHeight:
-              75,
-
-            flex:
-              1,
-
-            marginTop:
-              5,
-
-            background:
-              "#e5e7eb",
-          }}
-        />
-      </div>
-
-
-      {/* Review Content */}
-
-      <div
-        style={{
-          padding:
-            "12px 14px",
-
-          border:
-            `1px solid ${
-              approved
-                ? "#bbf7d0"
-                : "#fed7aa"
-            }`,
-
-          borderRadius:
+          gap:
             10,
-
-          background:
-            "#ffffff",
         }}
       >
         <div
@@ -880,75 +856,27 @@ const CompletionReviewActivityItem = ({
             display:
               "flex",
 
-            justifyContent:
-              "space-between",
-
             alignItems:
-              "flex-start",
+              "center",
+
+            gap:
+              8,
 
             flexWrap:
               "wrap",
-
-            gap:
-              10,
           }}
         >
-          <div
-            style={{
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              gap:
-                8,
-
-              flexWrap:
-                "wrap",
-            }}
-          >
-            <span
-              style={{
-                padding:
-                  "4px 8px",
-
-                borderRadius:
-                  999,
-
-                background,
-
-                color,
-
-                fontSize:
-                  11,
-
-                fontWeight:
-                  700,
-              }}
-            >
-              {
-                label
-              }
-            </span>
-
-
-            <span
-              style={{
-                color:
-                  "#6b7280",
-
-                fontSize:
-                  11,
-              }}
-            >
-              Result:{" "}
-
-              {
-                resultStatus
-              }
-            </span>
-          </div>
+          <ActivityLabel
+            label={
+              label
+            }
+            color={
+              color
+            }
+            background={
+              background
+            }
+          />
 
 
           <span
@@ -958,78 +886,91 @@ const CompletionReviewActivityItem = ({
 
               fontSize:
                 11,
-
-              whiteSpace:
-                "nowrap",
             }}
           >
+            Result:{" "}
+
             {
-              formatDateTime(
-                completionRequest
-                  .reviewedAt,
-              )
+              resultStatus
             }
           </span>
         </div>
 
 
-        {/* Manager Note */}
-
-        <div
+        <span
           style={{
-            marginTop:
-              12,
-
-            color:
-              "#374151",
-
-            fontSize:
-              14,
-
-            lineHeight:
-              1.6,
-
-            whiteSpace:
-              "pre-wrap",
-
-            overflowWrap:
-              "anywhere",
-          }}
-        >
-          {
-            message
-          }
-        </div>
-
-
-        {/* Review Meta */}
-
-        <div
-          style={{
-            marginTop:
-              12,
-
-            paddingTop:
-              10,
-
-            borderTop:
-              "1px solid #f3f4f6",
-
             color:
               "#6b7280",
 
             fontSize:
               11,
+
+            whiteSpace:
+              "nowrap",
           }}
         >
-          Manager review
-
-          {" · "}
-
-          Completion request
-        </div>
+          {
+            formatDateTime(
+              completionRequest
+                .reviewedAt,
+            )
+          }
+        </span>
       </div>
-    </article>
+
+
+      <div
+        style={{
+          marginTop:
+            12,
+
+          color:
+            "#374151",
+
+          fontSize:
+            14,
+
+          lineHeight:
+            1.6,
+
+          whiteSpace:
+            "pre-wrap",
+
+          overflowWrap:
+            "anywhere",
+        }}
+      >
+        {
+          message
+        }
+      </div>
+
+
+      <div
+        style={{
+          marginTop:
+            12,
+
+          paddingTop:
+            10,
+
+          borderTop:
+            "1px solid #f3f4f6",
+
+          color:
+            "#6b7280",
+
+          fontSize:
+            11,
+        }}
+      >
+        Manager review
+
+        {" · "}
+
+        Completion request
+      </div>
+    </TimelineCard>
   );
 };
 
@@ -1039,22 +980,24 @@ const CompletionReviewActivityItem = ({
  * EVIDENCE GALLERY
  * =========================================================
  *
- * Compact activity timeline gallery:
- *
- * 1 -> one image
- * 2 -> two images
- * 3 -> three images
- * 4+ -> first three with +N overlay
+ * 1 image  -> one tile
+ * 2 images -> two tiles
+ * 3 images -> three tiles
+ * 4+       -> first three + overlay
  */
 const EvidenceGallery = ({
+  projectUuid,
   taskUuid,
   attachments,
 }: {
+  projectUuid:
+    string;
+
   taskUuid:
     string;
 
   attachments:
-    MyTaskReportAttachment[];
+    ActivityAttachment[];
 }) => {
   const [
     activeIndex,
@@ -1062,7 +1005,9 @@ const EvidenceGallery = ({
   ] =
     useState<
       number | null
-    >(null);
+    >(
+      null,
+    );
 
 
   const visibleAttachments =
@@ -1144,8 +1089,7 @@ const EvidenceGallery = ({
           >
             {
               attachments.length
-            }
-            {" "}
+            }{" "}
             {
               attachments.length ===
               1
@@ -1192,6 +1136,9 @@ const EvidenceGallery = ({
                   key={
                     attachment.uuid
                   }
+                  projectUuid={
+                    projectUuid
+                  }
                   taskUuid={
                     taskUuid
                   }
@@ -1219,6 +1166,9 @@ const EvidenceGallery = ({
       {activeIndex !==
         null && (
         <EvidenceLightbox
+          projectUuid={
+            projectUuid
+          }
           taskUuid={
             taskUuid
           }
@@ -1245,20 +1195,24 @@ const EvidenceGallery = ({
 
 /*
  * =========================================================
- * THUMBNAIL
+ * EVIDENCE THUMBNAIL
  * =========================================================
  */
 const EvidenceThumbnail = ({
+  projectUuid,
   taskUuid,
   attachment,
   extraCount,
   onOpen,
 }: {
+  projectUuid:
+    string;
+
   taskUuid:
     string;
 
   attachment:
-    MyTaskReportAttachment;
+    ActivityAttachment;
 
   extraCount:
     number;
@@ -1274,6 +1228,7 @@ const EvidenceThumbnail = ({
     refetch,
   } =
     useSignedAttachmentUrl(
+      projectUuid,
       taskUuid,
       attachment.uuid,
     );
@@ -1491,8 +1446,6 @@ const EvidenceThumbnail = ({
           />
 
 
-          {/* Filename */}
-
           <div
             style={{
               position:
@@ -1540,8 +1493,6 @@ const EvidenceThumbnail = ({
             }
           </div>
 
-
-          {/* +N Overlay */}
 
           {extraCount >
             0 && (
@@ -1596,24 +1547,29 @@ const EvidenceThumbnail = ({
  * =========================================================
  */
 const EvidenceLightbox = ({
+  projectUuid,
   taskUuid,
   attachments,
   index,
   onIndexChange,
   onClose,
 }: {
+  projectUuid:
+    string;
+
   taskUuid:
     string;
 
   attachments:
-    MyTaskReportAttachment[];
+    ActivityAttachment[];
 
   index:
     number;
 
   onIndexChange:
     (
-      index: number,
+      index:
+        number,
     ) => void;
 
   onClose:
@@ -1637,6 +1593,7 @@ const EvidenceLightbox = ({
     refetch,
   } =
     useSignedAttachmentUrl(
+      projectUuid,
       taskUuid,
       attachment.uuid,
     );
@@ -1663,8 +1620,8 @@ const EvidenceLightbox = ({
 
 
   /*
-   * Reset image error whenever
-   * current image changes.
+   * Reset current image error
+   * when image changes.
    */
   useEffect(
     () => {
@@ -1680,10 +1637,8 @@ const EvidenceLightbox = ({
 
 
   /*
-   * Prefetch adjacent signed URLs.
-   *
-   * User jab Next / Previous kare,
-   * transition faster feel hogi.
+   * Prefetch previous / next
+   * signed URLs.
    */
   useEffect(
     () => {
@@ -1718,13 +1673,15 @@ const EvidenceLightbox = ({
             .prefetchQuery({
               queryKey:
                 getAttachmentQueryKey(
+                  projectUuid,
                   taskUuid,
                   adjacentAttachment.uuid,
                 ),
 
               queryFn:
                 () =>
-                  getMyTaskReportAttachmentViewUrl(
+                  getProjectTaskReportAttachmentViewUrl(
+                    projectUuid,
                     taskUuid,
                     adjacentAttachment.uuid,
                   ),
@@ -1740,6 +1697,7 @@ const EvidenceLightbox = ({
     },
     [
       queryClient,
+      projectUuid,
       taskUuid,
       attachments,
       index,
@@ -1817,7 +1775,7 @@ const EvidenceLightbox = ({
 
 
   /*
-   * Stop body scroll while
+   * Prevent body scroll while
    * lightbox is open.
    */
   useEffect(
@@ -1890,7 +1848,7 @@ const EvidenceLightbox = ({
           "rgba(3, 7, 18, 0.95)",
       }}
     >
-      {/* Lightbox Header */}
+      {/* Header */}
 
       <div
         style={{
@@ -2351,7 +2309,7 @@ const EvidenceLightbox = ({
       </div>
 
 
-      {/* Lightbox Footer */}
+      {/* Footer */}
 
       <div
         style={{
@@ -2402,7 +2360,9 @@ const EvidenceLightbox = ({
             index +
             1
           }
+
           {" / "}
+
           {
             attachments.length
           }
@@ -2417,10 +2377,13 @@ const EvidenceLightbox = ({
 
 /*
  * =========================================================
- * SIGNED URL QUERY
+ * SIGNED ATTACHMENT URL QUERY
  * =========================================================
  */
 const useSignedAttachmentUrl = (
+  projectUuid:
+    string,
+
   taskUuid:
     string,
 
@@ -2430,13 +2393,15 @@ const useSignedAttachmentUrl = (
   return useQuery({
     queryKey:
       getAttachmentQueryKey(
+        projectUuid,
         taskUuid,
         attachmentUuid,
       ),
 
     queryFn:
       () =>
-        getMyTaskReportAttachmentViewUrl(
+        getProjectTaskReportAttachmentViewUrl(
+          projectUuid,
           taskUuid,
           attachmentUuid,
         ),
@@ -2457,6 +2422,9 @@ const useSignedAttachmentUrl = (
 
 
 const getAttachmentQueryKey = (
+  projectUuid:
+    string,
+
   taskUuid:
     string,
 
@@ -2464,7 +2432,8 @@ const getAttachmentQueryKey = (
     string,
 ) =>
   [
-    "my-task-report-attachment-view-url",
+    "project-task-report-attachment-view-url",
+    projectUuid,
     taskUuid,
     attachmentUuid,
   ] as const;
@@ -2472,7 +2441,7 @@ const getAttachmentQueryKey = (
 
 /*
  * =========================================================
- * SKELETON
+ * EVIDENCE SKELETON
  * =========================================================
  */
 const EvidenceSkeleton =
@@ -2494,6 +2463,157 @@ const EvidenceSkeleton =
       }}
     />
   );
+
+
+/*
+ * =========================================================
+ * TIMELINE CARD
+ * =========================================================
+ */
+const TimelineCard = ({
+  color,
+  children,
+}: {
+  color:
+    string;
+
+  children:
+    ReactNode;
+}) => (
+  <article
+    style={{
+      display:
+        "grid",
+
+      gridTemplateColumns:
+        "12px minmax(0, 1fr)",
+
+      gap:
+        12,
+    }}
+  >
+    <div
+      style={{
+        display:
+          "flex",
+
+        flexDirection:
+          "column",
+
+        alignItems:
+          "center",
+      }}
+    >
+      <div
+        style={{
+          width:
+            10,
+
+          height:
+            10,
+
+          marginTop:
+            5,
+
+          borderRadius:
+            "50%",
+
+          background:
+            color,
+
+          flexShrink:
+            0,
+        }}
+      />
+
+
+      <div
+        style={{
+          width:
+            1,
+
+          minHeight:
+            75,
+
+          flex:
+            1,
+
+          marginTop:
+            5,
+
+          background:
+            "#e5e7eb",
+        }}
+      />
+    </div>
+
+
+    <div
+      style={{
+        padding:
+          "12px 14px",
+
+        border:
+          "1px solid #e5e7eb",
+
+        borderRadius:
+          10,
+
+        background:
+          "#ffffff",
+      }}
+    >
+      {
+        children
+      }
+    </div>
+  </article>
+);
+
+
+/*
+ * =========================================================
+ * LABEL
+ * =========================================================
+ */
+const ActivityLabel = ({
+  label,
+  color,
+  background,
+}: {
+  label:
+    string;
+
+  color:
+    string;
+
+  background:
+    string;
+}) => (
+  <span
+    style={{
+      padding:
+        "4px 8px",
+
+      borderRadius:
+        999,
+
+      background,
+
+      color,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        700,
+    }}
+  >
+    {
+      label
+    }
+  </span>
+);
 
 
 /*
@@ -2549,12 +2669,113 @@ const InfoBadge = ({
 
 /*
  * =========================================================
- * ACTIVITY CONFIG
+ * BUILD ACTIVITY TIMELINE
+ * =========================================================
+ *
+ * Employee:
+ * reports[]
+ *
+ * Manager:
+ * reviewed completionRequests[]
+ *
+ * PENDING completion request ko
+ * duplicate event nahi banate because
+ * COMPLETION report already reports[]
+ * me present hota hai.
+ */
+const buildActivityTimeline = (
+  task:
+    ProjectTaskWithActivity,
+): TimelineItem[] => {
+  const reportItems:
+    TimelineItem[] =
+    (
+      task.reports ??
+      []
+    ).map(
+      (
+        report,
+      ) => ({
+        kind:
+          "REPORT" as const,
+
+        key:
+          `report:${report.uuid}`,
+
+        occurredAt:
+          report.createdAt,
+
+        report,
+      }),
+    );
+
+
+  const reviewItems:
+    TimelineItem[] =
+    (
+      task.completionRequests ??
+      []
+    )
+      .filter(
+        (
+          completionRequest,
+        ) =>
+          (
+            completionRequest.status ===
+              "APPROVED" ||
+            completionRequest.status ===
+              "REJECTED"
+          ) &&
+          Boolean(
+            completionRequest
+              .reviewedAt,
+          ),
+      )
+      .map(
+        (
+          completionRequest,
+        ) => ({
+          kind:
+            "COMPLETION_REVIEW" as const,
+
+          key:
+            `completion-review:${completionRequest.uuid}`,
+
+          occurredAt:
+            completionRequest
+              .reviewedAt!,
+
+          completionRequest,
+        }),
+      );
+
+
+  return [
+    ...reportItems,
+    ...reviewItems,
+  ].sort(
+    (
+      first,
+      second,
+    ) =>
+      new Date(
+        second.occurredAt,
+      ).getTime() -
+      new Date(
+        first.occurredAt,
+      ).getTime(),
+  );
+};
+
+
+/*
+ * =========================================================
+ * REPORT CONFIG
  * =========================================================
  */
-const getActivityConfig = (
+const getReportConfig = (
   type:
-    MyTaskReportType,
+    ActivityReportType,
 ) => {
   switch (
     type
@@ -2622,8 +2843,23 @@ const getActivityConfig = (
 const formatDateTime = (
   value:
     string,
-) =>
-  new Intl.DateTimeFormat(
+) => {
+  const date =
+    new Date(
+      value,
+    );
+
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "-";
+  }
+
+
+  return new Intl.DateTimeFormat(
     "en-IN",
     {
       day:
@@ -2642,107 +2878,7 @@ const formatDateTime = (
         "2-digit",
     },
   ).format(
-    new Date(
-      value,
-    ),
-  );
-
-
-  /*
- * =========================================================
- * BUILD ACTIVITY TIMELINE
- * =========================================================
- *
- * Sources:
- *
- * 1. Employee task reports
- * 2. Manager completion reviews
- *
- * PENDING completion request ko separate
- * event nahi banate because its COMPLETION
- * report already exists in reports[].
- */
-const buildTaskActivityTimeline = (
-  task:
-    MyTask,
-): TaskActivityTimelineItem[] => {
-  const reportItems:
-    TaskActivityTimelineItem[] =
-    (
-      task.reports ??
-      []
-    ).map(
-      (
-        report,
-      ) => ({
-        kind:
-          "REPORT" as const,
-
-        key:
-          `report:${report.uuid}`,
-
-        occurredAt:
-          report.createdAt,
-
-        report,
-      }),
-    );
-
-
-  const reviewItems:
-    TaskActivityTimelineItem[] =
-    (
-      task.completionRequests ??
-      []
-    )
-      .filter(
-        (
-          completionRequest,
-        ) =>
-          (
-            completionRequest.status ===
-              "APPROVED" ||
-            completionRequest.status ===
-              "REJECTED"
-          ) &&
-          Boolean(
-            completionRequest
-              .reviewedAt,
-          ),
-      )
-      .map(
-        (
-          completionRequest,
-        ) => ({
-          kind:
-            "COMPLETION_REVIEW" as const,
-
-          key:
-            `completion-review:${completionRequest.uuid}`,
-
-          occurredAt:
-            completionRequest
-              .reviewedAt!,
-
-          completionRequest,
-        }),
-      );
-
-
-  return [
-    ...reportItems,
-    ...reviewItems,
-  ].sort(
-    (
-      first,
-      second,
-    ) =>
-      new Date(
-        second.occurredAt,
-      ).getTime() -
-      new Date(
-        first.occurredAt,
-      ).getTime(),
+    date,
   );
 };
 
@@ -2800,4 +2936,4 @@ const formatFileSize = (
 };
 
 
-export default TaskActivityModal;
+export default ProjectTaskActivityModal;

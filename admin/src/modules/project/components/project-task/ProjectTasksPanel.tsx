@@ -11,6 +11,7 @@ import {
 import ProjectTaskForm from "./ProjectTaskForm";
 import ProjectTaskTable from "./ProjectTaskTable";
 import TaskCompletionReviewModal from "./TaskCompletionReviewModal";
+import ProjectTaskActivityModal from "./ProjectTaskActivityModal";
 
 import {
   useProjectTasks,
@@ -30,6 +31,7 @@ import type {
 
 interface ProjectMemberOption {
   uuid: string;
+
   label: string;
 }
 
@@ -67,20 +69,35 @@ const ProjectTasksPanel = ({
   } = useAuthorization();
 
 
+  /*
+   * =========================================================
+   * PERMISSIONS
+   * =========================================================
+   */
+
+  const canViewTask =
+    hasPermission(
+      "company.task.view",
+    );
+
+
   const canCreateTask =
     hasPermission(
       "company.task.create",
     );
+
 
   const canUpdateTask =
     hasPermission(
       "company.task.update",
     );
 
+
   const canDeleteTask =
     hasPermission(
       "company.task.delete",
     );
+
 
   /*
    * Completion review currently uses
@@ -88,6 +105,17 @@ const ProjectTasksPanel = ({
    */
   const canReviewTask =
     canUpdateTask;
+
+
+  /*
+   * Activity visibility is controlled by
+   * company.task.view.
+   *
+   * Backend remains responsible for
+   * PROJECT / COMPANY scope enforcement.
+   */
+  const canViewActivity =
+    canViewTask;
 
 
   const {
@@ -112,10 +140,18 @@ const ProjectTasksPanel = ({
   );
 
 
+  /*
+   * =========================================================
+   * CREATE / EDIT STATE
+   * =========================================================
+   */
+
   const [
     showForm,
     setShowForm,
-  ] = useState(false);
+  ] = useState(
+    false,
+  );
 
 
   const [
@@ -123,15 +159,43 @@ const ProjectTasksPanel = ({
     setEditTaskUuid,
   ] = useState<
     string | null
-  >(null);
+  >(
+    null,
+  );
 
+
+  /*
+   * =========================================================
+   * COMPLETION REVIEW STATE
+   * =========================================================
+   */
 
   const [
     reviewTask,
     setReviewTask,
   ] = useState<
     ProjectTask | null
-  >(null);
+  >(
+    null,
+  );
+
+
+  /*
+   * =========================================================
+   * ACTIVITY STATE
+   * =========================================================
+   *
+   * Manager / Company Admin can inspect
+   * task activity from project workspace.
+   */
+  const [
+    activityTask,
+    setActivityTask,
+  ] = useState<
+    ProjectTask | null
+  >(
+    null,
+  );
 
 
   const [
@@ -153,6 +217,12 @@ const ProjectTasksPanel = ({
     });
   };
 
+
+  /*
+   * =========================================================
+   * CREATE
+   * =========================================================
+   */
 
   const handleCreate = () => {
     if (
@@ -178,6 +248,12 @@ const ProjectTasksPanel = ({
   };
 
 
+  /*
+   * =========================================================
+   * EDIT
+   * =========================================================
+   */
+
   const handleEdit =
     async (
       taskUuid: string,
@@ -194,6 +270,7 @@ const ProjectTasksPanel = ({
             taskUuid,
           );
 
+
         /*
          * Completion review must go
          * through review workflow,
@@ -206,9 +283,11 @@ const ProjectTasksPanel = ({
           return;
         }
 
+
         setEditTaskUuid(
           taskUuid,
         );
+
 
         setFormData({
           title:
@@ -248,6 +327,7 @@ const ProjectTasksPanel = ({
             0,
         });
 
+
         setShowForm(
           true,
         );
@@ -260,6 +340,12 @@ const ProjectTasksPanel = ({
     };
 
 
+  /*
+   * =========================================================
+   * SAVE
+   * =========================================================
+   */
+
   const handleSubmit =
     async () => {
       try {
@@ -268,6 +354,7 @@ const ProjectTasksPanel = ({
         ) {
           return;
         }
+
 
         if (
           formData.startDate &&
@@ -287,6 +374,7 @@ const ProjectTasksPanel = ({
           ) {
             return;
           }
+
 
           const payload:
             UpdateProjectTaskRequest = {
@@ -322,9 +410,10 @@ const ProjectTasksPanel = ({
             sortOrder:
               Number(
                 formData.sortOrder ??
-                  0,
+                0,
               ),
           };
+
 
           await update(
             editTaskUuid,
@@ -336,6 +425,7 @@ const ProjectTasksPanel = ({
           ) {
             return;
           }
+
 
           const payload:
             CreateProjectTaskRequest = {
@@ -371,14 +461,16 @@ const ProjectTasksPanel = ({
             sortOrder:
               Number(
                 formData.sortOrder ??
-                  0,
+                0,
               ),
           };
+
 
           await create(
             payload,
           );
         }
+
 
         handleCancel();
       } catch (error) {
@@ -390,6 +482,12 @@ const ProjectTasksPanel = ({
     };
 
 
+  /*
+   * =========================================================
+   * DELETE
+   * =========================================================
+   */
+
   const handleDelete =
     async (
       taskUuid: string,
@@ -400,14 +498,19 @@ const ProjectTasksPanel = ({
         return;
       }
 
+
       const confirmed =
         window.confirm(
           "Are you sure you want to delete this task?",
         );
 
-      if (!confirmed) {
+
+      if (
+        !confirmed
+      ) {
         return;
       }
+
 
       try {
         await remove(
@@ -422,6 +525,43 @@ const ProjectTasksPanel = ({
     };
 
 
+  /*
+   * =========================================================
+   * ACTIVITY
+   * =========================================================
+   */
+
+  const handleOpenActivity = (
+    task:
+      ProjectTask,
+  ) => {
+    if (
+      !canViewActivity
+    ) {
+      return;
+    }
+
+
+    setActivityTask(
+      task,
+    );
+  };
+
+
+  const handleCloseActivity =
+    () => {
+      setActivityTask(
+        null,
+      );
+    };
+
+
+  /*
+   * =========================================================
+   * COMPLETION REVIEW
+   * =========================================================
+   */
+
   const handleOpenReview = (
     task: ProjectTask,
   ) => {
@@ -431,12 +571,16 @@ const ProjectTasksPanel = ({
       return;
     }
 
+
     const pendingRequest =
       task.completionRequests?.find(
-        (request) =>
+        (
+          request,
+        ) =>
           request.status ===
           "PENDING",
       );
+
 
     if (
       task.status !==
@@ -445,6 +589,7 @@ const ProjectTasksPanel = ({
     ) {
       return;
     }
+
 
     setReviewTask(
       task,
@@ -459,6 +604,7 @@ const ProjectTasksPanel = ({
       ) {
         return;
       }
+
 
       setReviewTask(
         null,
@@ -481,6 +627,7 @@ const ProjectTasksPanel = ({
         return;
       }
 
+
       try {
         await reviewCompletion(
           reviewTask.uuid,
@@ -489,6 +636,7 @@ const ProjectTasksPanel = ({
             reviewNote,
           },
         );
+
 
         setReviewTask(
           null,
@@ -502,7 +650,15 @@ const ProjectTasksPanel = ({
     };
 
 
-  if (showForm) {
+  /*
+   * =========================================================
+   * CREATE / EDIT VIEW
+   * =========================================================
+   */
+
+  if (
+    showForm
+  ) {
     return (
       <>
         <div
@@ -520,10 +676,13 @@ const ProjectTasksPanel = ({
                 700,
             }}
           >
-            {editTaskUuid
-              ? "Edit Task"
-              : "Create Task"}
+            {
+              editTaskUuid
+                ? "Edit Task"
+                : "Create Task"
+            }
           </div>
+
 
           <div
             style={{
@@ -537,9 +696,11 @@ const ProjectTasksPanel = ({
                 "#6b7280",
             }}
           >
-            {editTaskUuid
-              ? "Update task details and assignment."
-              : "Create a new task for this project."}
+            {
+              editTaskUuid
+                ? "Update task details and assignment."
+                : "Create a new task for this project."
+            }
           </div>
         </div>
 
@@ -592,6 +753,7 @@ const ProjectTasksPanel = ({
             Back
           </Button>
 
+
           <Button
             loading={
               saving
@@ -604,15 +766,23 @@ const ProjectTasksPanel = ({
               handleSubmit
             }
           >
-            {editTaskUuid
-              ? "Update Task"
-              : "Create Task"}
+            {
+              editTaskUuid
+                ? "Update Task"
+                : "Create Task"
+            }
           </Button>
         </div>
       </>
     );
   }
 
+
+  /*
+   * =========================================================
+   * TASK LIST
+   * =========================================================
+   */
 
   return (
     <>
@@ -647,6 +817,7 @@ const ProjectTasksPanel = ({
             Tasks
           </div>
 
+
           <div
             style={{
               marginTop:
@@ -659,17 +830,23 @@ const ProjectTasksPanel = ({
                 "#6b7280",
             }}
           >
-            {projectTasks.length}{" "}
+            {
+              projectTasks.length
+            }{" "}
             task
-            {projectTasks.length ===
-            1
-              ? ""
-              : "s"}
+            {
+              projectTasks.length ===
+              1
+                ? ""
+                : "s"
+            }
 
-            {fetching &&
-            !loading
-              ? " · Updating..."
-              : ""}
+            {
+              fetching &&
+              !loading
+                ? " · Updating..."
+                : ""
+            }
           </div>
         </div>
 
@@ -702,6 +879,9 @@ const ProjectTasksPanel = ({
         canReview={
           canReviewTask
         }
+        canViewActivity={
+          canViewActivity
+        }
         onEdit={
           handleEdit
         }
@@ -710,6 +890,9 @@ const ProjectTasksPanel = ({
         }
         onReview={
           handleOpenReview
+        }
+        onActivity={
+          handleOpenActivity
         }
       />
 
@@ -732,6 +915,37 @@ const ProjectTasksPanel = ({
       )}
 
 
+      {/*
+       * =====================================================
+       * TASK ACTIVITY
+       * =====================================================
+       *
+       * Manager + Company Admin project
+       * workspace activity.
+       */}
+      <ProjectTaskActivityModal
+        open={
+          Boolean(
+            activityTask,
+          )
+        }
+        projectUuid={
+          projectUuid
+        }
+        task={
+          activityTask
+        }
+        onClose={
+          handleCloseActivity
+        }
+      />
+
+
+      {/*
+       * =====================================================
+       * COMPLETION REVIEW
+       * =====================================================
+       */}
       <TaskCompletionReviewModal
         open={
           Boolean(

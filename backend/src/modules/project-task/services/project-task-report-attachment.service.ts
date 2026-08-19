@@ -521,6 +521,246 @@ export class ProjectTaskReportAttachmentService {
 
 
   /*
+ * =========================================================
+ * CREATE PROJECT WORKSPACE ATTACHMENT VIEW URL
+ * =========================================================
+ *
+ * Manager / Company Admin project workspace
+ * ke liye private report evidence ka
+ * temporary signed GET URL.
+ *
+ * Important:
+ *
+ * Authorization scope validation yahan
+ * intentionally nahi hoti.
+ *
+ * ProjectTaskService already verifies:
+ *
+ * - company boundary
+ * - company.task.view
+ * - COMPANY / PROJECT scope
+ * - PROJECT scope membership
+ * - task belongs to requested project
+ *
+ * This method additionally verifies:
+ *
+ * - task belongs to company
+ * - attachment belongs to same task
+ * - attachment belongs to same company
+ *
+ * Employee assignment ownership yahan
+ * enforce nahi karni because manager /
+ * Company Admin are legitimate viewers.
+ */
+async getProjectAttachmentViewUrl(
+  companyId:
+    bigint,
+
+  taskUuid:
+    string,
+
+  attachmentUuid:
+    string,
+) {
+  /*
+   * Resolve task again inside tenant
+   * boundary.
+   *
+   * This is defense-in-depth:
+   * arbitrary task UUID cannot cross
+   * company boundary.
+   */
+  const task =
+    await this.prisma
+      .projectTask
+      .findFirst({
+        where: {
+          companyId,
+
+          uuid:
+            taskUuid,
+
+          deletedAt:
+            null,
+        },
+
+        select: {
+          id:
+            true,
+
+          uuid:
+            true,
+
+          projectId:
+            true,
+
+          project: {
+            select: {
+              uuid:
+                true,
+            },
+          },
+        },
+      });
+
+
+  if (
+    !task
+  ) {
+    throw new NotFoundException(
+      "Project task not found.",
+    );
+  }
+
+
+  /*
+   * Attachment must belong to a report
+   * under exactly this task + company.
+   *
+   * User cannot request another task's
+   * attachment UUID.
+   */
+  const attachment =
+    await this.prisma
+      .projectTaskReportAttachment
+      .findFirst({
+        where: {
+          uuid:
+            attachmentUuid,
+
+          report: {
+            companyId,
+
+            taskId:
+              task.id,
+          },
+        },
+
+        select: {
+          uuid:
+            true,
+
+          type:
+            true,
+
+          originalName:
+            true,
+
+          mimeType:
+            true,
+
+          sizeBytes:
+            true,
+
+          storageKey:
+            true,
+
+          createdAt:
+            true,
+        },
+      });
+
+
+  if (
+    !attachment
+  ) {
+    throw new NotFoundException(
+      "Task report attachment not found.",
+    );
+  }
+
+
+  const storageKey =
+    this.validateStorageKey(
+      attachment.storageKey,
+    );
+
+
+  /*
+   * Additional storage namespace
+   * validation.
+   *
+   * DB relation is already verified,
+   * but key should also belong to the
+   * expected company/project/task folder.
+   */
+  const expectedFolder =
+    this.getTaskReportUploadFolder(
+      companyId,
+      task.project.uuid,
+      task.uuid,
+    );
+
+
+  const expectedPrefix =
+    `${expectedFolder}/`;
+
+
+  if (
+    !storageKey.startsWith(
+      expectedPrefix,
+    )
+  ) {
+    throw new ForbiddenException(
+      "Task report attachment storage object does not belong to this task.",
+    );
+  }
+
+
+  /*
+   * Short-lived private signed URL.
+   *
+   * downloadFileName intentionally omitted
+   * so browser can render images inline.
+   */
+  const signedUrl =
+    await this.storageService
+      .createDownloadUrl({
+        key:
+          storageKey,
+
+        expiresInSeconds:
+          300,
+      });
+
+
+  return {
+    attachment: {
+      uuid:
+        attachment.uuid,
+
+      type:
+        attachment.type,
+
+      originalName:
+        attachment.originalName,
+
+      mimeType:
+        attachment.mimeType,
+
+      /*
+       * Images max 5 MB hain, Number()
+       * conversion safe hai.
+       */
+      fileSize:
+        Number(
+          attachment.sizeBytes,
+        ),
+
+      createdAt:
+        attachment.createdAt,
+    },
+
+    url:
+      signedUrl.url,
+
+    expiresInSeconds:
+      signedUrl.expiresInSeconds,
+  };
+}
+
+
+  /*
    * =========================================================
    * TASK OWNERSHIP / EXECUTION BOUNDARY
    * =========================================================

@@ -17,6 +17,7 @@ interface Props {
   canEdit?: boolean;
   canDelete?: boolean;
   canReview?: boolean;
+  canViewActivity?: boolean;
 
   onEdit: (
     uuid: string,
@@ -27,6 +28,10 @@ interface Props {
   ) => void;
 
   onReview?: (
+    task: ProjectTask,
+  ) => void;
+
+  onActivity?: (
     task: ProjectTask,
   ) => void;
 }
@@ -108,10 +113,12 @@ const ProjectTaskTable = ({
   canEdit = true,
   canDelete = true,
   canReview = false,
+  canViewActivity = true,
 
   onEdit,
   onDelete,
   onReview,
+  onActivity,
 }: Props) => {
   const columns:
     Column<ProjectTask>[] = [
@@ -191,10 +198,14 @@ const ProjectTaskTable = ({
           return (
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
+
                 alignItems:
                   "center",
-                gap: 6,
+
+                gap:
+                  6,
               }}
             >
               <Badge
@@ -205,8 +216,12 @@ const ProjectTaskTable = ({
 
               <span
                 style={{
-                  fontSize: 12,
-                  fontWeight: 600,
+                  fontSize:
+                    12,
+
+                  fontWeight:
+                    600,
+
                   color:
                     "#92400e",
                 }}
@@ -242,14 +257,35 @@ const ProjectTaskTable = ({
         return (
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
+
               alignItems:
                 "center",
-              gap: 8,
+
+              gap:
+                8,
+
               flexWrap:
                 "wrap",
             }}
           >
+            {canViewActivity &&
+              onActivity && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    onActivity(
+                      row,
+                    )
+                  }
+                >
+                  View Activity
+                </Button>
+              )}
+
+
             {canReview &&
               awaitingReview &&
               onReview && (
@@ -265,6 +301,7 @@ const ProjectTaskTable = ({
                 </Button>
               )}
 
+
             {canEdit &&
               !awaitingReview && (
                 <Button
@@ -278,6 +315,7 @@ const ProjectTaskTable = ({
                   Edit
                 </Button>
               )}
+
 
             {canDelete &&
               !awaitingReview && (
