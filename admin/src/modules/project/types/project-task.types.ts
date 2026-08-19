@@ -97,52 +97,56 @@ export interface ProjectTaskCompletionRequest {
   requestedAt:
     string;
 
-  reviewNote?:
-    | string
-    | null;
+  reviewedAt?:
+    string | null;
 
-  requestedByProjectMember: {
+  reviewNote?:
+    string | null;
+
+  reviewedByUser?: {
+    uuid:
+      string;
+  } | null;
+
+  report?: {
     uuid:
       string;
 
-    employee: {
+    type:
+      "COMPLETION";
+
+    message:
+      string;
+
+    taskStatusSnapshot:
+      ProjectTaskStatus;
+
+    createdAt:
+      string;
+  } | null;
+
+  requestedByProjectMember?: {
+    uuid:
+      string;
+
+    employee?: {
       uuid:
         string;
 
-      employeeCode?:
-        | string
-        | null;
+      displayName?:
+        string | null;
 
       firstName?:
-        | string
-        | null;
+        string | null;
 
       lastName?:
-        | string
-        | null;
+        string | null;
 
-      displayName?:
-        | string
-        | null;
+      employeeCode?:
+        string | null;
+    } | null;
 
-      designation?: {
-        uuid:
-          string;
-
-        name:
-          string;
-      } | null;
-
-      department?: {
-        uuid:
-          string;
-
-        name:
-          string;
-      } | null;
-    };
-
-    projectRole: {
+    projectRole?: {
       uuid:
         string;
 
@@ -151,12 +155,8 @@ export interface ProjectTaskCompletionRequest {
 
       code:
         string;
-    };
-  };
-
-  report?:
-    | ProjectTaskCompletionReport
-    | null;
+    } | null;
+  } | null;
 }
 
 
