@@ -626,21 +626,36 @@ async findMyTasks(
         },
       },
 
+
       /*
-       * Current employee ka
-       * active/open work session.
+       * =========================================================
+       * EMPLOYEE WORK SESSION HISTORY
+       * =========================================================
        *
-       * Maximum one latest session
-       * frontend ko chahiye.
+       * Employee ke current + previous
+       * work sessions return karte hain.
+       *
+       * Frontend use karega:
+       *
+       * - Start time
+       * - End time
+       * - Individual session duration
+       * - Current OPEN session
+       * - Total worked time
+       *
+       * Example:
+       *
+       * 09:15 AM -> 10:05 AM   50m
+       * 10:30 AM -> 12:10 PM   1h 40m
+       *
+       * Internal IDs intentionally
+       * frontend ko expose nahi karte.
        */
       workSessions: {
         where: {
           user: {
             employeeId,
           },
-
-          status:
-            ProjectTaskWorkSessionStatus.OPEN,
         },
 
         orderBy: {
@@ -648,117 +663,130 @@ async findMyTasks(
             "desc",
         },
 
+        select: {
+          uuid:
+            true,
+
+          status:
+            true,
+
+          punchInAt:
+            true,
+
+          punchOutAt:
+            true,
+
+          durationSeconds:
+            true,
+        },
+      },
+
+
+      /*
+       * =========================================================
+       * COMPLETION REQUEST HISTORY
+       * =========================================================
+       *
+       * My Tasks ko sirf current PENDING request
+       * nahi, recent completion review history bhi
+       * chahiye.
+       *
+       * Isse activity timeline me:
+       *
+       * - pending completion request
+       * - manager requested changes / rejected
+       * - manager approved
+       *
+       * show kiya ja sakta hai.
+       *
+       * COMPLETION submission itself already
+       * reports[] me COMPLETION report ke form me
+       * present hai.
+       *
+       * completionRequests[] ko primarily manager
+       * review outcome/activity ke liye use karenge.
+       */
+      completionRequests: {
+        orderBy: {
+          requestedAt:
+            "desc",
+        },
+
         take:
-          1,
+          20,
+
+        select: {
+          uuid:
+            true,
+
+          status:
+            true,
+
+          workedSeconds:
+            true,
+
+          requestedAt:
+            true,
+
+          reviewedAt:
+            true,
+
+          reviewNote:
+            true,
+
+
+          /*
+           * Manager / reviewer identity.
+           *
+           * Abhi UUID enough hai.
+           * Frontend generic "Manager" label
+           * dikha sakta hai.
+           *
+           * Later reviewer display name bhi
+           * expose kar sakte hain.
+           */
+          reviewedByUser: {
+            select: {
+              uuid:
+                true,
+            },
+          },
+
+
+          /*
+           * Kis COMPLETION report ke against
+           * ye request/review hua tha.
+           */
+          report: {
+            select: {
+              uuid:
+                true,
+
+              type:
+                true,
+
+              message:
+                true,
+
+              taskStatusSnapshot:
+                true,
+
+              createdAt:
+                true,
+            },
+          },
+        },
       },
+
 
       /*
- * =========================================================
- * COMPLETION REQUEST HISTORY
- * =========================================================
- *
- * My Tasks ko sirf current PENDING request
- * nahi, recent completion review history bhi
- * chahiye.
- *
- * Isse activity timeline me:
- *
- * - pending completion request
- * - manager requested changes / rejected
- * - manager approved
- *
- * show kiya ja sakta hai.
- *
- * COMPLETION submission itself already
- * reports[] me COMPLETION report ke form me
- * present hai.
- *
- * completionRequests[] ko primarily manager
- * review outcome/activity ke liye use karenge.
- */
-completionRequests: {
-  orderBy: {
-    requestedAt:
-      "desc",
-  },
-
-  take:
-    20,
-
-  select: {
-    uuid:
-      true,
-
-    status:
-      true,
-
-    workedSeconds:
-      true,
-
-    requestedAt:
-      true,
-
-    reviewedAt:
-      true,
-
-    reviewNote:
-      true,
-
-
-    /*
-     * Manager / reviewer identity.
-     *
-     * Abhi UUID enough hai.
-     * Frontend generic "Manager" label
-     * dikha sakta hai.
-     *
-     * Later reviewer display name bhi
-     * expose kar sakte hain.
-     */
-    reviewedByUser: {
-      select: {
-        uuid:
-          true,
-      },
-    },
-
-
-    /*
-     * Kis COMPLETION report ke against
-     * ye request/review hua tha.
-     */
-    report: {
-      select: {
-        uuid:
-          true,
-
-        type:
-          true,
-
-        message:
-          true,
-
-        taskStatusSnapshot:
-          true,
-
-        createdAt:
-          true,
-      },
-    },
-  },
-},
-
-      /*
-       * Latest task reports / activity.
+       * =========================================================
+       * TASK REPORT ACTIVITY
+       * =========================================================
        *
        * My Tasks activity modal me
        * PROGRESS, BLOCKER, NOTE aur
-       * future COMPLETION reports
-       * show karne ke liye.
-       *
-       * Attachments metadata bhi return
-       * hogi so frontend later signed
-       * download URL request kar sake.
+       * COMPLETION reports show karne ke liye.
        */
       reports: {
         orderBy: {
@@ -785,14 +813,15 @@ completionRequests: {
           createdAt:
             true,
 
+
           /*
            * Report evidence attachments.
            *
            * Private R2/S3 URL DB me store
            * nahi hota.
            *
-           * Sirf storageKey + metadata
-           * return karte hain.
+           * Signed view URL separately
+           * backend se request hoti hai.
            */
           attachments: {
             orderBy: {
@@ -823,6 +852,7 @@ completionRequests: {
                 true,
             },
           },
+
 
           projectMember: {
             select: {
@@ -862,10 +892,12 @@ completionRequests: {
         },
       },
 
+
       /*
        * Total report count.
        *
        * Frontend:
+       *
        * View Activity (5)
        */
       _count: {
@@ -875,6 +907,7 @@ completionRequests: {
         },
       },
     },
+
 
     orderBy: [
       {
@@ -894,7 +927,6 @@ completionRequests: {
     ],
   });
 }
-
 
   /*
    * Find current OPEN work session
@@ -943,37 +975,132 @@ completionRequests: {
    *   work-session creation happen
    *   atomically.
    */
-  async startWork(
-    companyId: bigint,
-    projectId: bigint,
-    taskId: bigint,
-    projectMemberId: bigint,
-    userId: bigint,
-  ) {
-    return this.prisma.$transaction(
-      async (
-        tx,
-      ) => {
-        /*
-         * Re-read task inside transaction
-         * so stale service data cannot start
-         * work for a reassigned task.
-         */
-        const task =
-          await tx.projectTask.findFirst({
-            where: {
-              id:
-                taskId,
+async startWork(
+  companyId: bigint,
+  projectId: bigint,
+  taskId: bigint,
+  projectMemberId: bigint,
+  userId: bigint,
+) {
+  return this.prisma.$transaction(
+    async (
+      tx,
+    ) => {
+      /*
+       * Re-read task inside transaction
+       * so stale service data cannot start
+       * work for a reassigned task.
+       */
+      const task =
+        await tx.projectTask.findFirst({
+          where: {
+            id:
+              taskId,
 
+            companyId,
+
+            projectId,
+
+            assignedProjectMemberId:
+              projectMemberId,
+
+            deletedAt:
+              null,
+          },
+
+          select: {
+            id:
+              true,
+
+            uuid:
+              true,
+
+            title:
+              true,
+
+            status:
+              true,
+          },
+        });
+
+
+      if (
+        !task
+      ) {
+        return {
+          outcome:
+            "TASK_NOT_AVAILABLE" as const,
+        };
+      }
+
+
+      /*
+       * Employee can start:
+       *
+       * TODO
+       * IN_PROGRESS
+       *
+       * IN_PROGRESS is required because
+       * employee can stop and later
+       * resume the same task.
+       */
+      if (
+        task.status !==
+          ProjectTaskStatus.TODO &&
+        task.status !==
+          ProjectTaskStatus.IN_PROGRESS
+      ) {
+        return {
+          outcome:
+            "INVALID_STATUS" as const,
+
+          status:
+            task.status,
+        };
+      }
+
+
+      /*
+       * =========================================================
+       * ONE ACTIVE TASK PER USER
+       * =========================================================
+       *
+       * Important:
+       *
+       * Do NOT filter by taskId here.
+       *
+       * We intentionally search for ANY
+       * OPEN work session for this user
+       * inside this company.
+       *
+       * Business rule:
+       *
+       * User can work on maximum one task
+       * at a time across all projects.
+       *
+       * Example:
+       *
+       * Task A -> OPEN
+       * Task B -> Start Work => BLOCKED
+       *
+       * User must Stop Task A first.
+       */
+      const existingOpenSession =
+        await tx
+          .projectTaskWorkSession
+          .findFirst({
+            where: {
               companyId,
 
-              projectId,
+              userId,
 
-              assignedProjectMemberId:
-                projectMemberId,
+              status:
+                ProjectTaskWorkSessionStatus.OPEN,
+            },
 
-              deletedAt:
-                null,
+            orderBy: {
+              punchInAt:
+                "desc",
             },
 
             select: {
@@ -983,72 +1110,76 @@ completionRequests: {
               uuid:
                 true,
 
+              taskId:
+                true,
+
+              projectMemberId:
+                true,
+
+              userId:
+                true,
+
               status:
                 true,
+
+              punchInAt:
+                true,
+
+              punchOutAt:
+                true,
+
+              durationSeconds:
+                true,
+
+              /*
+               * Active task information is useful
+               * so service/frontend can show a
+               * meaningful message.
+               *
+               * Example:
+               *
+               * "You are already working on
+               * Site Installation."
+               */
+              task: {
+                select: {
+                  uuid:
+                    true,
+
+                  title:
+                    true,
+
+                  project: {
+                    select: {
+                      uuid:
+                        true,
+
+                      name:
+                        true,
+
+                      srn:
+                        true,
+                    },
+                  },
+                },
+              },
             },
           });
 
 
-        if (!task) {
-          return {
-            outcome:
-              "TASK_NOT_AVAILABLE" as const,
-          };
-        }
-
-
+      if (
+        existingOpenSession
+      ) {
         /*
-         * Employee can start:
+         * =========================================================
+         * SAME TASK ALREADY OPEN
+         * =========================================================
          *
-         * TODO
-         * IN_PROGRESS
-         *
-         * IN_PROGRESS is required because
-         * employee can stop and later
-         * resume the same task.
+         * Duplicate click / duplicate request.
          */
         if (
-          task.status !==
-            ProjectTaskStatus.TODO &&
-          task.status !==
-            ProjectTaskStatus.IN_PROGRESS
-        ) {
-          return {
-            outcome:
-              "INVALID_STATUS" as const,
-
-            status:
-              task.status,
-          };
-        }
-
-
-        const existingOpenSession =
-          await tx
-            .projectTaskWorkSession
-            .findFirst({
-              where: {
-                companyId,
-
-                taskId,
-
-                projectMemberId,
-
-                userId,
-
-                status:
-                  ProjectTaskWorkSessionStatus.OPEN,
-              },
-
-              orderBy: {
-                punchInAt:
-                  "desc",
-              },
-            });
-
-
-        if (
-          existingOpenSession
+          existingOpenSession.taskId ===
+          taskId
         ) {
           return {
             outcome:
@@ -1060,118 +1191,160 @@ completionRequests: {
         }
 
 
-        const workSession =
-          await tx
-            .projectTaskWorkSession
-            .create({
-              data: {
-                company: {
-                  connect: {
-                    id:
-                      companyId,
-                  },
-                },
-
-                task: {
-                  connect: {
-                    id:
-                      taskId,
-                  },
-                },
-
-                projectMember: {
-                  connect: {
-                    id:
-                      projectMemberId,
-                  },
-                },
-
-                user: {
-                  connect: {
-                    id:
-                      userId,
-                  },
-                },
-
-                status:
-                  ProjectTaskWorkSessionStatus.OPEN,
-
-                punchInAt:
-                  new Date(),
-              },
-            });
-
-
         /*
-         * First execution starts task.
+         * =========================================================
+         * ANOTHER TASK IS ACTIVE
+         * =========================================================
+         *
+         * Employee cannot start/resume
+         * another task until current task
+         * is stopped.
          */
-        if (
-          task.status ===
-          ProjectTaskStatus.TODO
-        ) {
-          await tx.projectTask.update({
-            where: {
-              id:
-                taskId,
-            },
-
-            data: {
-              status:
-                ProjectTaskStatus.IN_PROGRESS,
-            },
-          });
-        }
-
-
-        const projectTask =
-          await tx.projectTask.findUnique({
-            where: {
-              id:
-                taskId,
-            },
-
-            include: {
-              assignedProjectMember: {
-                include: {
-                  employee: {
-                    include: {
-                      designation:
-                        true,
-
-                      department:
-                        true,
-                    },
-                  },
-
-                  projectRole:
-                    true,
-                },
-              },
-
-              project:
-                true,
-            },
-          });
-
-
         return {
           outcome:
-            "STARTED" as const,
+            "ANOTHER_TASK_ACTIVE" as const,
 
-          projectTask,
+          workSession:
+            existingOpenSession,
 
-          workSession,
+          activeTask: {
+            uuid:
+              existingOpenSession
+                .task.uuid,
+
+            title:
+              existingOpenSession
+                .task.title,
+
+            project:
+              existingOpenSession
+                .task.project,
+          },
         };
-      },
+      }
 
-      {
-        isolationLevel:
-          Prisma.TransactionIsolationLevel
-            .Serializable,
-      },
-    );
-  }
 
+      /*
+       * No other OPEN work session exists.
+       *
+       * Safe to start this task.
+       */
+      const workSession =
+        await tx
+          .projectTaskWorkSession
+          .create({
+            data: {
+              company: {
+                connect: {
+                  id:
+                    companyId,
+                },
+              },
+
+              task: {
+                connect: {
+                  id:
+                    taskId,
+                },
+              },
+
+              projectMember: {
+                connect: {
+                  id:
+                    projectMemberId,
+                },
+              },
+
+              user: {
+                connect: {
+                  id:
+                    userId,
+                },
+              },
+
+              status:
+                ProjectTaskWorkSessionStatus.OPEN,
+
+              punchInAt:
+                new Date(),
+            },
+          });
+
+
+      /*
+       * First execution starts task.
+       *
+       * TODO -> IN_PROGRESS
+       *
+       * Resume ke time task already
+       * IN_PROGRESS hoga.
+       */
+      if (
+        task.status ===
+        ProjectTaskStatus.TODO
+      ) {
+        await tx.projectTask.update({
+          where: {
+            id:
+              taskId,
+          },
+
+          data: {
+            status:
+              ProjectTaskStatus.IN_PROGRESS,
+          },
+        });
+      }
+
+
+      const projectTask =
+        await tx.projectTask.findUnique({
+          where: {
+            id:
+              taskId,
+          },
+
+          include: {
+            assignedProjectMember: {
+              include: {
+                employee: {
+                  include: {
+                    designation:
+                      true,
+
+                    department:
+                      true,
+                  },
+                },
+
+                projectRole:
+                  true,
+              },
+            },
+
+            project:
+              true,
+          },
+        });
+
+
+      return {
+        outcome:
+          "STARTED" as const,
+
+        projectTask,
+
+        workSession,
+      };
+    },
+
+    {
+      isolationLevel:
+        Prisma.TransactionIsolationLevel
+          .Serializable,
+    },
+  );
+}
 
   /*
    * Stop employee's currently OPEN

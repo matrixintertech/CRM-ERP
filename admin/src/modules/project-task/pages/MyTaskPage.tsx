@@ -85,6 +85,21 @@ const filters: Array<{
 ];
 
 
+const hasOpenWorkSession = (
+  task: MyTask,
+) => {
+  return (
+    task.workSessions?.some(
+      (
+        session,
+      ) =>
+        session.status ===
+        "OPEN",
+    ) ?? false
+  );
+};
+
+
 const MyTaskPage = () => {
   useDocumentTitle(
     "My Tasks",
@@ -430,29 +445,30 @@ const MyTaskPage = () => {
    * - no OPEN work session
    * - execute permission
    */
-  const handleRequestCompletion = (
-    task:
-      MyTask,
-  ) => {
-    if (
-      !canExecute ||
-      task.status !==
-        "IN_PROGRESS" ||
-      task.workSessions?.length >
-        0
-    ) {
-      return;
-    }
-
-
-    setCompletionTask(
+ const handleRequestCompletion = (
+  task:
+    MyTask,
+) => {
+  if (
+    !canExecute ||
+    task.status !==
+      "IN_PROGRESS" ||
+    hasOpenWorkSession(
       task,
-    );
+    )
+  ) {
+    return;
+  }
 
-    setCompletionModalOpen(
-      true,
-    );
-  };
+
+  setCompletionTask(
+    task,
+  );
+
+  setCompletionModalOpen(
+    true,
+  );
+};
 
 
   const handleCloseCompletionModal =

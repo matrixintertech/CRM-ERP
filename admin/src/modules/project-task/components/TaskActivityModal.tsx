@@ -25,6 +25,7 @@ import type {
   MyTaskReport,
   MyTaskReportAttachment,
   MyTaskReportType,
+  MyTaskWorkSession,
 } from "../types/my-task.types";
 
 
@@ -71,6 +72,19 @@ type TaskActivityTimelineItem =
 
       report:
         MyTaskReport;
+    }
+  | {
+      kind:
+        "WORK_SESSION";
+
+      key:
+        string;
+
+      occurredAt:
+        string;
+
+      workSession:
+        MyTaskWorkSession;
     }
   | {
       kind:
@@ -302,42 +316,59 @@ const TaskActivityModal = ({
         14,
     }}
   >
-    {activityItems.map(
-      (
-        item,
-      ) => {
-        if (
-          item.kind ===
-          "REPORT"
-        ) {
-          return (
-            <ActivityItem
-              key={
-                item.key
-              }
-              taskUuid={
-                task.uuid
-              }
-              report={
-                item.report
-              }
-            />
-          );
+   {activityItems.map(
+  (
+    item,
+  ) => {
+    if (
+      item.kind ===
+      "REPORT"
+    ) {
+      return (
+        <ActivityItem
+          key={
+            item.key
+          }
+          taskUuid={
+            task.uuid
+          }
+          report={
+            item.report
+          }
+        />
+      );
+    }
+
+
+    if (
+      item.kind ===
+      "WORK_SESSION"
+    ) {
+      return (
+        <WorkSessionActivityItem
+          key={
+            item.key
+          }
+          workSession={
+            item.workSession
+          }
+        />
+      );
+    }
+
+
+    return (
+      <CompletionReviewActivityItem
+        key={
+          item.key
         }
-
-
-        return (
-          <CompletionReviewActivityItem
-            key={
-              item.key
-            }
-            completionRequest={
-              item.completionRequest
-            }
-          />
-        );
-      },
-    )}
+        completionRequest={
+          item.completionRequest
+        }
+      />
+    );
+  },
+)}
   </div>
 )}
           </section>
@@ -713,6 +744,486 @@ const ActivityItem = ({
   );
 };
 
+
+/*
+ * =========================================================
+ * WORK SESSION ACTIVITY
+ * =========================================================
+ *
+ * Har employee Start Work / Stop Work
+ * cycle ko ek timeline activity ke form
+ * me show karta hai.
+ *
+ * CLOSED:
+ *
+ * Start
+ * End
+ * Worked
+ *
+ * OPEN:
+ *
+ * Start
+ * Working now
+ * Live duration
+ */
+const WorkSessionActivityItem = ({
+  workSession,
+}: {
+  workSession:
+    MyTaskWorkSession;
+}) => {
+  const isOpen =
+    workSession.status ===
+    "OPEN";
+
+
+  const [
+    now,
+    setNow,
+  ] =
+    useState(
+      () =>
+        Date.now(),
+    );
+
+
+  /*
+   * OPEN work session ke liye
+   * live timer.
+   *
+   * CLOSED session ko timer ki
+   * zarurat nahi hai.
+   */
+  useEffect(
+    () => {
+      if (
+        !isOpen
+      ) {
+        return;
+      }
+
+
+      setNow(
+        Date.now(),
+      );
+
+
+      const interval =
+        window.setInterval(
+          () => {
+            setNow(
+              Date.now(),
+            );
+          },
+          1000,
+        );
+
+
+      return () => {
+        window.clearInterval(
+          interval,
+        );
+      };
+    },
+    [
+      isOpen,
+      workSession.uuid,
+    ],
+  );
+
+
+  const workedSeconds =
+    getWorkSessionDurationSeconds(
+      workSession,
+      now,
+    );
+
+
+  const color =
+    isOpen
+      ? "#15803d"
+      : "#1d4ed8";
+
+
+  const background =
+    isOpen
+      ? "#f0fdf4"
+      : "#eff6ff";
+
+
+  return (
+    <article
+      style={{
+        display:
+          "grid",
+
+        gridTemplateColumns:
+          "12px minmax(0, 1fr)",
+
+        gap:
+          12,
+      }}
+    >
+      {/* Timeline Marker */}
+
+      <div
+        style={{
+          display:
+            "flex",
+
+          flexDirection:
+            "column",
+
+          alignItems:
+            "center",
+        }}
+      >
+        <div
+          style={{
+            width:
+              10,
+
+            height:
+              10,
+
+            marginTop:
+              5,
+
+            borderRadius:
+              "50%",
+
+            background:
+              color,
+
+            flexShrink:
+              0,
+          }}
+        />
+
+
+        <div
+          style={{
+            width:
+              1,
+
+            minHeight:
+              75,
+
+            flex:
+              1,
+
+            marginTop:
+              5,
+
+            background:
+              "#e5e7eb",
+          }}
+        />
+      </div>
+
+
+      {/* Work Session Content */}
+
+      <div
+        style={{
+          padding:
+            "12px 14px",
+
+          border:
+            `1px solid ${
+              isOpen
+                ? "#bbf7d0"
+                : "#bfdbfe"
+            }`,
+
+          borderRadius:
+            10,
+
+          background:
+            "#ffffff",
+        }}
+      >
+        <div
+          style={{
+            display:
+              "flex",
+
+            justifyContent:
+              "space-between",
+
+            alignItems:
+              "flex-start",
+
+            flexWrap:
+              "wrap",
+
+            gap:
+              10,
+          }}
+        >
+          <div
+            style={{
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
+              gap:
+                8,
+
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <span
+              style={{
+                padding:
+                  "4px 8px",
+
+                borderRadius:
+                  999,
+
+                background,
+
+                color,
+
+                fontSize:
+                  11,
+
+                fontWeight:
+                  700,
+              }}
+            >
+              {isOpen
+                ? "WORKING"
+                : "WORK SESSION"}
+            </span>
+
+
+            <span
+              style={{
+                color:
+                  "#6b7280",
+
+                fontSize:
+                  11,
+              }}
+            >
+              {isOpen
+                ? "Session active"
+                : "Session completed"}
+            </span>
+          </div>
+
+
+          <span
+            style={{
+              color:
+                "#6b7280",
+
+              fontSize:
+                11,
+
+              whiteSpace:
+                "nowrap",
+            }}
+          >
+            {formatWorkSessionDateTime(
+              isOpen
+                ? workSession.punchInAt
+                : (
+                    workSession.punchOutAt ??
+                    workSession.punchInAt
+                  ),
+            )}
+          </span>
+        </div>
+
+
+        {/* Start / End / Worked */}
+
+        <div
+          style={{
+            display:
+              "grid",
+
+            gap:
+              8,
+
+            marginTop:
+              14,
+
+            padding:
+              "12px",
+
+            border:
+              "1px solid #f3f4f6",
+
+            borderRadius:
+              8,
+
+            background:
+              "#f8fafc",
+          }}
+        >
+          <WorkSessionRow
+            label="Start"
+            value={
+              formatWorkSessionDateTime(
+                workSession.punchInAt,
+              )
+            }
+          />
+
+
+          <WorkSessionRow
+            label="End"
+            value={
+              isOpen
+                ? "Working now"
+                : workSession.punchOutAt
+                  ? formatWorkSessionDateTime(
+                      workSession.punchOutAt,
+                    )
+                  : "-"
+            }
+            active={
+              isOpen
+            }
+          />
+
+
+          <div
+            style={{
+              paddingTop:
+                8,
+
+              borderTop:
+                "1px solid #e5e7eb",
+            }}
+          >
+            <WorkSessionRow
+              label="Worked"
+              value={
+                formatWorkDuration(
+                  workedSeconds,
+                )
+              }
+              active={
+                isOpen
+              }
+              strong
+            />
+          </div>
+        </div>
+
+
+        <div
+          style={{
+            marginTop:
+              12,
+
+            paddingTop:
+              10,
+
+            borderTop:
+              "1px solid #f3f4f6",
+
+            color:
+              "#6b7280",
+
+            fontSize:
+              11,
+          }}
+        >
+          Employee work session
+
+          {isOpen && (
+            <>
+              {" · "}
+              Live
+            </>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+};
+
+
+/*
+ * =========================================================
+ * WORK SESSION ROW
+ * =========================================================
+ */
+const WorkSessionRow = ({
+  label,
+  value,
+  active = false,
+  strong = false,
+}: {
+  label:
+    string;
+
+  value:
+    string;
+
+  active?:
+    boolean;
+
+  strong?:
+    boolean;
+}) => (
+  <div
+    style={{
+      display:
+        "flex",
+
+      alignItems:
+        "center",
+
+      justifyContent:
+        "space-between",
+
+      gap:
+        16,
+
+      fontSize:
+        12,
+    }}
+  >
+    <span
+      style={{
+        color:
+          "#6b7280",
+      }}
+    >
+      {label}
+    </span>
+
+
+    <span
+      style={{
+        color:
+          active
+            ? "#15803d"
+            : "#111827",
+
+        fontWeight:
+          strong ||
+          active
+            ? 700
+            : 500,
+
+        whiteSpace:
+          "nowrap",
+      }}
+    >
+      {value}
+    </span>
+  </div>
+);
 
 
 /*
@@ -2650,6 +3161,240 @@ const formatDateTime = (
 
   /*
  * =========================================================
+ * WORK SESSION DATE TIME
+ * =========================================================
+ */
+const formatWorkSessionDateTime = (
+  value:
+    string,
+) => {
+  const date =
+    new Date(
+      value,
+    );
+
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "-";
+  }
+
+
+  return new Intl.DateTimeFormat(
+    "en-IN",
+    {
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit",
+
+      second:
+        "2-digit",
+
+      hour12:
+        true,
+    },
+  ).format(
+    date,
+  );
+};
+
+
+/*
+ * =========================================================
+ * WORK SESSION DURATION
+ * =========================================================
+ */
+const getWorkSessionDurationSeconds = (
+  session:
+    MyTaskWorkSession,
+
+  now:
+    number,
+) => {
+  /*
+   * OPEN session:
+   *
+   * current browser time - punchInAt
+   */
+  if (
+    session.status ===
+    "OPEN"
+  ) {
+    const start =
+      new Date(
+        session.punchInAt,
+      ).getTime();
+
+
+    if (
+      Number.isNaN(
+        start,
+      )
+    ) {
+      return 0;
+    }
+
+
+    return Math.max(
+      0,
+
+      Math.floor(
+        (
+          now -
+          start
+        ) /
+          1000,
+      ),
+    );
+  }
+
+
+  /*
+   * CLOSED session:
+   *
+   * Backend calculated duration is
+   * source of truth.
+   */
+  if (
+    typeof session
+      .durationSeconds ===
+      "number"
+  ) {
+    return Math.max(
+      0,
+      session.durationSeconds,
+    );
+  }
+
+
+  /*
+   * Defensive fallback for old data.
+   */
+  if (
+    session.punchOutAt
+  ) {
+    const start =
+      new Date(
+        session.punchInAt,
+      ).getTime();
+
+
+    const end =
+      new Date(
+        session.punchOutAt,
+      ).getTime();
+
+
+    if (
+      !Number.isNaN(
+        start,
+      ) &&
+      !Number.isNaN(
+        end,
+      )
+    ) {
+      return Math.max(
+        0,
+
+        Math.floor(
+          (
+            end -
+            start
+          ) /
+            1000,
+        ),
+      );
+    }
+  }
+
+
+  return 0;
+};
+
+
+/*
+ * =========================================================
+ * WORK DURATION FORMAT
+ * =========================================================
+ *
+ * 3665 seconds
+ * ->
+ * 01:01:05
+ */
+const formatWorkDuration = (
+  totalSeconds:
+    number,
+) => {
+  const safeSeconds =
+    Math.max(
+      0,
+
+      Math.floor(
+        totalSeconds,
+      ),
+    );
+
+
+  const hours =
+    Math.floor(
+      safeSeconds /
+        3600,
+    );
+
+
+  const minutes =
+    Math.floor(
+      (
+        safeSeconds %
+        3600
+      ) /
+        60,
+    );
+
+
+  const seconds =
+    safeSeconds %
+    60;
+
+
+  return [
+    hours,
+    minutes,
+    seconds,
+  ]
+    .map(
+      (
+        value,
+      ) =>
+        String(
+          value,
+        ).padStart(
+          2,
+          "0",
+        ),
+    )
+    .join(
+      ":",
+    );
+};
+
+
+  /*
+ * =========================================================
  * BUILD ACTIVITY TIMELINE
  * =========================================================
  *
@@ -2666,6 +3411,11 @@ const buildTaskActivityTimeline = (
   task:
     MyTask,
 ): TaskActivityTimelineItem[] => {
+  /*
+   * =========================================================
+   * REPORT ITEMS
+   * =========================================================
+   */
   const reportItems:
     TaskActivityTimelineItem[] =
     (
@@ -2689,6 +3439,46 @@ const buildTaskActivityTimeline = (
     );
 
 
+  /*
+   * =========================================================
+   * WORK SESSION ITEMS
+   * =========================================================
+   *
+   * CLOSED session ko punchOutAt ke
+   * according timeline me place karte hain.
+   *
+   * OPEN session ke liye punchInAt use
+   * hota hai.
+   */
+  const workSessionItems:
+    TaskActivityTimelineItem[] =
+    (
+      task.workSessions ??
+      []
+    ).map(
+      (
+        workSession,
+      ) => ({
+        kind:
+          "WORK_SESSION" as const,
+
+        key:
+          `work-session:${workSession.uuid}`,
+
+        occurredAt:
+          workSession.punchOutAt ??
+          workSession.punchInAt,
+
+        workSession,
+      }),
+    );
+
+
+  /*
+   * =========================================================
+   * COMPLETION REVIEW ITEMS
+   * =========================================================
+   */
   const reviewItems:
     TaskActivityTimelineItem[] =
     (
@@ -2729,8 +3519,13 @@ const buildTaskActivityTimeline = (
       );
 
 
+  /*
+   * All activity sources merged into
+   * one newest-first timeline.
+   */
   return [
     ...reportItems,
+    ...workSessionItems,
     ...reviewItems,
   ].sort(
     (
@@ -2745,7 +3540,6 @@ const buildTaskActivityTimeline = (
       ).getTime(),
   );
 };
-
 
 /*
  * =========================================================

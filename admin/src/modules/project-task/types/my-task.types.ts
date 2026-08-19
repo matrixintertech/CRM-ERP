@@ -31,6 +31,11 @@ export type MyTaskCompletionStatus =
   | "REJECTED";
 
 
+export type MyTaskWorkSessionStatus =
+  | "OPEN"
+  | "CLOSED";
+
+
 export interface MyTaskProject {
   uuid: string;
 
@@ -87,14 +92,41 @@ export interface MyTaskProjectMember {
 }
 
 
+/*
+ * =========================================================
+ * TASK WORK SESSION
+ * =========================================================
+ *
+ * Har Start Work ek new session create karta hai.
+ *
+ * OPEN:
+ *
+ * punchInAt     -> available
+ * punchOutAt    -> null
+ * durationSeconds -> null
+ *
+ * CLOSED:
+ *
+ * punchInAt       -> available
+ * punchOutAt      -> available
+ * durationSeconds -> backend calculated value
+ *
+ * Frontend use karega:
+ *
+ * - Start time
+ * - End time
+ * - Session duration
+ * - Current running duration
+ * - Total worked duration
+ */
 export interface MyTaskWorkSession {
   uuid: string;
 
   status:
-    | "OPEN"
-    | "CLOSED";
+    MyTaskWorkSessionStatus;
 
-  punchInAt: string;
+  punchInAt:
+    string;
 
   punchOutAt?:
     string | null;
@@ -341,8 +373,39 @@ export interface MyTask {
 
 
   /*
-   * Backend returns latest
-   * OPEN work session only.
+   * =========================================================
+   * WORK SESSION HISTORY
+   * =========================================================
+   *
+   * Backend now returns current + previous
+   * work sessions for this employee/task.
+   *
+   * Newest session first.
+   *
+   * Example:
+   *
+   * [
+   *   {
+   *     status: "OPEN",
+   *     punchInAt: "...",
+   *     punchOutAt: null,
+   *     durationSeconds: null
+   *   },
+   *   {
+   *     status: "CLOSED",
+   *     punchInAt: "...",
+   *     punchOutAt: "...",
+   *     durationSeconds: 5400
+   *   }
+   * ]
+   *
+   * Frontend can derive:
+   *
+   * - current OPEN session
+   * - start time
+   * - end time
+   * - session duration
+   * - total worked time
    */
   workSessions:
     MyTaskWorkSession[];

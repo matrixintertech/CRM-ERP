@@ -871,7 +871,7 @@ async getReportAttachmentViewUrl(
 }
 
   /*
- * Logged-in employee ke
+ * Logged-in employee ke 
  * assigned tasks across projects.
  *
  * Ownership:
@@ -982,134 +982,174 @@ async findMyTasks(
    * Later work sessions can start
    * while task is already IN_PROGRESS.
    */
-  async startWork(
-    companyId:
-      | bigint
-      | null
-      | undefined,
+async startWork(
+  companyId:
+    | bigint
+    | null
+    | undefined,
 
-    projectUuid:
-      string,
+  projectUuid:
+    string,
 
-    taskUuid:
-      string,
+  taskUuid:
+    string,
 
-    userId:
-      bigint,
+  userId:
+    bigint,
 
-    employeeId:
-      | bigint
-      | null
-      | undefined,
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  const resolvedEmployeeId =
+    this.ensureEmployeeContext(
+      employeeId,
+    );
+
+
+  const {
+    project,
+    projectTask,
+    assignedProjectMember,
+  } =
+    await this.getExecutionContext(
+      resolvedCompanyId,
+      projectUuid,
+      taskUuid,
+      resolvedEmployeeId,
+    );
+
+
+  /*
+   * Friendly service-level
+   * validation.
+   *
+   * Repository checks this again
+   * inside transaction.
+   */
+  if (
+    projectTask.status !==
+      ProjectTaskStatus.TODO &&
+    projectTask.status !==
+      ProjectTaskStatus.IN_PROGRESS
   ) {
-    const resolvedCompanyId =
-      this.ensureCompanyContext(
-        companyId,
-      );
-
-
-    const resolvedEmployeeId =
-      this.ensureEmployeeContext(
-        employeeId,
-      );
-
-
-    const {
-      project,
-      projectTask,
-      assignedProjectMember,
-    } =
-      await this.getExecutionContext(
-        resolvedCompanyId,
-        projectUuid,
-        taskUuid,
-        resolvedEmployeeId,
-      );
-
-
-    /*
-     * Friendly service-level
-     * validation.
-     *
-     * Repository checks this again
-     * inside transaction.
-     */
-    if (
-      projectTask.status !==
-        ProjectTaskStatus.TODO &&
-      projectTask.status !==
-        ProjectTaskStatus.IN_PROGRESS
-    ) {
-      throw new BadRequestException(
-        `Task cannot be started while status is ${projectTask.status}.`,
-      );
-    }
-
-
-    const result =
-      await this.projectTaskRepository
-        .startWork(
-          resolvedCompanyId,
-          project.id,
-          projectTask.id,
-          assignedProjectMember.id,
-          userId,
-        );
-
-
-    /*
-     * Task was reassigned/deleted
-     * between service validation and
-     * repository transaction.
-     */
-    if (
-      result.outcome ===
-      "TASK_NOT_AVAILABLE"
-    ) {
-      throw new ConflictException(
-        "Task assignment changed. Refresh the task and try again.",
-      );
-    }
-
-
-    /*
-     * Repository performs another
-     * status check inside transaction.
-     */
-    if (
-      result.outcome ===
-      "INVALID_STATUS"
-    ) {
-      throw new BadRequestException(
-        `Task cannot be started while status is ${result.status}.`,
-      );
-    }
-
-
-    /*
-     * Prevent duplicate OPEN sessions.
-     */
-    if (
-      result.outcome ===
-      "ALREADY_OPEN"
-    ) {
-      throw new ConflictException(
-        "Work is already in progress for this task.",
-      );
-    }
-
-
-    return {
-      message:
-        "Work started successfully.",
-
-      projectTask:
-        result.projectTask,
-
-      workSession:
-        result.workSession,
-    };
+    throw new BadRequestException(
+      `Task cannot be started while status is ${projectTask.status}.`,
+    );
   }
+
+
+  const result =
+    await this.projectTaskRepository
+      .startWork(
+        resolvedCompanyId,
+        project.id,
+        projectTask.id,
+        assignedProjectMember.id,
+        userId,
+      );
+
+
+  /*
+   * Task was reassigned/deleted
+   * between service validation and
+   * repository transaction.
+   */
+  if (
+    result.outcome ===
+    "TASK_NOT_AVAILABLE"
+  ) {
+    throw new ConflictException(
+      "Task assignment changed. Refresh the task and try again.",
+    );
+  }
+
+
+  /*
+   * Repository performs another
+   * status check inside transaction.
+   */
+  if (
+    result.outcome ===
+    "INVALID_STATUS"
+  ) {
+    throw new BadRequestException(
+      `Task cannot be started while status is ${result.status}.`,
+    );
+  }
+
+
+  /*
+   * Same task already has
+   * an OPEN work session.
+   */
+  if (
+    result.outcome ===
+    "ALREADY_OPEN"
+  ) {
+    throw new ConflictException(
+      "Work is already in progress for this task.",
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * ANOTHER TASK ALREADY ACTIVE
+   * =========================================================
+   *
+   * Business rule:
+   *
+   * One employee/user can have
+   * maximum one OPEN work session
+   * across all projects/tasks.
+   *
+   * User must stop the current
+   * active task before starting
+   * another task.
+   */
+  if (
+    result.outcome ===
+    "ANOTHER_TASK_ACTIVE"
+  ) {
+    const activeTaskTitle =
+      result.activeTask
+        ?.title?.trim();
+
+
+    if (
+      activeTaskTitle
+    ) {
+      throw new ConflictException(
+        `You are already working on "${activeTaskTitle}". Stop the active task before starting another task.`,
+      );
+    }
+
+
+    throw new ConflictException(
+      "Another task is already active. Stop the current work session before starting another task.",
+    );
+  }
+
+
+  return {
+    message:
+      "Work started successfully.",
+
+    projectTask:
+      result.projectTask,
+
+    workSession:
+      result.workSession,
+  };
+}
 
 
   /*
