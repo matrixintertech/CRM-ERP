@@ -625,6 +625,393 @@ async findAll(
 }
 
 
+async getWorkSummary(
+  companyId:
+    | bigint
+    | null
+    | undefined,
+
+  projectUuid:
+    string,
+
+  taskUuid:
+    string,
+
+  userId:
+    bigint,
+
+  employeeId:
+    | bigint
+    | null
+    | undefined,
+) {
+  const resolvedCompanyId =
+    this.ensureCompanyContext(
+      companyId,
+    );
+
+
+  /*
+   * =========================================================
+   * PROJECT
+   * =========================================================
+   */
+  const project =
+    await this.getProject(
+      resolvedCompanyId,
+      projectUuid,
+    );
+
+
+  /*
+   * =========================================================
+   * AUTHORIZATION
+   * =========================================================
+   *
+   * Same rule as project task list:
+   *
+   * COMPANY
+   *   -> project membership not required
+   *
+   * PROJECT
+   *   -> active project membership required
+   *
+   * OWN / TEAM / ORGANIZATION_UNIT
+   *   -> project-wide work summary not allowed
+   */
+  const authorization =
+    await this
+      .effectivePermissionService
+      .getAuthorization(
+        userId,
+      );
+
+
+  if (
+    !authorization.user
+      .companyId ||
+    authorization.user
+      .companyId !==
+      resolvedCompanyId
+  ) {
+    throw new ForbiddenException(
+      "You do not have access to this company.",
+    );
+  }
+
+
+  const scopes =
+    Array.from(
+      new Set(
+        authorization
+          .companyPermissions
+          .filter(
+            (
+              permission,
+            ) =>
+              permission.code ===
+              "company.task.view",
+          )
+          .map(
+            (
+              permission,
+            ) =>
+              permission.scope,
+          ),
+      ),
+    );
+
+
+  if (
+    scopes.length ===
+    0
+  ) {
+    throw new ForbiddenException(
+      "You do not have permission to view task work logs.",
+    );
+  }
+
+
+  /*
+   * COMPANY scope:
+   *
+   * Company-wide role can view
+   * project task work summary without
+   * project membership.
+   */
+  if (
+    !scopes.includes(
+      PermissionScope.COMPANY,
+    )
+  ) {
+    /*
+     * PROJECT scope:
+     *
+     * User must have employee context
+     * and active project membership.
+     */
+    if (
+      scopes.includes(
+        PermissionScope.PROJECT,
+      )
+    ) {
+      const resolvedEmployeeId =
+        this.ensureEmployeeContext(
+          employeeId,
+        );
+
+
+      await this
+        .ensureActiveProjectMembership(
+          resolvedCompanyId,
+          project.id,
+          resolvedEmployeeId,
+        );
+    } else {
+      throw new ForbiddenException(
+        "Your permission scope does not allow viewing work logs for all tasks in this project.",
+      );
+    }
+  }
+
+
+  /*
+   * =========================================================
+   * TASK
+   * =========================================================
+   */
+  const projectTask =
+    await this
+      .projectTaskRepository
+      .findByUuid(
+        resolvedCompanyId,
+        project.id,
+        taskUuid,
+      );
+
+
+  if (
+    !projectTask
+  ) {
+    throw new NotFoundException(
+      "Project task not found.",
+    );
+  }
+
+
+  /*
+   * =========================================================
+   * WORK SESSIONS
+   * =========================================================
+   *
+   * Raw work sessions stay inside
+   * backend.
+   *
+   * Frontend will receive aggregate
+   * duration only.
+   */
+  const workSessions =
+    await this
+      .projectTaskRepository
+      .findWorkSessionsByTask(
+        resolvedCompanyId,
+        project.id,
+        projectTask.id,
+      );
+
+
+  const now =
+    new Date();
+
+
+  const dailyWorkedSeconds =
+    new Map<
+      string,
+      number
+    >();
+
+
+  let isCurrentlyWorking =
+    false;
+
+
+  /*
+   * =========================================================
+   * DATE-WISE AGGREGATION
+   * =========================================================
+   *
+   * Example:
+   *
+   * 19 Aug 11:30 PM
+   *       ->
+   * 20 Aug 01:30 AM
+   *
+   * becomes:
+   *
+   * 19 Aug = 30m
+   * 20 Aug = 1h 30m
+   *
+   * Business date is currently
+   * Asia/Kolkata.
+   */
+  for (
+    const session of
+      workSessions
+  ) {
+    const start =
+      new Date(
+        session.punchInAt,
+      );
+
+
+    if (
+      Number.isNaN(
+        start.getTime(),
+      )
+    ) {
+      continue;
+    }
+
+
+    let end:
+      Date | null =
+      null;
+
+
+    if (
+      session.status ===
+      "OPEN"
+    ) {
+      isCurrentlyWorking =
+        true;
+
+      end =
+        now;
+    } else if (
+      session.punchOutAt
+    ) {
+      end =
+        new Date(
+          session.punchOutAt,
+        );
+    }
+
+
+    if (
+      !end ||
+      Number.isNaN(
+        end.getTime(),
+      ) ||
+      end.getTime() <=
+        start.getTime()
+    ) {
+      continue;
+    }
+
+
+    this.addWorkDurationByIndiaDate(
+      dailyWorkedSeconds,
+      start,
+      end,
+    );
+  }
+
+
+  /*
+   * Newest date first.
+   */
+  const dailyWork =
+    Array.from(
+      dailyWorkedSeconds
+        .entries(),
+    )
+      .map(
+        (
+          [
+            date,
+            workedSeconds,
+          ],
+        ) => ({
+          date,
+
+          workedSeconds,
+        }),
+      )
+      .sort(
+        (
+          first,
+          second,
+        ) =>
+          second.date.localeCompare(
+            first.date,
+          ),
+      );
+
+
+  /*
+   * =========================================================
+   * TOTAL
+   * =========================================================
+   */
+  const totalWorkedSeconds =
+    dailyWork.reduce(
+      (
+        total,
+        item,
+      ) =>
+        total +
+        item.workedSeconds,
+
+      0,
+    );
+
+
+  /*
+   * Current India business date.
+   */
+  const todayDate =
+    this.getIndiaDateKey(
+      now,
+    );
+
+
+  const todayWorkedSeconds =
+    dailyWorkedSeconds.get(
+      todayDate,
+    ) ??
+    0;
+
+
+  /*
+   * =========================================================
+   * SAFE FRONTEND RESPONSE
+   * =========================================================
+   *
+   * No:
+   *
+   * punchInAt
+   * punchOutAt
+   * internal DB IDs
+   * raw session records
+   */
+  return {
+    taskUuid:
+      projectTask.uuid,
+
+    totalWorkedSeconds,
+
+    todayWorkedSeconds,
+
+    sessionCount:
+      workSessions.length,
+
+    isCurrentlyWorking,
+
+    dailyWork,
+  };
+}
+
+
 /*
  * =========================================================
  * PROJECT TASK REPORT ATTACHMENT VIEW URL
@@ -2065,6 +2452,195 @@ async reviewCompletion(
 
     throw error;
   }
+}
+
+
+/*
+ * =========================================================
+ * INDIA DATE WORK SPLITTER
+ * =========================================================
+ *
+ * Asia/Kolkata is UTC +05:30.
+ *
+ * India me DST nahi hai, therefore
+ * fixed offset safe hai.
+ *
+ * Session agar midnight cross karta hai
+ * to duration ko correct business dates
+ * me split karta hai.
+ */
+private addWorkDurationByIndiaDate(
+  dailyWorkedSeconds:
+    Map<
+      string,
+      number
+    >,
+
+  start:
+    Date,
+
+  end:
+    Date,
+) {
+  const INDIA_OFFSET_SECONDS =
+    5 * 60 * 60 +
+    30 * 60;
+
+
+  const SECONDS_PER_DAY =
+    24 * 60 * 60;
+
+
+  /*
+   * Backend stopWork() bhi duration
+   * whole seconds me calculate karta hai,
+   * so same precision use karenge.
+   */
+  const startSeconds =
+    Math.floor(
+      start.getTime() /
+        1000,
+    );
+
+
+  const endSeconds =
+    Math.floor(
+      end.getTime() /
+        1000,
+    );
+
+
+  if (
+    endSeconds <=
+    startSeconds
+  ) {
+    return;
+  }
+
+
+  /*
+   * UTC epoch ko +05:30 shift
+   * karke India-local timeline me
+   * operate karte hain.
+   */
+  let cursor =
+    startSeconds +
+    INDIA_OFFSET_SECONDS;
+
+
+  const shiftedEnd =
+    endSeconds +
+    INDIA_OFFSET_SECONDS;
+
+
+  while (
+    cursor <
+    shiftedEnd
+  ) {
+    const dayStart =
+      Math.floor(
+        cursor /
+          SECONDS_PER_DAY,
+      ) *
+      SECONDS_PER_DAY;
+
+
+    const nextDay =
+      dayStart +
+      SECONDS_PER_DAY;
+
+
+    const segmentEnd =
+      Math.min(
+        shiftedEnd,
+        nextDay,
+      );
+
+
+    const workedSeconds =
+      segmentEnd -
+      cursor;
+
+
+    /*
+     * Since shifted dayStart represents
+     * India local midnight, converting it
+     * through UTC ISO gives YYYY-MM-DD.
+     */
+    const date =
+      new Date(
+        dayStart *
+          1000,
+      )
+        .toISOString()
+        .slice(
+          0,
+          10,
+        );
+
+
+    dailyWorkedSeconds.set(
+      date,
+
+      (
+        dailyWorkedSeconds.get(
+          date,
+        ) ??
+        0
+      ) +
+        workedSeconds,
+    );
+
+
+    cursor =
+      segmentEnd;
+  }
+}
+
+
+/*
+ * =========================================================
+ * INDIA BUSINESS DATE
+ * =========================================================
+ */
+private getIndiaDateKey(
+  value:
+    Date,
+) {
+  const INDIA_OFFSET_SECONDS =
+    5 * 60 * 60 +
+    30 * 60;
+
+
+  const shiftedSeconds =
+    Math.floor(
+      value.getTime() /
+        1000,
+    ) +
+    INDIA_OFFSET_SECONDS;
+
+
+  const SECONDS_PER_DAY =
+    24 * 60 * 60;
+
+
+  const dayStart =
+    Math.floor(
+      shiftedSeconds /
+        SECONDS_PER_DAY,
+    ) *
+    SECONDS_PER_DAY;
+
+
+  return new Date(
+    dayStart *
+      1000,
+  )
+    .toISOString()
+    .slice(
+      0,
+      10,
+    );
 }
 
 

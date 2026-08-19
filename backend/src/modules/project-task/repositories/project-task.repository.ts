@@ -533,6 +533,68 @@ async findAllByProject(
   }
 
 
+  /*
+ * =========================================================
+ * TASK WORK SESSIONS
+ * =========================================================
+ *
+ * Manager / Company Admin ke task
+ * work summary ke liye sessions.
+ *
+ * Important:
+ *
+ * Ye raw sessions sirf backend
+ * aggregation ke liye hain.
+ *
+ * Controller/frontend ko punchInAt /
+ * punchOutAt directly return nahi karenge.
+ */
+async findWorkSessionsByTask(
+  companyId: bigint,
+  projectId: bigint,
+  taskId: bigint,
+) {
+  return this.prisma
+    .projectTaskWorkSession
+    .findMany({
+      where: {
+        companyId,
+
+        taskId,
+
+        task: {
+          projectId,
+
+          deletedAt:
+            null,
+        },
+      },
+
+      orderBy: {
+        punchInAt:
+          "asc",
+      },
+
+      select: {
+        uuid:
+          true,
+
+        status:
+          true,
+
+        punchInAt:
+          true,
+
+        punchOutAt:
+          true,
+
+        durationSeconds:
+          true,
+      },
+    });
+}
+
+
   async update(
     id: bigint,
     data:

@@ -53,6 +53,59 @@ interface ReviewProjectTaskCompletionData {
 
 /*
  * =========================================================
+ * TASK WORK SUMMARY
+ * =========================================================
+ *
+ * Manager / Company Admin ke liye
+ * aggregate task work duration.
+ *
+ * Important:
+ *
+ * Backend raw punchInAt / punchOutAt
+ * frontend ko expose nahi karta.
+ *
+ * Frontend ko sirf:
+ *
+ * - total worked duration
+ * - today's duration
+ * - session count
+ * - currently working state
+ * - date-wise duration
+ *
+ * milta hai.
+ */
+export interface ProjectTaskDailyWork {
+  date:
+    string;
+
+  workedSeconds:
+    number;
+}
+
+
+export interface ProjectTaskWorkSummary {
+  taskUuid:
+    string;
+
+  totalWorkedSeconds:
+    number;
+
+  todayWorkedSeconds:
+    number;
+
+  sessionCount:
+    number;
+
+  isCurrentlyWorking:
+    boolean;
+
+  dailyWork:
+    ProjectTaskDailyWork[];
+}
+
+
+/*
+ * =========================================================
  * TASK REPORT ATTACHMENT VIEW
  * =========================================================
  *
@@ -175,6 +228,49 @@ export const deleteProjectTask =
     await api.delete(
       `/projects/${projectUuid}/tasks/${taskUuid}`,
     );
+  };
+
+
+/*
+ * =========================================================
+ * TASK WORK SUMMARY
+ * =========================================================
+ *
+ * Project workspace:
+ *
+ * Manager / Company Admin task par
+ * kitna total work hua aur date-wise
+ * kitna duration logged hua dekh sakte hain.
+ *
+ * Authorization backend:
+ *
+ * company.task.view
+ *
+ * COMPANY scope:
+ *   project membership required nahi.
+ *
+ * PROJECT scope:
+ *   active project membership required.
+ *
+ * Raw work session timestamps frontend
+ * ko return nahi hote.
+ */
+export const getProjectTaskWorkSummary =
+  async (
+    projectUuid:
+      string,
+
+    taskUuid:
+      string,
+  ): Promise<ProjectTaskWorkSummary> => {
+    const { data } =
+      await api.get<
+        ApiResponse<ProjectTaskWorkSummary>
+      >(
+        `/projects/${projectUuid}/tasks/${taskUuid}/work-summary`,
+      );
+
+    return data.data;
   };
 
 

@@ -603,6 +603,72 @@ getReportAttachmentViewUrl(
 
 
 
+/*
+ * =========================================================
+ * TASK WORK SUMMARY
+ * =========================================================
+ *
+ * Manager / Company Admin ke liye
+ * date-wise worked duration.
+ *
+ * Raw punch-in / punch-out timestamps
+ * frontend ko expose nahi hote.
+ *
+ * Authorization:
+ *
+ * company.task.view
+ *
+ * Actual COMPANY / PROJECT scope
+ * service layer enforce karti hai.
+ */
+@Get(":taskUuid/work-summary")
+@RequirePermission(
+  "company.task.view",
+)
+@ApiOperation({
+  summary:
+    "Get project task work summary",
+})
+@ApiParam({
+  name:
+    "projectUuid",
+
+  description:
+    "Project UUID",
+})
+@ApiParam({
+  name:
+    "taskUuid",
+
+  description:
+    "Project task UUID",
+})
+getWorkSummary(
+  @Req()
+  req: any,
+
+  @Param(
+    "projectUuid",
+  )
+  projectUuid:
+    string,
+
+  @Param(
+    "taskUuid",
+  )
+  taskUuid:
+    string,
+) {
+  return this.projectTaskService
+    .getWorkSummary(
+      req.user.companyId,
+      projectUuid,
+      taskUuid,
+      req.user.id,
+      req.user.employeeId,
+    );
+}
+
 
 
 
