@@ -546,11 +546,29 @@ const MyTaskPage = () => {
 
 
   /*
-   * Submit report.
+   * =========================================================
+   * SUBMIT TASK REPORT
+   * =========================================================
+   *
+   * TaskReportModal sends:
+   *
+   * - message
+   * - selected/captured File[]
+   *
+   * Hook handles:
+   *
+   * File[]
+   *   ↓
+   * presigned URLs
+   *   ↓
+   * direct R2 uploads
+   *   ↓
+   * final report creation
    */
   const handleSubmitReport =
     async (
       message: string,
+      files: File[] = [],
     ) => {
       if (
         !selectedTask ||
@@ -571,6 +589,8 @@ const MyTaskPage = () => {
           reportType,
 
           message,
+
+          files,
         );
 
 
@@ -587,8 +607,12 @@ const MyTaskPage = () => {
         );
       } catch {
         /*
-         * useMyTasks already
-         * shows API error notification.
+         * useMyTasks already shows
+         * API / upload error notification.
+         *
+         * Modal remains open so employee
+         * can retry without losing
+         * message / selected images.
          */
       }
     };

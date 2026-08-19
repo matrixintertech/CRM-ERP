@@ -378,10 +378,154 @@ export class ProjectTaskReportAttachmentService {
 
   /*
    * =========================================================
+   * CREATE PRIVATE ATTACHMENT VIEW URL
+   * =========================================================
+   *
+   * Private R2/S3 bucket ko directly public
+   * nahi karenge.
+   *
+   * Flow:
+   *
+   * 1. Current employee owns the task
+   * 2. Attachment belongs to same task
+   * 3. Attachment belongs to same company
+   * 4. Backend creates temporary signed GET URL
+   *
+   * URL intentionally short-lived:
+   * 5 minutes.
+   *
+   * downloadFileName pass nahi karte,
+   * isliye browser supported image ko inline
+   * preview kar sakta hai.
+   */
+  async getAttachmentViewUrl(
+    companyId: bigint,
+    taskUuid: string,
+    employeeId: bigint | null | undefined,
+    attachmentUuid: string,
+  ) {
+    const task =
+      await this.getExecutableTask(
+        companyId,
+        taskUuid,
+        employeeId,
+      );
+
+
+    const attachment =
+      await this.prisma
+        .projectTaskReportAttachment
+        .findFirst({
+          where: {
+            uuid:
+              attachmentUuid,
+
+            report: {
+              companyId,
+
+              taskId:
+                task.id,
+            },
+          },
+
+          select: {
+            uuid:
+              true,
+
+            type:
+              true,
+
+            originalName:
+              true,
+
+            mimeType:
+              true,
+
+            sizeBytes:
+              true,
+
+            storageKey:
+              true,
+
+            createdAt:
+              true,
+          },
+        });
+
+
+    if (!attachment) {
+      throw new NotFoundException(
+        "Task report attachment not found.",
+      );
+    }
+
+
+    const storageKey =
+      this.validateStorageKey(
+        attachment.storageKey,
+      );
+
+
+    /*
+     * DB record tenant/task relation ke
+     * through verify ho chuka hai.
+     *
+     * Signed URL only verified DB key ke
+     * against generate hogi.
+     */
+    const signedUrl =
+      await this.storageService
+        .createDownloadUrl({
+          key:
+            storageKey,
+
+          expiresInSeconds:
+            300,
+        });
+
+
+    return {
+      attachment: {
+        uuid:
+          attachment.uuid,
+
+        type:
+          attachment.type,
+
+        originalName:
+          attachment.originalName,
+
+        mimeType:
+          attachment.mimeType,
+
+        /*
+         * Task report images max 5 MB hain,
+         * so Number conversion safe hai.
+         */
+        fileSize:
+          Number(
+            attachment.sizeBytes,
+          ),
+
+        createdAt:
+          attachment.createdAt,
+      },
+
+      url:
+        signedUrl.url,
+
+      expiresInSeconds:
+        signedUrl.expiresInSeconds,
+    };
+  }
+
+
+  /*
+   * =========================================================
    * TASK OWNERSHIP / EXECUTION BOUNDARY
    * =========================================================
    *
-   * PermissionGuard later:
+   * PermissionGuard:
    *
    * company.task.execute
    *
@@ -398,7 +542,7 @@ export class ProjectTaskReportAttachmentService {
   ) {
     if (!employeeId) {
       throw new ForbiddenException(
-        "An employee profile is required to upload task evidence.",
+        "An employee profile is required for task evidence access.",
       );
     }
 

@@ -20,6 +20,11 @@ export type MyTaskReportType =
   | "COMPLETION";
 
 
+export type MyTaskReportAttachmentType =
+  | "IMAGE"
+  | "DOCUMENT";
+
+
 export interface MyTaskProject {
   uuid: string;
   srn: string;
@@ -107,11 +112,12 @@ export interface MyTaskCompletionRequest {
 
 
 /*
- * Task activity report author.
+ * =========================================================
+ * TASK REPORT AUTHOR
+ * =========================================================
  *
- * Backend report query me sirf
- * limited employee information
- * return ho rahi hai.
+ * Backend report query me limited
+ * employee information return hoti hai.
  */
 export interface MyTaskReportEmployee {
   uuid: string;
@@ -143,6 +149,59 @@ export interface MyTaskReportProjectMember {
 
 
 /*
+ * =========================================================
+ * TASK REPORT ATTACHMENT
+ * =========================================================
+ *
+ * Binary file R2 / S3 me stored hai.
+ *
+ * Frontend ko sirf metadata milta hai.
+ *
+ * Image ko directly storageKey se
+ * access nahi karna.
+ *
+ * Private signed URL backend endpoint
+ * se generate karna hai.
+ */
+export interface MyTaskReportAttachment {
+  uuid: string;
+
+  type:
+    MyTaskReportAttachmentType;
+
+  originalName:
+    string;
+
+  mimeType:
+    string;
+
+  /*
+   * Prisma BigInt serialization
+   * implementation ke depending
+   * string ya number aa sakta hai.
+   */
+  sizeBytes:
+    string | number;
+
+  /*
+   * Storage metadata only.
+   *
+   * Isse direct public image URL
+   * construct nahi karna.
+   */
+  storageKey:
+    string;
+
+  createdAt:
+    string;
+}
+
+
+/*
+ * =========================================================
+ * TASK ACTIVITY REPORT
+ * =========================================================
+ *
  * Progress / Blocker / Note /
  * Completion activity.
  */
@@ -163,6 +222,18 @@ export interface MyTaskReport {
 
   projectMember:
     MyTaskReportProjectMember;
+
+  /*
+   * Report evidence.
+   *
+   * Currently images supported for
+   * PROGRESS / BLOCKER / NOTE.
+   *
+   * Type also keeps DOCUMENT support
+   * for future expansion.
+   */
+  attachments:
+    MyTaskReportAttachment[];
 }
 
 
@@ -198,12 +269,14 @@ export interface MyTask {
   assignedProjectMember:
     MyTaskProjectMember;
 
+
   /*
    * Backend currently returns
    * latest OPEN session only.
    */
   workSessions:
     MyTaskWorkSession[];
+
 
   /*
    * Backend currently returns
@@ -212,14 +285,19 @@ export interface MyTask {
   completionRequests:
     MyTaskCompletionRequest[];
 
+
   /*
    * Backend latest 20 reports
    * return karta hai.
    *
    * Newest report first.
+   *
+   * Each report can now contain
+   * evidence attachments.
    */
   reports:
     MyTaskReport[];
+
 
   /*
    * Total reports count.

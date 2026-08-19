@@ -81,10 +81,6 @@ export class MyTaskController {
    *
    * Permission:
    * company.task.view
-   *
-   * Ownership:
-   * repository/service ensures
-   * assigned employee === current employee.
    */
   @Get()
   @RequirePermission(
@@ -110,23 +106,11 @@ export class MyTaskController {
    * CREATE TASK REPORT IMAGE UPLOAD URL
    * =========================================================
    *
-   * Flow:
-   *
-   * 1. Employee selects / captures image
-   * 2. Frontend sends metadata here
-   * 3. Backend verifies employee owns task
-   * 4. Backend creates safe storage key
-   * 5. Backend returns presigned PUT URL
-   * 6. Frontend uploads image directly to R2/S3
-   *
    * Permission:
    * company.task.execute
    *
    * Scope:
    * OWN
-   *
-   * Actual task ownership is enforced
-   * inside ProjectTaskReportAttachmentService.
    */
   @Post(
     ":taskUuid/report-attachments/upload-url",
@@ -138,38 +122,100 @@ export class MyTaskController {
     summary:
       "Create presigned image upload URL for task report evidence",
   })
-createReportAttachmentUploadUrl(
-  @Param(
-    "taskUuid",
-  )
-  taskUuid: string,
+  createReportAttachmentUploadUrl(
+    @Param(
+      "taskUuid",
+    )
+    taskUuid: string,
 
-  @Body()
-  dto:
-    CreateProjectTaskReportUploadDto,
+    @Body()
+    dto:
+      CreateProjectTaskReportUploadDto,
 
-  @Req()
-  req:
-    AuthenticatedRequest,
-) {
-  const companyId =
-    req.user.companyId;
+    @Req()
+    req:
+      AuthenticatedRequest,
+  ) {
+    const companyId =
+      req.user.companyId;
 
 
-  if (!companyId) {
-    throw new ForbiddenException(
-      "Company context is required.",
-    );
+    if (!companyId) {
+      throw new ForbiddenException(
+        "Company context is required.",
+      );
+    }
+
+
+    return this
+      .projectTaskReportAttachmentService
+      .createImageUpload(
+        companyId,
+        taskUuid,
+        req.user.employeeId,
+        dto,
+      );
   }
 
 
-  return this
-    .projectTaskReportAttachmentService
-    .createImageUpload(
-      companyId,
-      taskUuid,
-      req.user.employeeId,
-      dto,
-    );
-}
+  /*
+   * =========================================================
+   * GET TASK REPORT ATTACHMENT VIEW URL
+   * =========================================================
+   *
+   * Private R2/S3 object ke liye
+   * temporary signed GET URL.
+   *
+   * Permission:
+   * company.task.view
+   *
+   * Ownership:
+   * service confirms attachment belongs
+   * to current employee's assigned task.
+   */
+  @Get(
+    ":taskUuid/report-attachments/:attachmentUuid/view-url",
+  )
+  @RequirePermission(
+    "company.task.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get temporary view URL for task report attachment",
+  })
+  getReportAttachmentViewUrl(
+    @Param(
+      "taskUuid",
+    )
+    taskUuid: string,
+
+    @Param(
+      "attachmentUuid",
+    )
+    attachmentUuid: string,
+
+    @Req()
+    req:
+      AuthenticatedRequest,
+  ) {
+    const companyId =
+      req.user.companyId;
+
+
+    if (!companyId) {
+      throw new ForbiddenException(
+        "Company context is required.",
+      );
+    }
+
+
+    return this
+      .projectTaskReportAttachmentService
+      .getAttachmentViewUrl(
+        companyId,
+        taskUuid,
+        req.user.employeeId,
+        attachmentUuid,
+      );
+  }
 }

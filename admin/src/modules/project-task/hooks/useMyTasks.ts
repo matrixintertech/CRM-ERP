@@ -14,6 +14,7 @@ import {
   requestMyTaskCompletion,
   startMyTaskWork,
   stopMyTaskWork,
+  uploadMyTaskReportImage,
 } from "../api/my-task.api";
 
 import type {
@@ -28,12 +29,14 @@ export const MY_TASKS_QUERY_KEY = [
 
 interface TaskWorkVariables {
   projectUuid: string;
+
   taskUuid: string;
 }
 
 
 interface TaskReportVariables {
   projectUuid: string;
+
   taskUuid: string;
 
   type:
@@ -41,12 +44,23 @@ interface TaskReportVariables {
 
   message:
     string;
+
+  /*
+   * Optional selected/captured images.
+   *
+   * Actual upload hook mutation ke
+   * andar R2/S3 par hoga.
+   */
+  files?:
+    File[];
 }
 
 
 interface TaskCompletionVariables {
   projectUuid: string;
+
   taskUuid: string;
+
   message: string;
 }
 
@@ -64,11 +78,16 @@ const getErrorMessage = (
             string;
         };
       };
+
+      message?:
+        string;
     };
+
 
   return (
     apiError.response
       ?.data?.message ??
+    apiError.message ??
     fallback
   );
 };
@@ -123,6 +142,11 @@ export const useMyTasks =
       });
 
 
+    /*
+     * =========================================================
+     * START WORK
+     * =========================================================
+     */
     const startMutation =
       useMutation({
         mutationFn: ({
@@ -156,6 +180,11 @@ export const useMyTasks =
       });
 
 
+    /*
+     * =========================================================
+     * STOP WORK
+     * =========================================================
+     */
     const stopMutation =
       useMutation({
         mutationFn: ({
@@ -189,23 +218,91 @@ export const useMyTasks =
       });
 
 
+    /*
+     * =========================================================
+     * TASK REPORT + IMAGE UPLOAD
+     * =========================================================
+     *
+     * Flow:
+     *
+     * selected File[]
+     *      ↓
+     * presigned upload URL
+     *      ↓
+     * direct R2/S3 PUT
+     *      ↓
+     * uploaded attachment metadata
+     *      ↓
+     * create report
+     */
     const reportMutation =
       useMutation({
-        mutationFn: ({
-          projectUuid,
-          taskUuid,
-          type,
-          message,
-        }: TaskReportVariables) =>
-          createMyTaskReport(
+        mutationFn:
+          async ({
             projectUuid,
             taskUuid,
-            {
-              type,
+            type,
+            message,
+            files = [],
+          }: TaskReportVariables) => {
+            /*
+             * Defensive frontend limit.
+             *
+             * Backend also enforces max 5,
+             * so this is UX validation only.
+             */
+            if (
+              files.length >
+              5
+            ) {
+              throw new Error(
+                "A maximum of 5 images can be attached to a report.",
+              );
+            }
 
-              message,
-            },
-          ),
+
+            /*
+             * Upload selected images first.
+             *
+             * Promise.all means independent
+             * images can upload concurrently.
+             */
+            const attachments =
+              await Promise.all(
+                files.map(
+                  (
+                    file,
+                  ) =>
+                    uploadMyTaskReportImage(
+                      taskUuid,
+                      file,
+                    ),
+                ),
+              );
+
+
+            /*
+             * Only after every image upload
+             * succeeds do we submit the report.
+             *
+             * Backend will HEAD-verify all
+             * storage objects before DB save.
+             */
+            return createMyTaskReport(
+              projectUuid,
+              taskUuid,
+              {
+                type,
+
+                message,
+
+                ...(attachments.length >
+                  0 && {
+                  attachments,
+                }),
+              },
+            );
+          },
 
         onSuccess:
           async (
@@ -234,6 +331,11 @@ export const useMyTasks =
       });
 
 
+    /*
+     * =========================================================
+     * REQUEST COMPLETION
+     * =========================================================
+     */
     const completionMutation =
       useMutation({
         mutationFn: ({
@@ -309,12 +411,28 @@ export const useMyTasks =
           }),
 
 
+      /*
+       * files optional hain.
+       *
+       * Existing calls without images:
+       *
+       * addReport(
+       *   projectUuid,
+       *   taskUuid,
+       *   "NOTE",
+       *   message,
+       * )
+       *
+       * still work.
+       */
       addReport: (
         projectUuid: string,
         taskUuid: string,
         type:
           ProjectTaskReportType,
         message: string,
+        files?:
+          File[],
       ) =>
         reportMutation
           .mutateAsync({
@@ -322,6 +440,7 @@ export const useMyTasks =
             taskUuid,
             type,
             message,
+            files,
           }),
 
 
@@ -344,6 +463,13 @@ export const useMyTasks =
       stopping:
         stopMutation.isPending,
 
+      /*
+       * reporting true rahega during:
+       *
+       * - presigned URL generation
+       * - R2 uploads
+       * - final report creation
+       */
       reporting:
         reportMutation.isPending,
 

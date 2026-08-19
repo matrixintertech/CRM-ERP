@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -14,6 +15,31 @@ import type {
 import type {
   MyTask,
 } from "../types/my-task.types";
+
+
+const MAX_IMAGES =
+  5;
+
+const MAX_IMAGE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+
+interface SelectedImage {
+  id:
+    string;
+
+  file:
+    File;
+
+  previewUrl:
+    string;
+}
 
 
 interface TaskReportModalProps {
@@ -35,6 +61,7 @@ interface TaskReportModalProps {
   onSubmit:
     (
       message: string,
+      files: File[],
     ) => Promise<void>;
 }
 
@@ -50,25 +77,77 @@ const TaskReportModal = ({
   const [
     message,
     setMessage,
-  ] = useState("");
+  ] =
+    useState("");
+
+
+  const [
+    selectedImages,
+    setSelectedImages,
+  ] =
+    useState<
+      SelectedImage[]
+    >([]);
+
+
+  const [
+    fileError,
+    setFileError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+
+  const galleryInputRef =
+    useRef<
+      HTMLInputElement | null
+    >(null);
+
+
+  const cameraInputRef =
+    useRef<
+      HTMLInputElement | null
+    >(null);
 
 
   /*
-   * Modal open hone ya selected
-   * task/report type change hone par
-   * previous message clear karo.
+   * =========================================================
+   * RESET MODAL
+   * =========================================================
    */
-  useEffect(() => {
-    if (
-      open
-    ) {
+  useEffect(
+    () => {
       setMessage("");
-    }
-  }, [
-    open,
-    task?.uuid,
-    type,
-  ]);
+
+      setFileError(
+        null,
+      );
+
+      setSelectedImages(
+        (
+          current,
+        ) => {
+          current.forEach(
+            (
+              image,
+            ) => {
+              URL.revokeObjectURL(
+                image.previewUrl,
+              );
+            },
+          );
+
+          return [];
+        },
+      );
+    },
+    [
+      open,
+      task?.uuid,
+      type,
+    ],
+  );
 
 
   const config =
@@ -96,6 +175,257 @@ const TaskReportModal = ({
     !loading;
 
 
+  /*
+   * =========================================================
+   * RESET SELECTED IMAGES
+   * =========================================================
+   */
+  const clearSelectedImages =
+    () => {
+      setSelectedImages(
+        (
+          current,
+        ) => {
+          current.forEach(
+            (
+              image,
+            ) => {
+              URL.revokeObjectURL(
+                image.previewUrl,
+              );
+            },
+          );
+
+          return [];
+        },
+      );
+    };
+
+
+  /*
+   * =========================================================
+   * ADD IMAGE FILES
+   * =========================================================
+   */
+  const handleFilesSelected = (
+    files:
+      FileList | null,
+  ) => {
+    setFileError(
+      null,
+    );
+
+
+    if (
+      !files ||
+      files.length ===
+        0
+    ) {
+      return;
+    }
+
+
+    const incomingFiles =
+      Array.from(
+        files,
+      );
+
+
+    if (
+      selectedImages.length +
+        incomingFiles.length >
+      MAX_IMAGES
+    ) {
+      setFileError(
+        `A maximum of ${MAX_IMAGES} images can be attached.`,
+      );
+
+      return;
+    }
+
+
+    const existingKeys =
+      new Set(
+        selectedImages.map(
+          (
+            image,
+          ) =>
+            getFileIdentity(
+              image.file,
+            ),
+        ),
+      );
+
+
+    const newKeys =
+      new Set<string>();
+
+
+    for (
+      const file of
+      incomingFiles
+    ) {
+      if (
+        !ALLOWED_IMAGE_TYPES.includes(
+          file.type as
+            typeof ALLOWED_IMAGE_TYPES[number],
+        )
+      ) {
+        setFileError(
+          "Only JPEG, PNG and WEBP images are allowed.",
+        );
+
+        return;
+      }
+
+
+      if (
+        file.size <=
+        0
+      ) {
+        setFileError(
+          "One of the selected images is empty or invalid.",
+        );
+
+        return;
+      }
+
+
+      if (
+        file.size >
+        MAX_IMAGE_SIZE
+      ) {
+        setFileError(
+          `${file.name} exceeds the 5 MB image limit.`,
+        );
+
+        return;
+      }
+
+
+      if (
+        file.name.length >
+        255
+      ) {
+        setFileError(
+          "Image filename must not exceed 255 characters.",
+        );
+
+        return;
+      }
+
+
+      const identity =
+        getFileIdentity(
+          file,
+        );
+
+
+      if (
+        existingKeys.has(
+          identity,
+        ) ||
+        newKeys.has(
+          identity,
+        )
+      ) {
+        setFileError(
+          `${file.name} has already been selected.`,
+        );
+
+        return;
+      }
+
+
+      newKeys.add(
+        identity,
+      );
+    }
+
+
+    const images =
+      incomingFiles.map(
+        (
+          file,
+        ): SelectedImage => ({
+          id:
+            createImageId(
+              file,
+            ),
+
+          file,
+
+          previewUrl:
+            URL.createObjectURL(
+              file,
+            ),
+        }),
+      );
+
+
+    setSelectedImages(
+      (
+        current,
+      ) => [
+        ...current,
+        ...images,
+      ],
+    );
+  };
+
+
+  /*
+   * =========================================================
+   * REMOVE IMAGE
+   * =========================================================
+   */
+  const handleRemoveImage = (
+    imageId:
+      string,
+  ) => {
+    if (
+      loading
+    ) {
+      return;
+    }
+
+
+    setFileError(
+      null,
+    );
+
+
+    setSelectedImages(
+      (
+        current,
+      ) =>
+        current.filter(
+          (
+            image,
+          ) => {
+            if (
+              image.id ===
+              imageId
+            ) {
+              URL.revokeObjectURL(
+                image.previewUrl,
+              );
+
+              return false;
+            }
+
+            return true;
+          },
+        ),
+    );
+  };
+
+
+  /*
+   * =========================================================
+   * CLOSE
+   * =========================================================
+   */
   const handleClose =
     () => {
       if (
@@ -107,10 +437,21 @@ const TaskReportModal = ({
 
       setMessage("");
 
+      setFileError(
+        null,
+      );
+
+      clearSelectedImages();
+
       onClose();
     };
 
 
+  /*
+   * =========================================================
+   * SUBMIT
+   * =========================================================
+   */
   const handleSubmit =
     async () => {
       if (
@@ -122,8 +463,15 @@ const TaskReportModal = ({
 
       await onSubmit(
         normalizedMessage,
+
+        selectedImages.map(
+          (
+            image,
+          ) =>
+            image.file,
+        ),
       );
-  };
+    };
 
 
   return (
@@ -446,6 +794,447 @@ const TaskReportModal = ({
           </div>
 
 
+          {/* Evidence Images */}
+
+          <section>
+            <div
+              style={{
+                display:
+                  "flex",
+
+                justifyContent:
+                  "space-between",
+
+                alignItems:
+                  "center",
+
+                gap:
+                  12,
+
+                flexWrap:
+                  "wrap",
+
+                marginBottom:
+                  8,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color:
+                      "#374151",
+
+                    fontSize:
+                      13,
+
+                    fontWeight:
+                      600,
+                  }}
+                >
+                  Evidence Images
+                </div>
+
+                <div
+                  style={{
+                    marginTop:
+                      3,
+
+                    color:
+                      "#6b7280",
+
+                    fontSize:
+                      11,
+                  }}
+                >
+                  JPEG, PNG or WEBP · max 5 MB each · up to 5 images
+                </div>
+              </div>
+
+
+              <div
+                style={{
+                  color:
+                    "#6b7280",
+
+                  fontSize:
+                    12,
+
+                  fontWeight:
+                    600,
+                }}
+              >
+                {
+                  selectedImages.length
+                }
+                /{MAX_IMAGES}
+              </div>
+            </div>
+
+
+            {/* Hidden Gallery Input */}
+
+            <input
+              ref={
+                galleryInputRef
+              }
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={
+                loading ||
+                selectedImages.length >=
+                  MAX_IMAGES
+              }
+              onChange={(
+                event,
+              ) => {
+                handleFilesSelected(
+                  event.target.files,
+                );
+
+                event.target.value =
+                  "";
+              }}
+              style={{
+                display:
+                  "none",
+              }}
+            />
+
+
+            {/* Hidden Camera Input */}
+
+            <input
+              ref={
+                cameraInputRef
+              }
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="environment"
+              disabled={
+                loading ||
+                selectedImages.length >=
+                  MAX_IMAGES
+              }
+              onChange={(
+                event,
+              ) => {
+                handleFilesSelected(
+                  event.target.files,
+                );
+
+                event.target.value =
+                  "";
+              }}
+              style={{
+                display:
+                  "none",
+              }}
+            />
+
+
+            <div
+              style={{
+                display:
+                  "flex",
+
+                gap:
+                  8,
+
+                flexWrap:
+                  "wrap",
+              }}
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={
+                  loading ||
+                  selectedImages.length >=
+                    MAX_IMAGES
+                }
+                onClick={() =>
+                  galleryInputRef
+                    .current
+                    ?.click()
+                }
+              >
+                Select Images
+              </Button>
+
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={
+                  loading ||
+                  selectedImages.length >=
+                    MAX_IMAGES
+                }
+                onClick={() =>
+                  cameraInputRef
+                    .current
+                    ?.click()
+                }
+              >
+                Take Photo
+              </Button>
+            </div>
+
+
+            {fileError && (
+              <div
+                style={{
+                  marginTop:
+                    8,
+
+                  padding:
+                    "8px 10px",
+
+                  borderRadius:
+                    6,
+
+                  background:
+                    "#fef2f2",
+
+                  color:
+                    "#b91c1c",
+
+                  fontSize:
+                    12,
+                }}
+              >
+                {
+                  fileError
+                }
+              </div>
+            )}
+
+
+            {/* Image Previews */}
+
+            {selectedImages.length >
+              0 && (
+              <div
+                style={{
+                  display:
+                    "grid",
+
+                  gridTemplateColumns:
+                    "repeat(auto-fill, minmax(120px, 1fr))",
+
+                  gap:
+                    10,
+
+                  marginTop:
+                    12,
+                }}
+              >
+                {selectedImages.map(
+                  (
+                    image,
+                  ) => (
+                    <div
+                      key={
+                        image.id
+                      }
+                      style={{
+                        position:
+                          "relative",
+
+                        overflow:
+                          "hidden",
+
+                        border:
+                          "1px solid #e5e7eb",
+
+                        borderRadius:
+                          8,
+
+                        background:
+                          "#f9fafb",
+                      }}
+                    >
+                      <img
+                        src={
+                          image.previewUrl
+                        }
+                        alt={
+                          image.file.name
+                        }
+                        style={{
+                          display:
+                            "block",
+
+                          width:
+                            "100%",
+
+                          height:
+                            110,
+
+                          objectFit:
+                            "cover",
+                        }}
+                      />
+
+
+                      <div
+                        style={{
+                          padding:
+                            "7px 8px",
+                        }}
+                      >
+                        <div
+                          title={
+                            image.file.name
+                          }
+                          style={{
+                            overflow:
+                              "hidden",
+
+                            textOverflow:
+                              "ellipsis",
+
+                            whiteSpace:
+                              "nowrap",
+
+                            color:
+                              "#374151",
+
+                            fontSize:
+                              11,
+
+                            fontWeight:
+                              600,
+                          }}
+                        >
+                          {
+                            image.file.name
+                          }
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop:
+                              2,
+
+                            color:
+                              "#6b7280",
+
+                            fontSize:
+                              10,
+                          }}
+                        >
+                          {
+                            formatFileSize(
+                              image.file
+                                .size,
+                            )
+                          }
+                        </div>
+                      </div>
+
+
+                      <button
+                        type="button"
+                        disabled={
+                          loading
+                        }
+                        aria-label={`Remove ${image.file.name}`}
+                        onClick={() =>
+                          handleRemoveImage(
+                            image.id,
+                          )
+                        }
+                        style={{
+                          position:
+                            "absolute",
+
+                          top:
+                            6,
+
+                          right:
+                            6,
+
+                          width:
+                            26,
+
+                          height:
+                            26,
+
+                          display:
+                            "flex",
+
+                          alignItems:
+                            "center",
+
+                          justifyContent:
+                            "center",
+
+                          border:
+                            "none",
+
+                          borderRadius:
+                            "50%",
+
+                          background:
+                            "rgba(17, 24, 39, 0.78)",
+
+                          color:
+                            "#ffffff",
+
+                          cursor:
+                            loading
+                              ? "not-allowed"
+                              : "pointer",
+
+                          fontSize:
+                            16,
+
+                          lineHeight:
+                            1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
+          </section>
+
+
+          {/* Upload State */}
+
+          {loading &&
+            selectedImages.length >
+              0 && (
+            <div
+              style={{
+                padding:
+                  "10px 12px",
+
+                borderRadius:
+                  8,
+
+                background:
+                  "#eff6ff",
+
+                color:
+                  "#1d4ed8",
+
+                fontSize:
+                  12,
+              }}
+            >
+              Uploading evidence images and saving report...
+            </div>
+          )}
+
+
           {/* Actions */}
 
           <div
@@ -507,6 +1296,84 @@ const TaskReportModal = ({
       )}
     </Modal>
   );
+};
+
+
+/*
+ * =========================================================
+ * FILE HELPERS
+ * =========================================================
+ */
+const getFileIdentity = (
+  file:
+    File,
+) => {
+  return [
+    file.name,
+    file.size,
+    file.lastModified,
+  ].join(
+    ":",
+  );
+};
+
+
+const createImageId = (
+  file:
+    File,
+) => {
+  return [
+    getFileIdentity(
+      file,
+    ),
+    Date.now(),
+    Math.random()
+      .toString(
+        36,
+      )
+      .slice(
+        2,
+      ),
+  ].join(
+    ":",
+  );
+};
+
+
+const formatFileSize = (
+  bytes:
+    number,
+) => {
+  if (
+    bytes <
+    1024
+  ) {
+    return `${bytes} B`;
+  }
+
+
+  if (
+    bytes <
+    1024 * 1024
+  ) {
+    return `${(
+      bytes /
+      1024
+    ).toFixed(
+      1,
+    )} KB`;
+  }
+
+
+  return `${(
+    bytes /
+    (
+      1024 *
+      1024
+    )
+  ).toFixed(
+    1,
+  )} MB`;
 };
 
 
