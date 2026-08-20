@@ -42,6 +42,7 @@ import {
   UpdateProjectTaskDto,
   RequestProjectTaskCompletionDto,
   ReviewProjectTaskCompletionDto,
+  TaskWorkLocationDto
 } from "../dto";
 
 import {
@@ -207,6 +208,9 @@ export class ProjectTaskController {
       "taskUuid",
     )
     taskUuid: string,
+
+    @Body()
+    dto: TaskWorkLocationDto,
   ) {
     return this.projectTaskService
       .startWork(
@@ -215,6 +219,7 @@ export class ProjectTaskController {
         taskUuid,
         req.user.id,
         req.user.employeeId,
+        dto,
       );
   }
 
@@ -264,6 +269,9 @@ export class ProjectTaskController {
       "taskUuid",
     )
     taskUuid: string,
+
+     @Body()
+  dto: TaskWorkLocationDto,
   ) {
     return this.projectTaskService
       .stopWork(
@@ -272,6 +280,7 @@ export class ProjectTaskController {
         taskUuid,
         req.user.id,
         req.user.employeeId,
+        dto,
       );
   }
 

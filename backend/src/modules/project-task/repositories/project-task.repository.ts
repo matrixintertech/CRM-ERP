@@ -9,6 +9,7 @@ import {
   ProjectTaskReportType,
   ProjectTaskStatus,
   ProjectTaskWorkSessionStatus,
+ 
 } from "@prisma/client";
 
 import {
@@ -31,6 +32,13 @@ interface CreateTaskReportAttachmentInput {
 
   storageKey:
     string;
+}
+
+export interface TaskWorkLocationInput {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  address?: string | null;
 }
 
 @Injectable()
@@ -590,6 +598,30 @@ async findWorkSessionsByTask(
 
         durationSeconds:
           true,
+
+        punchInLatitude:
+          true,
+
+        punchInLongitude:
+          true,
+
+        punchInAccuracy:
+          true,
+
+        punchInAddress:
+          true,
+
+        punchOutLatitude:
+          true,
+
+        punchOutLongitude:
+          true,
+
+        punchOutAccuracy:
+          true,
+
+        punchOutAddress:
+          true,
       },
     });
 }
@@ -1043,6 +1075,7 @@ async startWork(
   taskId: bigint,
   projectMemberId: bigint,
   userId: bigint,
+  location: TaskWorkLocationInput,
 ) {
   return this.prisma.$transaction(
     async (
@@ -1295,41 +1328,58 @@ async startWork(
         await tx
           .projectTaskWorkSession
           .create({
-            data: {
-              company: {
-                connect: {
-                  id:
-                    companyId,
+           data: {
+                company: {
+                  connect: {
+                    id: companyId,
+                  },
                 },
-              },
 
-              task: {
-                connect: {
-                  id:
-                    taskId,
+                task: {
+                  connect: {
+                    id: taskId,
+                  },
                 },
-              },
 
-              projectMember: {
-                connect: {
-                  id:
-                    projectMemberId,
+                projectMember: {
+                  connect: {
+                    id: projectMemberId,
+                  },
                 },
-              },
 
-              user: {
-                connect: {
-                  id:
-                    userId,
+                user: {
+                  connect: {
+                    id: userId,
+                  },
                 },
+
+                status:
+                  ProjectTaskWorkSessionStatus.OPEN,
+
+                punchInAt:
+                  new Date(),
+
+                // Punch-in location
+                punchInLatitude:
+                  new Prisma.Decimal(
+                    location.latitude,
+                  ),
+
+                punchInLongitude:
+                  new Prisma.Decimal(
+                    location.longitude,
+                  ),
+
+                punchInAccuracy:
+                  location.accuracy !== undefined
+                    ? new Prisma.Decimal(
+                        location.accuracy,
+                      )
+                    : null,
+
+                punchInAddress:
+                  location.address ?? null,
               },
-
-              status:
-                ProjectTaskWorkSessionStatus.OPEN,
-
-              punchInAt:
-                new Date(),
-            },
           });
 
 
@@ -1414,134 +1464,157 @@ async startWork(
    *
    * Task itself remains IN_PROGRESS.
    */
-  async stopWork(
-    companyId: bigint,
-    taskId: bigint,
-    projectMemberId: bigint,
-    userId: bigint,
-  ) {
-    return this.prisma.$transaction(
-      async (
-        tx,
-      ) => {
-        const openSession =
-          await tx
-            .projectTaskWorkSession
-            .findFirst({
-              where: {
-                companyId,
+async stopWork(
+  companyId: bigint,
+  taskId: bigint,
+  projectMemberId: bigint,
+  userId: bigint,
+  location: TaskWorkLocationInput,
+) {
+  return this.prisma.$transaction(
+    async (
+      tx,
+    ) => {
+      const openSession =
+        await tx
+          .projectTaskWorkSession
+          .findFirst({
+            where: {
+              companyId,
 
-                taskId,
+              taskId,
 
-                projectMemberId,
+              projectMemberId,
 
-                userId,
+              userId,
 
-                status:
-                  ProjectTaskWorkSessionStatus.OPEN,
-              },
+              status:
+                ProjectTaskWorkSessionStatus.OPEN,
+            },
 
-              orderBy: {
-                punchInAt:
-                  "desc",
-              },
-            });
-
-
-        if (!openSession) {
-          return {
-            outcome:
-              "NO_OPEN_SESSION" as const,
-          };
-        }
+            orderBy: {
+              punchInAt:
+                "desc",
+            },
+          });
 
 
-        const punchOutAt =
-          new Date();
-
-
-        const durationSeconds =
-          Math.max(
-            0,
-
-            Math.floor(
-              (
-                punchOutAt.getTime() -
-                openSession.punchInAt.getTime()
-              ) /
-                1000,
-            ),
-          );
-
-
-        /*
-         * updateMany lets us keep
-         * status=OPEN in the condition.
-         *
-         * Two simultaneous stop requests
-         * cannot both close same session.
-         */
-        const closeResult =
-          await tx
-            .projectTaskWorkSession
-            .updateMany({
-              where: {
-                id:
-                  openSession.id,
-
-                status:
-                  ProjectTaskWorkSessionStatus.OPEN,
-              },
-
-              data: {
-                status:
-                  ProjectTaskWorkSessionStatus.CLOSED,
-
-                punchOutAt,
-
-                durationSeconds,
-              },
-            });
-
-
-        if (
-          closeResult.count ===
-          0
-        ) {
-          return {
-            outcome:
-              "NO_OPEN_SESSION" as const,
-          };
-        }
-
-
-        const workSession =
-          await tx
-            .projectTaskWorkSession
-            .findUnique({
-              where: {
-                id:
-                  openSession.id,
-              },
-            });
-
-
+      if (!openSession) {
         return {
           outcome:
-            "STOPPED" as const,
-
-          workSession,
+            "NO_OPEN_SESSION" as const,
         };
-      },
+      }
 
-      {
-        isolationLevel:
-          Prisma.TransactionIsolationLevel
-            .Serializable,
-      },
-    );
-  }
 
+      const punchOutAt =
+        new Date();
+
+
+      const durationSeconds =
+        Math.max(
+          0,
+
+          Math.floor(
+            (
+              punchOutAt.getTime() -
+              openSession.punchInAt.getTime()
+            ) /
+              1000,
+          ),
+        );
+
+
+      /*
+       * updateMany lets us keep
+       * status=OPEN in the condition.
+       *
+       * Two simultaneous stop requests
+       * cannot both close same session.
+       */
+      const closeResult =
+        await tx
+          .projectTaskWorkSession
+          .updateMany({
+            where: {
+              id:
+                openSession.id,
+
+              status:
+                ProjectTaskWorkSessionStatus.OPEN,
+            },
+
+            data: {
+              status:
+                ProjectTaskWorkSessionStatus.CLOSED,
+
+              punchOutAt,
+
+              durationSeconds,
+
+              /*
+               * Punch-out location.
+               */
+              punchOutLatitude:
+                new Prisma.Decimal(
+                  location.latitude,
+                ),
+
+              punchOutLongitude:
+                new Prisma.Decimal(
+                  location.longitude,
+                ),
+
+              punchOutAccuracy:
+                location.accuracy !== undefined
+                  ? new Prisma.Decimal(
+                      location.accuracy,
+                    )
+                  : null,
+
+              punchOutAddress:
+                location.address ?? null,
+            },
+          });
+
+
+      if (
+        closeResult.count ===
+        0
+      ) {
+        return {
+          outcome:
+            "NO_OPEN_SESSION" as const,
+        };
+      }
+
+
+      const workSession =
+        await tx
+          .projectTaskWorkSession
+          .findUnique({
+            where: {
+              id:
+                openSession.id,
+            },
+          });
+
+
+      return {
+        outcome:
+          "STOPPED" as const,
+
+        workSession,
+      };
+    },
+
+    {
+      isolationLevel:
+        Prisma.TransactionIsolationLevel
+          .Serializable,
+    },
+  );
+}
 
   /*
  * Employee task report:

@@ -11,6 +11,10 @@ import {
   useAuthorization,
 } from "@/shared/hooks/useAuthorization";
 
+import {
+  notify,
+} from "@/shared/utils/notify";
+
 import PageHeader from "@/shared/components/PageHeader";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
@@ -18,6 +22,10 @@ import Button from "@/shared/components/Button";
 import {
   useMyTasks,
 } from "../hooks/useMyTasks";
+
+import {
+  getCurrentTaskLocation,
+} from "../utils/task-location";
 
 import MyTaskTable from "../components/MyTaskTable";
 import TaskReportModal from "../components/TaskReportModal";
@@ -99,6 +107,37 @@ const hasOpenWorkSession = (
   );
 };
 
+
+
+const getLocationErrorMessage = (
+  error: unknown,
+) => {
+  const locationError =
+    error as {
+      code?: number;
+
+      message?: string;
+    };
+
+  switch (
+    locationError.code
+  ) {
+    case 1:
+      return "Location permission is required to start or stop work.";
+
+    case 2:
+      return "Your current location could not be determined.";
+
+    case 3:
+      return "Location request timed out. Please try again.";
+
+    default:
+      return (
+        locationError.message ||
+        "Unable to get your current location."
+      );
+  }
+};
 
 const MyTaskPage = () => {
   useDocumentTitle(
@@ -303,43 +342,95 @@ const MyTaskPage = () => {
   /*
    * Start / resume employee work.
    */
-  const handleStartWork =
-    async (
-      task: MyTask,
-    ) => {
-      if (
-        !canExecute
-      ) {
-        return;
-      }
+ const handleStartWork =
+  async (
+    task: MyTask,
+  ) => {
+    if (
+      !canExecute
+    ) {
+      return;
+    }
 
 
+    let location;
+
+    try {
+      location =
+        await getCurrentTaskLocation();
+    } catch (
+      error
+    ) {
+      notify.error(
+        getLocationErrorMessage(
+          error,
+        ),
+      );
+
+      return;
+    }
+
+
+    try {
       await startWork(
         task.project.uuid,
         task.uuid,
+        location,
       );
-    };
+    } catch {
+      /*
+       * API error notification
+       * useMyTasks hook already handles.
+       */
+    }
+  };
 
 
   /*
    * Stop current work session.
    */
-  const handleStopWork =
-    async (
-      task: MyTask,
-    ) => {
-      if (
-        !canExecute
-      ) {
-        return;
-      }
+const handleStopWork =
+  async (
+    task: MyTask,
+  ) => {
+    if (
+      !canExecute
+    ) {
+      return;
+    }
 
 
+    let location;
+
+    try {
+      location =
+        await getCurrentTaskLocation();
+    } catch (
+      error
+    ) {
+      notify.error(
+        getLocationErrorMessage(
+          error,
+        ),
+      );
+
+      return;
+    }
+
+
+    try {
       await stopWork(
         task.project.uuid,
         task.uuid,
+        location,
       );
-    };
+    } catch {
+      /*
+       * API error notification
+       * useMyTasks hook already handles.
+       */
+    }
+  };
 
 
   /*

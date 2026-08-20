@@ -19,6 +19,7 @@ import {
 
 import type {
   ProjectTaskReportType,
+  TaskWorkLocationPayload,
 } from "../api/my-task.api";
 
 
@@ -31,6 +32,9 @@ interface TaskWorkVariables {
   projectUuid: string;
 
   taskUuid: string;
+
+  location:
+    TaskWorkLocationPayload;
 }
 
 
@@ -152,10 +156,12 @@ export const useMyTasks =
         mutationFn: ({
           projectUuid,
           taskUuid,
+          location,
         }: TaskWorkVariables) =>
           startMyTaskWork(
             projectUuid,
             taskUuid,
+            location,
           ),
 
         onSuccess:
@@ -190,10 +196,12 @@ export const useMyTasks =
         mutationFn: ({
           projectUuid,
           taskUuid,
+          location,
         }: TaskWorkVariables) =>
           stopMyTaskWork(
             projectUuid,
             taskUuid,
+            location,
           ),
 
         onSuccess:
@@ -284,9 +292,6 @@ export const useMyTasks =
             /*
              * Only after every image upload
              * succeeds do we submit the report.
-             *
-             * Backend will HEAD-verify all
-             * storage objects before DB save.
              */
             return createMyTaskReport(
               projectUuid,
@@ -392,38 +397,33 @@ export const useMyTasks =
       startWork: (
         projectUuid: string,
         taskUuid: string,
+        location:
+          TaskWorkLocationPayload,
       ) =>
         startMutation
           .mutateAsync({
             projectUuid,
             taskUuid,
+            location,
           }),
 
 
       stopWork: (
         projectUuid: string,
         taskUuid: string,
+        location:
+          TaskWorkLocationPayload,
       ) =>
         stopMutation
           .mutateAsync({
             projectUuid,
             taskUuid,
+            location,
           }),
 
 
       /*
        * files optional hain.
-       *
-       * Existing calls without images:
-       *
-       * addReport(
-       *   projectUuid,
-       *   taskUuid,
-       *   "NOTE",
-       *   message,
-       * )
-       *
-       * still work.
        */
       addReport: (
         projectUuid: string,

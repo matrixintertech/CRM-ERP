@@ -38,6 +38,17 @@ interface StopWorkResponse {
 }
 
 
+export interface TaskWorkLocationPayload {
+  latitude: number;
+
+  longitude: number;
+
+  accuracy?: number;
+
+  address?: string | null;
+}
+
+
 export type ProjectTaskReportType =
   | "PROGRESS"
   | "BLOCKER"
@@ -294,6 +305,7 @@ export const startMyTaskWork =
   async (
     projectUuid: string,
     taskUuid: string,
+    location: TaskWorkLocationPayload,
   ): Promise<
     StartWorkResponse
   > => {
@@ -304,6 +316,7 @@ export const startMyTaskWork =
         >
       >(
         `/projects/${projectUuid}/tasks/${taskUuid}/start-work`,
+        location,
       );
 
     return data.data;
@@ -317,6 +330,7 @@ export const stopMyTaskWork =
   async (
     projectUuid: string,
     taskUuid: string,
+    location: TaskWorkLocationPayload,
   ): Promise<
     StopWorkResponse
   > => {
@@ -327,6 +341,7 @@ export const stopMyTaskWork =
         >
       >(
         `/projects/${projectUuid}/tasks/${taskUuid}/stop-work`,
+        location,
       );
 
     return data.data;
@@ -576,3 +591,7 @@ export const requestMyTaskCompletion =
 
     return data.data;
   };
+
+
+
+  

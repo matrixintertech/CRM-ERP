@@ -19,7 +19,8 @@ import {
   UpdateProjectTaskDto,
   CreateProjectTaskReportDto,
   RequestProjectTaskCompletionDto,
-  ReviewProjectTaskCompletionDto
+  ReviewProjectTaskCompletionDto,
+  TaskWorkLocationDto
 } from "../dto";
 
 import {
@@ -982,6 +983,91 @@ async getWorkSummary(
     0;
 
 
+
+
+    const sessions =
+  workSessions.map(
+    (session) => ({
+      sessionUuid:
+        session.uuid,
+
+      workedSeconds:
+        session.status ===
+        "OPEN"
+          ? Math.max(
+              0,
+              Math.floor(
+                (
+                  now.getTime() -
+                  session.punchInAt.getTime()
+                ) /
+                  1000,
+              ),
+            )
+          : session.durationSeconds ??
+            0,
+
+      isActive:
+        session.status ===
+        "OPEN",
+
+      startLocation:
+        session.punchInLatitude !== null &&
+        session.punchInLongitude !== null
+          ? {
+              latitude:
+                Number(
+                  session.punchInLatitude,
+                ),
+
+              longitude:
+                Number(
+                  session.punchInLongitude,
+                ),
+
+              accuracy:
+                session.punchInAccuracy !==
+                null
+                  ? Number(
+                      session.punchInAccuracy,
+                    )
+                  : null,
+
+              address:
+                session.punchInAddress,
+            }
+          : null,
+
+      stopLocation:
+        session.punchOutLatitude !== null &&
+        session.punchOutLongitude !== null
+          ? {
+              latitude:
+                Number(
+                  session.punchOutLatitude,
+                ),
+
+              longitude:
+                Number(
+                  session.punchOutLongitude,
+                ),
+
+              accuracy:
+                session.punchOutAccuracy !==
+                null
+                  ? Number(
+                      session.punchOutAccuracy,
+                    )
+                  : null,
+
+              address:
+                session.punchOutAddress,
+            }
+          : null,
+    }),
+  );
+
+
   /*
    * =========================================================
    * SAFE FRONTEND RESPONSE
@@ -995,19 +1081,21 @@ async getWorkSummary(
    * raw session records
    */
   return {
-    taskUuid:
-      projectTask.uuid,
+      taskUuid:
+        projectTask.uuid,
 
-    totalWorkedSeconds,
+      totalWorkedSeconds,
 
-    todayWorkedSeconds,
+      todayWorkedSeconds,
 
-    sessionCount:
-      workSessions.length,
+      sessionCount:
+        workSessions.length,
 
-    isCurrentlyWorking,
+      isCurrentlyWorking,
 
-    dailyWork,
+      dailyWork,
+
+      sessions,
   };
 }
 
@@ -1388,6 +1476,7 @@ async startWork(
     | bigint
     | null
     | undefined,
+  dto: TaskWorkLocationDto,
 ) {
   const resolvedCompanyId =
     this.ensureCompanyContext(
@@ -1441,6 +1530,13 @@ async startWork(
         projectTask.id,
         assignedProjectMember.id,
         userId,
+
+        {
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          accuracy: dto.accuracy,
+          address: dto.address?.trim() || null,
+        },
       );
 
 
@@ -1567,6 +1663,7 @@ async startWork(
       | bigint
       | null
       | undefined,
+    dto: TaskWorkLocationDto,
   ) {
     const resolvedCompanyId =
       this.ensureCompanyContext(
@@ -1607,6 +1704,13 @@ async startWork(
           projectTask.id,
           assignedProjectMember.id,
           userId,
+
+          {
+            latitude: dto.latitude,
+            longitude: dto.longitude,
+            accuracy: dto.accuracy,
+            address: dto.address?.trim() || null,
+          },
         );
 
 
