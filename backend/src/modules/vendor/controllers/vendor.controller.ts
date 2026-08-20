@@ -46,7 +46,7 @@ import {
   AuthGuard("jwt"),
   PermissionGuard,
 )
-@Controller("vendors")
+@Controller("platform/vendors")
 export class VendorController {
   constructor(
     private readonly vendorService:
