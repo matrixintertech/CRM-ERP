@@ -138,9 +138,6 @@ const ProjectTaskActivityModal = ({
     isError:
       workSummaryError,
 
-    error:
-    workSummaryQueryError,
-
     refetch:
       refetchWorkSummary,
   } =
