@@ -90,6 +90,10 @@ import {
   VendorModule,
 } from "./modules/vendor/vendor.module";
 
+import {
+  VendorCategoryModule,
+} from "./modules/vendor-category/vendor-category.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -123,7 +127,8 @@ import {
      ProjectMemberModule,
      ProjectTaskModule,
      PlatformRoleModule,
-     VendorModule
+     VendorModule,
+     VendorCategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
