@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -31,6 +32,7 @@ import {
 
 import {
   CreateVendorDto,
+  UpdateVendorCategoriesDto,
   UpdateVendorDto,
   VendorQueryDto,
 } from "../dto";
@@ -58,11 +60,6 @@ export class VendorController {
    * =========================================================
    * CREATE GLOBAL VENDOR
    * =========================================================
-   *
-   * Platform-side vendor creation.
-   *
-   * Self registration and company invite
-   * will use separate workflows.
    */
   @Post()
   @RequirePermission(
@@ -105,6 +102,83 @@ export class VendorController {
     return this.vendorService
       .findAll(
         query,
+      );
+  }
+
+
+  /*
+   * =========================================================
+   * GET VENDOR CATEGORIES
+   * =========================================================
+   */
+  @Get(
+    ":vendorUuid/categories",
+  )
+  @RequirePermission(
+    "platform.vendor.view",
+  )
+  @ApiOperation({
+    summary:
+      "Get vendor categories",
+  })
+  @ApiParam({
+    name:
+      "vendorUuid",
+
+    description:
+      "Vendor UUID",
+  })
+  getCategories(
+    @Param(
+      "vendorUuid",
+    )
+    vendorUuid:
+      string,
+  ) {
+    return this.vendorService
+      .getCategories(
+        vendorUuid,
+      );
+  }
+
+
+  /*
+   * =========================================================
+   * UPDATE / REPLACE VENDOR CATEGORIES
+   * =========================================================
+   */
+  @Put(
+    ":vendorUuid/categories",
+  )
+  @RequirePermission(
+    "platform.vendor.update",
+  )
+  @ApiOperation({
+    summary:
+      "Update vendor categories",
+  })
+  @ApiParam({
+    name:
+      "vendorUuid",
+
+    description:
+      "Vendor UUID",
+  })
+  updateCategories(
+    @Param(
+      "vendorUuid",
+    )
+    vendorUuid:
+      string,
+
+    @Body()
+    dto:
+      UpdateVendorCategoriesDto,
+  ) {
+    return this.vendorService
+      .updateCategories(
+        vendorUuid,
+        dto,
       );
   }
 

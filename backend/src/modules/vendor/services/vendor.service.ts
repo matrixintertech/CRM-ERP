@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -10,6 +11,7 @@ import {
 
 import {
   CreateVendorDto,
+  UpdateVendorCategoriesDto,
   UpdateVendorDto,
   VendorQueryDto,
 } from "../dto";
@@ -523,4 +525,201 @@ export class VendorService {
     return normalized ||
       null;
   }
+
+/*
+ * =========================================================
+ * GET VENDOR CATEGORIES
+ * =========================================================
+ */
+
+async getCategories(
+  vendorUuid: string,
+) {
+  const vendor =
+    await this.vendorRepository
+      .findByUuid(
+        vendorUuid,
+      );
+
+
+  if (!vendor) {
+    throw new NotFoundException(
+      "Vendor not found.",
+    );
+  }
+
+
+  const categories =
+    await this.vendorRepository
+      .findCategories(
+        vendor.id,
+      );
+
+
+  return {
+    message:
+      "Vendor categories fetched successfully.",
+
+    categories,
+  };
+}
+
+
+/*
+ * =========================================================
+ * UPDATE / REPLACE VENDOR CATEGORIES
+ * =========================================================
+ */
+
+async updateCategories(
+  vendorUuid: string,
+  dto: UpdateVendorCategoriesDto,
+) {
+  /*
+   * Vendor validate.
+   */
+  const vendor =
+    await this.vendorRepository
+      .findByUuid(
+        vendorUuid,
+      );
+
+
+  if (!vendor) {
+    throw new NotFoundException(
+      "Vendor not found.",
+    );
+  }
+
+
+  /*
+   * Category UUIDs normalize.
+   */
+  const categoryUuids =
+    dto.categories.map(
+      (item) =>
+        item.categoryUuid,
+    );
+
+
+  /*
+   * Same category request me
+   * multiple times nahi honi chahiye.
+   */
+  const uniqueCategoryUuids =
+    Array.from(
+      new Set(
+        categoryUuids,
+      ),
+    );
+
+
+  if (
+    uniqueCategoryUuids.length !==
+    categoryUuids.length
+  ) {
+    throw new BadRequestException(
+      "Duplicate vendor categories are not allowed.",
+    );
+  }
+
+
+  /*
+   * Primary category selected
+   * categories ke andar honi chahiye.
+   */
+  if (
+    !uniqueCategoryUuids.includes(
+      dto.primaryCategoryUuid,
+    )
+  ) {
+    throw new BadRequestException(
+      "Primary category must be included in selected categories.",
+    );
+  }
+
+
+  /*
+   * Only ACTIVE + non-deleted
+   * categories repository return karega.
+   */
+  const categories =
+    await this.vendorRepository
+      .findActiveCategoriesByUuids(
+        uniqueCategoryUuids,
+      );
+
+
+  /*
+   * Agar requested UUID count aur
+   * DB result count different hai,
+   * koi category invalid/inactive/deleted hai.
+   */
+  if (
+    categories.length !==
+    uniqueCategoryUuids.length
+  ) {
+    throw new BadRequestException(
+      "One or more vendor categories are invalid or inactive.",
+    );
+  }
+
+
+  /*
+   * Primary category DB result me
+   * definitely available honi chahiye.
+   */
+  const primaryCategory =
+    categories.find(
+      (category) =>
+        category.uuid ===
+        dto.primaryCategoryUuid,
+    );
+
+
+  if (!primaryCategory) {
+    throw new BadRequestException(
+      "Primary vendor category is invalid.",
+    );
+  }
+
+
+  /*
+   * Internal IDs ke saath assignment
+   * payload prepare karo.
+   *
+   * Exactly one category primary hogi.
+   */
+  const assignments =
+    categories.map(
+      (category) => ({
+        categoryId:
+          category.id,
+
+        isPrimary:
+          category.id ===
+          primaryCategory.id,
+      }),
+    );
+
+
+  const updatedCategories =
+    await this.vendorRepository
+      .replaceCategories(
+        vendor.id,
+        assignments,
+      );
+
+
+  return {
+    message:
+      "Vendor categories updated successfully.",
+
+    categories:
+      updatedCategories,
+  };
+}
+
+
+
 }

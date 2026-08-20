@@ -4,6 +4,7 @@ import {
 
 import {
   Prisma,
+  Status,
   VendorMarketplaceStatus,
   VendorOnboardingSource,
   VendorStatus,
@@ -92,6 +93,11 @@ interface VendorDuplicateInput {
   mobile?: string | null;
 
   excludeVendorId?: bigint;
+}
+
+interface VendorCategoryAssignmentInput {
+  categoryId: bigint;
+  isPrimary: boolean;
 }
 
 
@@ -720,4 +726,166 @@ export class VendorRepository {
         },
       });
   }
+
+  /*
+ * =========================================================
+ * FIND VENDOR CATEGORIES
+ * =========================================================
+ */
+
+async findCategories(
+  vendorId: bigint,
+) {
+  return this.prisma
+    .vendorCategoryAssignment
+    .findMany({
+      where: {
+        vendorId,
+      },
+
+      orderBy: [
+        {
+          isPrimary:
+            "desc",
+        },
+
+        {
+          category: {
+            sortOrder:
+              "asc",
+          },
+        },
+
+        {
+          category: {
+            name:
+              "asc",
+          },
+        },
+      ],
+
+      include: {
+        category:
+          true,
+      },
+    });
+}
+
+
+/*
+ * =========================================================
+ * FIND ACTIVE CATEGORIES BY UUIDS
+ * =========================================================
+ */
+
+async findActiveCategoriesByUuids(
+  categoryUuids: string[],
+) {
+  return this.prisma
+    .vendorCategory
+    .findMany({
+      where: {
+        uuid: {
+          in:
+            categoryUuids,
+        },
+
+        status:
+          Status.ACTIVE,
+
+        deletedAt:
+          null,
+      },
+    });
+}
+
+
+/*
+ * =========================================================
+ * REPLACE / SYNC VENDOR CATEGORIES
+ * =========================================================
+ */
+
+async replaceCategories(
+  vendorId: bigint,
+  categories:
+    VendorCategoryAssignmentInput[],
+) {
+  return this.prisma
+    .$transaction(
+      async (
+        tx,
+      ) => {
+        /*
+         * Existing assignments remove.
+         */
+        await tx
+          .vendorCategoryAssignment
+          .deleteMany({
+            where: {
+              vendorId,
+            },
+          });
+
+
+        /*
+         * New assignments create.
+         */
+        if (
+          categories.length >
+          0
+        ) {
+          await tx
+            .vendorCategoryAssignment
+            .createMany({
+              data:
+                categories.map(
+                  (
+                    category,
+                  ) => ({
+                    vendorId,
+
+                    categoryId:
+                      category.categoryId,
+
+                    isPrimary:
+                      category.isPrimary,
+                  }),
+                ),
+            });
+        }
+
+
+        /*
+         * Updated assignments return.
+         */
+        return tx
+          .vendorCategoryAssignment
+          .findMany({
+            where: {
+              vendorId,
+            },
+
+            orderBy: [
+              {
+                isPrimary:
+                  "desc",
+              },
+
+              {
+                category: {
+                  sortOrder:
+                    "asc",
+                },
+              },
+            ],
+
+            include: {
+              category:
+                true,
+            },
+          });
+      },
+    );
+}
 }
