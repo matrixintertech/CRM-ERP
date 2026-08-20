@@ -160,6 +160,121 @@ enum PermissionScope {
   COMPANY
 }
 
+enum VendorStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum VendorMarketplaceStatus {
+  PRIVATE
+  PENDING
+  PUBLISHED
+  SUSPENDED
+}
+
+enum VendorOnboardingSource {
+  SELF_REGISTRATION
+  COMPANY_INVITE
+  PLATFORM_CREATED
+}
+
+enum VendorUserRole {
+  OWNER
+  ADMIN
+  SALES
+  ACCOUNTS
+  OPERATIONS
+  USER
+}
+
+enum VendorServiceAreaType {
+  NATIONAL
+  STATE
+  CITY
+  PINCODE
+  RADIUS
+}
+
+enum CompanySupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum CompanySupplierSource {
+  MANUAL
+  GLOBAL_VENDOR
+  COMPANY_INVITE
+}
+
+enum VendorInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum VendorPlanType {
+  FREE
+  PAID
+  LIFETIME
+}
+
+enum VendorSubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum VendorSubscriptionBillingCycle {
+  NONE
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+}
+
+enum VendorVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum VendorDocumentType {
+  PAN
+  GST_CERTIFICATE
+  UDYAM
+  BUSINESS_REGISTRATION
+  ADDRESS_PROOF
+  BANK_PROOF
+  CANCELLED_CHEQUE
+  OTHER
+}
+
+enum VendorDocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VendorBankAccountStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  INACTIVE
+}
+
+enum VendorTaxRegistrationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  INACTIVE
+}
+
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -215,6 +330,14 @@ model User {
   taskWorkSessions         ProjectTaskWorkSession[]
   requestedTaskCompletions ProjectTaskCompletionRequest[] @relation("TaskCompletionRequestedBy")
   reviewedTaskCompletions  ProjectTaskCompletionRequest[] @relation("TaskCompletionReviewedBy")
+
+  vendorMemberships VendorUser[]
+
+  sentVendorInvitations     VendorInvitation[] @relation("VendorInvitationInvitedBy")
+  acceptedVendorInvitations VendorInvitation[] @relation("VendorInvitationAcceptedBy")
+
+  reviewedVendorVerifications VendorVerification[] @relation("VendorVerificationReviewedBy")
+  reviewedVendorDocuments     VendorDocument[]     @relation("VendorDocumentReviewedBy")
 
   @@index([companyId])
   @@index([employeeId])
@@ -372,6 +495,9 @@ model Company {
   projectTaskReports            ProjectTaskReport[]
   projectTaskWorkSessions       ProjectTaskWorkSession[]
   projectTaskCompletionRequests ProjectTaskCompletionRequest[]
+
+  companySuppliers  CompanySupplier[]
+  vendorInvitations VendorInvitation[]
 
   @@index([status])
   @@map("companies")
@@ -748,8 +874,11 @@ model State {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  clients  Client[]
-  projects Project[]
+  clients                Client[]
+  projects               Project[]
+  vendorServiceAreas     VendorServiceArea[]
+  companySuppliers       CompanySupplier[]
+  vendorTaxRegistrations VendorTaxRegistration[]
 
   @@index([status])
 }
@@ -771,6 +900,9 @@ model City {
   clients           Client[]
   projects          Project[]
   organizationUnits OrganizationUnit[]
+
+  vendorServiceAreas VendorServiceArea[]
+  companySuppliers   CompanySupplier[]
 
   @@unique([stateId, name])
   @@index([stateId])
@@ -1390,3 +1522,602 @@ model Employee {
 }
 
 //Employee Schema End
+
+//Vendor Schema Start
+model VendorProfile {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  legalName   String  @db.VarChar(200)
+  displayName String? @db.VarChar(200)
+
+  /**
+   * Primary tax/contact details.
+   * Future me multi-GST / branch support ke liye
+   * separate VendorTaxRegistration model add karenge.
+   */
+  panNumber        String? @db.VarChar(20)
+  primaryGstNumber String? @db.VarChar(30)
+
+  email  String? @db.VarChar(150)
+  mobile String? @db.VarChar(20)
+
+  website String? @db.VarChar(255)
+
+  address String?
+  pincode String? @db.VarChar(10)
+
+  onboardingSource VendorOnboardingSource
+
+  status VendorStatus @default(PENDING)
+
+  marketplaceStatus VendorMarketplaceStatus @default(PRIVATE)
+
+  isVerified Boolean @default(false)
+
+  verifiedAt DateTime?
+
+  remarks String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users VendorUser[]
+
+  categories   VendorCategoryAssignment[]
+  serviceAreas VendorServiceArea[]
+
+  companySuppliers CompanySupplier[]
+  invitations      VendorInvitation[]
+  subscriptions    VendorSubscription[]
+
+  verifications    VendorVerification[]
+  documents        VendorDocument[]
+  taxRegistrations VendorTaxRegistration[]
+  bankAccounts     VendorBankAccount[]
+
+  @@index([legalName])
+  @@index([panNumber])
+  @@index([primaryGstNumber])
+  @@index([email])
+  @@index([mobile])
+  @@index([status])
+  @@index([marketplaceStatus])
+  @@index([isVerified])
+  @@index([deletedAt])
+  @@map("vendor_profiles")
+}
+
+model VendorUser {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  userId   BigInt
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role VendorUserRole @default(USER)
+
+  isPrimary Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  joinedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorId, userId])
+  @@index([vendorId])
+  @@index([userId])
+  @@index([role])
+  @@index([isPrimary])
+  @@index([isActive])
+  @@map("vendor_users")
+}
+
+model VendorCategory {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  name String @db.VarChar(100)
+  code String @unique @db.VarChar(50)
+
+  description String?
+
+  sortOrder Int @default(0)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  vendors VendorCategoryAssignment[]
+
+  @@index([name])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([deletedAt])
+  @@map("vendor_categories")
+}
+
+model VendorCategoryAssignment {
+  id BigInt @id @default(autoincrement())
+
+  vendorId   BigInt
+  categoryId BigInt
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  category VendorCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([vendorId, categoryId])
+  @@index([vendorId])
+  @@index([categoryId])
+  @@index([isPrimary])
+  @@map("vendor_category_assignments")
+}
+
+model VendorServiceArea {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  type VendorServiceAreaType
+
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id], onDelete: Restrict)
+
+  cityId BigInt?
+  city   City?   @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  pincode String? @db.VarChar(10)
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  radiusKm Decimal? @db.Decimal(10, 2)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([type])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([pincode])
+  @@index([isActive])
+  @@map("vendor_service_areas")
+}
+
+model CompanySupplier {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /**
+   * Supplier global vendor ho bhi sakta hai
+   * aur nahi bhi.
+   * Unregistered local supplier:
+   * vendorId = null
+   * Registered global vendor:
+   * vendorId = VendorProfile.id
+   */
+  vendorId BigInt?
+
+  vendor VendorProfile? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  /**
+   * Company-specific supplier code.
+   * Same global vendor ka code:
+   * Company A -> SUP-001
+   * Company B -> VEN-047
+   */
+  code String @db.VarChar(50)
+
+  /**
+   * Local supplier snapshot.
+   * VendorProfile link hone ke baad bhi
+   * company ki procurement history stable
+   * rakhne ke liye ye data useful rahega.
+   */
+  name String @db.VarChar(200)
+
+  contactName String? @db.VarChar(150)
+
+  mobile String? @db.VarChar(20)
+  email  String? @db.VarChar(150)
+
+  gstNumber String? @db.VarChar(30)
+  panNumber String? @db.VarChar(20)
+
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id], onDelete: Restrict)
+
+  cityId BigInt?
+  city   City?   @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  address String?
+  pincode String? @db.VarChar(10)
+
+  /**
+   * Company-private commercial terms.
+   */
+  paymentTermsDays Int?
+
+  creditLimit Decimal? @db.Decimal(14, 2)
+
+  isPreferred Boolean @default(false)
+
+  source CompanySupplierSource @default(MANUAL)
+
+  status CompanySupplierStatus @default(ACTIVE)
+
+  /**
+   * Global VendorProfile se kab link hua.
+   */
+  linkedAt DateTime?
+
+  remarks String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  invitations VendorInvitation[]
+
+  @@unique([companyId, code])
+  /**
+   * Same global vendor ek company me
+   * duplicate supplier nahi banega.
+   * vendorId nullable hai, therefore
+   * unregistered local suppliers multiple
+   * ho sakte hain.
+   */
+  @@unique([companyId, vendorId])
+  @@index([companyId])
+  @@index([vendorId])
+  @@index([name])
+  @@index([gstNumber])
+  @@index([email])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([source])
+  @@index([status])
+  @@index([isPreferred])
+  @@index([deletedAt])
+  @@map("company_suppliers")
+}
+
+model VendorInvitation {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  companyId BigInt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  companySupplierId BigInt
+
+  companySupplier CompanySupplier @relation(fields: [companySupplierId], references: [id], onDelete: Cascade)
+
+  /**
+   * Invite kis user ne bheja.
+   */
+  invitedByUserId BigInt
+
+  invitedByUser User @relation("VendorInvitationInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  /**
+   * Invite target.
+   * Email/mobile me se at least one
+   * backend validation se required karenge.
+   */
+  email  String? @db.VarChar(150)
+  mobile String? @db.VarChar(20)
+
+  /**
+   * Raw invite token DB me store nahi karna.
+   * Sirf hash store hoga.
+   */
+  tokenHash String @unique @db.VarChar(255)
+
+  status VendorInvitationStatus @default(PENDING)
+
+  expiresAt DateTime
+
+  acceptedAt DateTime?
+
+  /**
+   * Invite accept hone ke baad linked
+   * global vendor.
+   */
+  vendorId BigInt?
+
+  vendor VendorProfile? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  /**
+   * Kis actual User ne invitation accept ki.
+   */
+  acceptedByUserId BigInt?
+
+  acceptedByUser User? @relation("VendorInvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([companySupplierId])
+  @@index([invitedByUserId])
+  @@index([vendorId])
+  @@index([acceptedByUserId])
+  @@index([email])
+  @@index([mobile])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("vendor_invitations")
+}
+
+model VendorSubscriptionPlan {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  name String @db.VarChar(100)
+  code String @unique @db.VarChar(50)
+
+  description String?
+
+  planType VendorPlanType
+
+  billingCycle VendorSubscriptionBillingCycle
+
+  price Decimal @db.Decimal(10, 2)
+
+  durationInDays Int?
+
+  /**
+   * Marketplace visibility / feature controls.
+   */
+  marketplaceVisible Boolean @default(true)
+
+  maxServiceAreas Int?
+  maxCategories   Int?
+
+  canReceiveRfqs      Boolean @default(true)
+  canSubmitQuotations Boolean @default(true)
+
+  priorityListing Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  status Status @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  subscriptions VendorSubscription[]
+
+  @@index([planType])
+  @@index([billingCycle])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([deletedAt])
+  @@map("vendor_subscription_plans")
+}
+
+model VendorSubscription {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  planId BigInt
+
+  plan VendorSubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  startDate DateTime
+
+  endDate DateTime?
+
+  amount Decimal? @db.Decimal(10, 2)
+
+  status VendorSubscriptionStatus @default(ACTIVE)
+
+  /**
+   * Vendor ka current subscription.
+   * Historical subscriptions preserve rahenge.
+   */
+  isCurrent Boolean @default(true)
+
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([planId])
+  @@index([status])
+  @@index([isCurrent])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("vendor_subscriptions")
+}
+
+model VendorVerification {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  status VendorVerificationStatus @default(PENDING)
+
+  submittedAt DateTime @default(now())
+
+  reviewedByUserId BigInt?
+  reviewedByUser   User?   @relation("VendorVerificationReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  reviewedAt DateTime?
+
+  reviewNote String?
+
+  isCurrent Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([reviewedByUserId])
+  @@index([isCurrent])
+  @@index([submittedAt])
+  @@map("vendor_verifications")
+}
+
+model VendorDocument {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  type VendorDocumentType
+
+  documentNumber String? @db.VarChar(100)
+
+  /**
+   * Public URL store mat karna.
+   * S3 / MinIO storage key store karenge.
+   */
+  storageKey String @db.VarChar(500)
+
+  fileName String  @db.VarChar(255)
+  mimeType String? @db.VarChar(100)
+
+  sizeBytes BigInt?
+
+  status VendorDocumentVerificationStatus @default(PENDING)
+
+  reviewedByUserId BigInt?
+
+  reviewedByUser User? @relation("VendorDocumentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  reviewedAt DateTime?
+
+  reviewNote String?
+
+  expiresAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([vendorId])
+  @@index([type])
+  @@index([status])
+  @@index([reviewedByUserId])
+  @@index([expiresAt])
+  @@index([deletedAt])
+  @@map("vendor_documents")
+}
+
+model VendorTaxRegistration {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  gstNumber String @db.VarChar(30)
+
+  legalName String? @db.VarChar(200)
+  tradeName String? @db.VarChar(200)
+
+  stateId BigInt?
+  state   State?  @relation(fields: [stateId], references: [id], onDelete: Restrict)
+
+  address String?
+  pincode String? @db.VarChar(10)
+
+  isPrimary Boolean @default(false)
+
+  status VendorTaxRegistrationStatus @default(PENDING)
+
+  verifiedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([vendorId, gstNumber])
+  @@index([vendorId])
+  @@index([gstNumber])
+  @@index([stateId])
+  @@index([isPrimary])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("vendor_tax_registrations")
+}
+
+model VendorBankAccount {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  accountHolderName String @db.VarChar(200)
+
+  bankName String @db.VarChar(150)
+
+  branchName String? @db.VarChar(150)
+
+  /**
+   * Full account number plaintext me ideally
+   * store nahi karna.
+   * Application layer se encrypt karke store karo.
+   */
+  accountNumberEncrypted String @db.Text
+
+  accountNumberLast4 String @db.VarChar(4)
+
+  ifscCode String @db.VarChar(20)
+
+  accountType String? @db.VarChar(30)
+
+  isPrimary Boolean @default(false)
+
+  status VendorBankAccountStatus @default(PENDING)
+
+  verifiedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([vendorId])
+  @@index([ifscCode])
+  @@index([isPrimary])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("vendor_bank_accounts")
+}
