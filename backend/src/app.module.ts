@@ -85,6 +85,11 @@ import {
   PlatformRoleModule,
 } from "./modules/platform-roles/platform-role.module";
 
+//Vendor
+import {
+  VendorModule,
+} from "./modules/vendor/vendor.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -117,7 +122,8 @@ import {
     ProjectRoleModule,
      ProjectMemberModule,
      ProjectTaskModule,
-     PlatformRoleModule
+     PlatformRoleModule,
+     VendorModule
   ],
   controllers: [AppController],
   providers: [AppService],

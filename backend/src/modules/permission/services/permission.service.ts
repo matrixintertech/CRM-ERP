@@ -46,6 +46,8 @@ private readonly platformModules =
     "PLATFORM_PERMISSION",
     "PLATFORM_MODULE",
     "PLATFORM_SUBSCRIPTION_PLAN",
+    "PLATFORM_VENDOR",
+    "PLATFORM_VENDOR_CATEGORY"
   ]);
 
 

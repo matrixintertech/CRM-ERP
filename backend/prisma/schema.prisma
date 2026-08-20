@@ -275,6 +275,24 @@ enum VendorTaxRegistrationStatus {
   INACTIVE
 }
 
+enum VendorContactType {
+  OWNER
+  SALES
+  ACCOUNTS
+  PURCHASE
+  DISPATCH
+  SUPPORT
+  OTHER
+}
+
+enum VendorAddressType {
+  REGISTERED_OFFICE
+  BILLING
+  WAREHOUSE
+  BRANCH
+  OTHER
+}
+
 // USER MODEL START
 model User {
   id   BigInt @id @default(autoincrement())
@@ -879,6 +897,7 @@ model State {
   vendorServiceAreas     VendorServiceArea[]
   companySuppliers       CompanySupplier[]
   vendorTaxRegistrations VendorTaxRegistration[]
+  vendorAddresses VendorAddress[]
 
   @@index([status])
 }
@@ -903,6 +922,7 @@ model City {
 
   vendorServiceAreas VendorServiceArea[]
   companySuppliers   CompanySupplier[]
+  vendorAddresses VendorAddress[]
 
   @@unique([stateId, name])
   @@index([stateId])
@@ -1577,6 +1597,9 @@ model VendorProfile {
   taxRegistrations VendorTaxRegistration[]
   bankAccounts     VendorBankAccount[]
 
+  contacts  VendorContact[]
+  addresses VendorAddress[]
+
   @@index([legalName])
   @@index([panNumber])
   @@index([primaryGstNumber])
@@ -2120,4 +2143,85 @@ model VendorBankAccount {
   @@index([status])
   @@index([deletedAt])
   @@map("vendor_bank_accounts")
+}
+
+model VendorContact {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(150)
+  designation String? @db.VarChar(100)
+
+  type VendorContactType @default(OTHER)
+
+  mobile String? @db.VarChar(20)
+  email  String? @db.VarChar(150)
+
+  isPrimary Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  remarks String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([vendorId])
+  @@index([type])
+  @@index([email])
+  @@index([mobile])
+  @@index([isPrimary])
+  @@index([isActive])
+  @@index([deletedAt])
+
+  @@map("vendor_contacts")
+}
+
+model VendorAddress {
+  id   BigInt @id @default(autoincrement())
+  uuid String @unique @default(uuid()) @db.Uuid
+
+  vendorId BigInt
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  type  VendorAddressType @default(OTHER)
+  label String?           @db.VarChar(100)
+
+  addressLine1 String
+  addressLine2 String?
+
+  stateId BigInt?
+  state   State? @relation(fields: [stateId], references: [id], onDelete: Restrict)
+
+  cityId BigInt?
+  city   City? @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  pincode String? @db.VarChar(10)
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  contactName   String? @db.VarChar(150)
+  contactMobile String? @db.VarChar(20)
+
+  isPrimary Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([vendorId])
+  @@index([type])
+  @@index([stateId])
+  @@index([cityId])
+  @@index([pincode])
+  @@index([isPrimary])
+  @@index([isActive])
+  @@index([deletedAt])
+
+  @@map("vendor_addresses")
 }
