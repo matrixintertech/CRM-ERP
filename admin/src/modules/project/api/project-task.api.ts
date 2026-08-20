@@ -83,6 +83,39 @@ export interface ProjectTaskDailyWork {
 }
 
 
+export interface ProjectTaskWorkLocation {
+  latitude:
+    number;
+
+  longitude:
+    number;
+
+  accuracy:
+    number | null;
+
+  address:
+    string | null;
+}
+
+
+export interface ProjectTaskWorkSessionSummary {
+  sessionUuid:
+    string;
+
+  workedSeconds:
+    number;
+
+  isActive:
+    boolean;
+
+  startLocation:
+    ProjectTaskWorkLocation | null;
+
+  stopLocation:
+    ProjectTaskWorkLocation | null;
+}
+
+
 export interface ProjectTaskWorkSummary {
   taskUuid:
     string;
@@ -101,6 +134,9 @@ export interface ProjectTaskWorkSummary {
 
   dailyWork:
     ProjectTaskDailyWork[];
+
+  sessions:
+    ProjectTaskWorkSessionSummary[];
 }
 
 

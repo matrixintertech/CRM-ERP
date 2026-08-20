@@ -15,8 +15,12 @@ import {
 } from "../../api/project-task.api";
 
 import type {
-  ProjectTaskWorkSummary,
+
+   ProjectTaskWorkLocation,
+   ProjectTaskWorkSummary,
 } from "../../api/project-task.api";
+
+
 
 import type {
   ProjectTask,
@@ -133,6 +137,9 @@ const ProjectTaskActivityModal = ({
 
     isError:
       workSummaryError,
+
+    error:
+    workSummaryQueryError,
 
     refetch:
       refetchWorkSummary,
@@ -642,7 +649,6 @@ const TaskWorkLog = ({
       <section>
         <WorkLogSectionTitle />
 
-
         <div
           style={{
             padding:
@@ -678,7 +684,6 @@ const TaskWorkLog = ({
     return (
       <section>
         <WorkLogSectionTitle />
-
 
         <div
           style={{
@@ -758,6 +763,11 @@ const TaskWorkLog = ({
   ) {
     return null;
   }
+
+
+  const sessions =
+    summary.sessions ??
+    [];
 
 
   return (
@@ -1128,10 +1138,460 @@ const TaskWorkLog = ({
           </div>
         )}
       </div>
+
+
+      {/* =====================================================
+          SESSION LOCATIONS
+          ===================================================== */}
+
+      <div
+        style={{
+          marginTop:
+            18,
+        }}
+      >
+        <div
+          style={{
+            marginBottom:
+              8,
+
+            color:
+              "#374151",
+
+            fontSize:
+              12,
+
+            fontWeight:
+              600,
+          }}
+        >
+          Session Locations
+        </div>
+
+
+        {sessions.length ===
+        0 ? (
+          <div
+            style={{
+              padding:
+                "28px 16px",
+
+              border:
+                "1px dashed #d1d5db",
+
+              borderRadius:
+                10,
+
+              color:
+                "#6b7280",
+
+              textAlign:
+                "center",
+
+              fontSize:
+                13,
+            }}
+          >
+            No work session locations available.
+          </div>
+        ) : (
+          <div
+            style={{
+              display:
+                "grid",
+
+              gap:
+                10,
+            }}
+          >
+            {sessions.map(
+              (
+                session,
+                index,
+              ) => (
+                <div
+                  key={
+                    session.sessionUuid
+                  }
+                  style={{
+                    padding:
+                      "14px",
+
+                    border:
+                      "1px solid #e5e7eb",
+
+                    borderRadius:
+                      10,
+
+                    background:
+                      "#ffffff",
+                  }}
+                >
+                  {/* Session Header */}
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      justifyContent:
+                        "space-between",
+
+                      alignItems:
+                        "center",
+
+                      gap:
+                        12,
+
+                      flexWrap:
+                        "wrap",
+
+                      marginBottom:
+                        12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color:
+                          "#111827",
+
+                        fontSize:
+                          13,
+
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      Session{" "}
+                      {index +
+                        1}
+                    </div>
+
+
+                    <div
+                      style={{
+                        display:
+                          "flex",
+
+                        alignItems:
+                          "center",
+
+                        gap:
+                          8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding:
+                            "4px 8px",
+
+                          borderRadius:
+                            999,
+
+                          background:
+                            session.isActive
+                              ? "#f0fdf4"
+                              : "#f3f4f6",
+
+                          color:
+                            session.isActive
+                              ? "#15803d"
+                              : "#374151",
+
+                          fontSize:
+                            10,
+
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {session.isActive
+                          ? "ACTIVE"
+                          : "COMPLETED"}
+                      </span>
+
+
+                      <span
+                        style={{
+                          color:
+                            "#6b7280",
+
+                          fontSize:
+                            11,
+
+                          whiteSpace:
+                            "nowrap",
+                        }}
+                      >
+                        {formatWorkedDuration(
+                          session
+                            .workedSeconds,
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+
+                      gridTemplateColumns:
+                        "repeat(2, minmax(0, 1fr))",
+
+                      gap:
+                        10,
+                    }}
+                  >
+                    <WorkLocationCard
+                      label="Start Location"
+                      location={
+                        session.startLocation
+                      }
+                    />
+
+
+                    <WorkLocationCard
+                      label="Stop Location"
+                      location={
+                        session.stopLocation
+                      }
+                      emptyText={
+                        session.isActive
+                          ? "Work session is still active."
+                          : "Stop location not available."
+                      }
+                    />
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 };
 
+
+const WorkLocationCard = ({
+  label,
+  location,
+  emptyText = "Location not available.",
+}: {
+  label:
+    string;
+
+  location:
+    ProjectTaskWorkLocation | null;
+
+  emptyText?:
+    string;
+}) => {
+  if (
+    !location
+  ) {
+    return (
+      <div
+        style={{
+          padding:
+            "12px",
+
+          border:
+            "1px solid #f3f4f6",
+
+          borderRadius:
+            8,
+
+          background:
+            "#f8fafc",
+        }}
+      >
+        <div
+          style={{
+            color:
+              "#6b7280",
+
+            fontSize:
+              11,
+
+            fontWeight:
+              600,
+          }}
+        >
+          {label}
+        </div>
+
+
+        <div
+          style={{
+            marginTop:
+              7,
+
+            color:
+              "#9ca3af",
+
+            fontSize:
+              12,
+          }}
+        >
+          {emptyText}
+        </div>
+      </div>
+    );
+  }
+
+
+  const mapsUrl =
+    getGoogleMapsUrl(
+      location.latitude,
+      location.longitude,
+    );
+
+
+  return (
+    <div
+      style={{
+        padding:
+          "12px",
+
+        border:
+          "1px solid #e5e7eb",
+
+        borderRadius:
+          8,
+
+        background:
+          "#f8fafc",
+
+        minWidth:
+          0,
+      }}
+    >
+      <div
+        style={{
+          color:
+            "#6b7280",
+
+          fontSize:
+            11,
+
+          fontWeight:
+            600,
+        }}
+      >
+        {label}
+      </div>
+
+
+      {location.address && (
+        <div
+          style={{
+            marginTop:
+              7,
+
+            color:
+              "#111827",
+
+            fontSize:
+              12,
+
+            lineHeight:
+              1.5,
+
+            overflowWrap:
+              "anywhere",
+          }}
+        >
+          {location.address}
+        </div>
+      )}
+
+
+      <div
+        style={{
+          marginTop:
+            7,
+
+          color:
+            "#4b5563",
+
+          fontSize:
+            11,
+
+          lineHeight:
+            1.5,
+
+          overflowWrap:
+            "anywhere",
+        }}
+      >
+        {location.latitude.toFixed(
+          6,
+        )}
+        ,{" "}
+        {location.longitude.toFixed(
+          6,
+        )}
+      </div>
+
+
+      {location.accuracy !==
+        null && (
+        <div
+          style={{
+            marginTop:
+              3,
+
+            color:
+              "#6b7280",
+
+            fontSize:
+              10,
+          }}
+        >
+          Accuracy: ±
+          {Math.round(
+            location.accuracy,
+          )}
+          m
+        </div>
+      )}
+
+
+      <div
+        style={{
+          marginTop:
+            9,
+        }}
+      >
+        <a
+          href={
+            mapsUrl
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color:
+              "#2563eb",
+
+            fontSize:
+              11,
+
+            fontWeight:
+              600,
+
+            textDecoration:
+              "none",
+          }}
+        >
+          Open in Maps
+        </a>
+      </div>
+    </div>
+  );
+};
 
 /*
  * =========================================================
@@ -1375,6 +1835,19 @@ const formatWorkDate = (
   ).format(
     date,
   );
+};
+
+
+const getGoogleMapsUrl = (
+  latitude: number,
+  longitude: number,
+) => {
+  const coordinates =
+    `${latitude},${longitude}`;
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(
+    coordinates,
+  )}`;
 };
 
 
