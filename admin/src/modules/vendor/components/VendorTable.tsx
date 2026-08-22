@@ -278,7 +278,7 @@ const VendorTable = ({
         <div className="flex items-center gap-2">
           {canView && (
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={() =>
                 onView(
@@ -295,7 +295,7 @@ const VendorTable = ({
 
           {canEdit && (
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={() =>
                 onEdit(
@@ -313,7 +313,7 @@ const VendorTable = ({
           {canManageCategories &&
             onManageCategories && (
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 onClick={() =>
                   onManageCategories(
@@ -330,7 +330,7 @@ const VendorTable = ({
 
           {canDelete && (
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={() =>
                 onDelete(

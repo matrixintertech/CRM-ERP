@@ -586,7 +586,7 @@ const VendorCategoryPage = () => {
                     {canUpdate && (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         title="Edit Category"
                         disabled={
@@ -611,7 +611,7 @@ const VendorCategoryPage = () => {
                     {canUpdate && (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         title={
                           row.status ===
@@ -640,7 +640,7 @@ const VendorCategoryPage = () => {
                     {canDelete && (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         title="Delete Category"
                         disabled={
