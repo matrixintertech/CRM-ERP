@@ -1,0 +1,584 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+
+/*
+ * =========================
+ * EMPTY STATE
+ * =========================
+ */
+
+.stateMessage {
+  padding: 32px 0;
+
+  text-align: center;
+
+  font-size: 14px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * VENDOR SUMMARY
+ * =========================
+ */
+
+.vendorSummary {
+  padding: 14px 16px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  background: #f9fafb;
+}
+
+
+.summaryLabel {
+  margin-bottom: 4px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  line-height: 1.4;
+
+  letter-spacing: 0.05em;
+
+  text-transform: uppercase;
+
+  color: #6b7280;
+}
+
+
+.vendorName {
+  font-size: 15px;
+
+  font-weight: 600;
+
+  line-height: 1.5;
+
+  color: #111827;
+
+  overflow-wrap: anywhere;
+}
+
+
+.legalName {
+  margin-top: 3px;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  color: #6b7280;
+
+  overflow-wrap: anywhere;
+}
+
+
+/*
+ * =========================
+ * SECTION HEADER
+ * =========================
+ */
+
+.sectionHeader {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 12px;
+}
+
+
+.sectionTitle {
+  margin: 0;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #111827;
+}
+
+
+.sectionDescription {
+  margin: 4px 0 0;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  color: #6b7280;
+}
+
+
+.selectedCount {
+  flex-shrink: 0;
+
+  padding: 5px 9px;
+
+  border-radius: 6px;
+
+  background: #f3f4f6;
+
+  font-size: 12px;
+
+  font-weight: 500;
+
+  color: #4b5563;
+}
+
+
+/*
+ * =========================
+ * CATEGORY LIST
+ * =========================
+ */
+
+.categoryList {
+  max-height: 340px;
+
+  overflow-y: auto;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+}
+
+
+.categoryRow {
+  display: grid;
+
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
+
+  align-items: center;
+
+  gap: 16px;
+
+  padding: 13px 16px;
+
+  border-bottom: 1px solid #f3f4f6;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+
+.categoryRow:last-child {
+  border-bottom: none;
+}
+
+
+.categoryRow:hover {
+  background: #f9fafb;
+}
+
+
+.categoryRowSelected {
+  background: #f8fafc;
+}
+
+
+.categoryRowSelected:hover {
+  background: #f3f4f6;
+}
+
+
+/*
+ * =========================
+ * CHECKBOX / RADIO
+ * =========================
+ */
+
+.checkbox,
+.radio {
+  width: 16px;
+  height: 16px;
+
+  margin: 0;
+
+  flex-shrink: 0;
+
+  cursor: pointer;
+
+  accent-color: #2563eb;
+}
+
+
+.checkbox:disabled,
+.radio:disabled {
+  cursor: not-allowed;
+}
+
+
+/*
+ * =========================
+ * CATEGORY CONTENT
+ * =========================
+ */
+
+.categoryButton {
+  display: block;
+
+  min-width: 0;
+
+  padding: 0;
+
+  border: 0;
+
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.categoryButton:disabled {
+  cursor: default;
+}
+
+
+.categoryName {
+  font-size: 14px;
+
+  font-weight: 500;
+
+  line-height: 1.5;
+
+  color: #111827;
+
+  overflow-wrap: anywhere;
+}
+
+
+.categoryMeta {
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 5px;
+
+  margin-top: 3px;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  color: #6b7280;
+}
+
+
+.metaSeparator {
+  color: #d1d5db;
+}
+
+
+/*
+ * =========================
+ * PRIMARY OPTION
+ * =========================
+ */
+
+.primaryOption {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  flex-shrink: 0;
+
+  font-size: 12px;
+
+  user-select: none;
+}
+
+
+.primaryEnabled {
+  cursor: pointer;
+
+  color: #374151;
+}
+
+
+.primaryDisabled {
+  cursor: not-allowed;
+
+  color: #9ca3af;
+}
+
+
+/*
+ * =========================
+ * EMPTY CATEGORY LIST
+ * =========================
+ */
+
+.emptyState {
+  padding: 32px 16px;
+
+  text-align: center;
+
+  font-size: 14px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * SELECTED CATEGORIES
+ * =========================
+ */
+
+.selectedGrid {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  margin-top: 12px;
+}
+
+
+.selectedCard {
+  min-width: 160px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 8px;
+
+  background: #f9fafb;
+}
+
+
+.primaryCard {
+  border-color: #bfdbfe;
+
+  background: #eff6ff;
+}
+
+
+.selectedCardHeader {
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+}
+
+
+.selectedName {
+  font-size: 13px;
+
+  font-weight: 600;
+
+  color: #1f2937;
+}
+
+
+.primaryBadge {
+  padding: 2px 6px;
+
+  border-radius: 4px;
+
+  background: #dbeafe;
+
+  font-size: 10px;
+
+  font-weight: 600;
+
+  letter-spacing: 0.03em;
+
+  text-transform: uppercase;
+
+  color: #1d4ed8;
+}
+
+
+.selectedCode {
+  margin-top: 4px;
+
+  font-size: 11px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * VALIDATION MESSAGES
+ * =========================
+ */
+
+.warningMessage,
+.infoMessage {
+  padding: 10px 12px;
+
+  border-radius: 7px;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+
+.warningMessage {
+  border: 1px solid #fde68a;
+
+  background: #fffbeb;
+
+  color: #92400e;
+}
+
+
+.infoMessage {
+  border: 1px solid #e5e7eb;
+
+  background: #f9fafb;
+
+  color: #4b5563;
+}
+
+
+/*
+ * =========================
+ * ACTIONS
+ * =========================
+ */
+
+.actions {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  gap: 12px;
+
+  padding-top: 16px;
+
+  border-top: 1px solid #e5e7eb;
+}
+
+
+/*
+ * =========================
+ * SCROLLBAR
+ * =========================
+ */
+
+.categoryList::-webkit-scrollbar {
+  width: 7px;
+}
+
+
+.categoryList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.categoryList::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+
+  background: #d1d5db;
+}
+
+
+.categoryList::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+
+/*
+ * =========================
+ * RESPONSIVE
+ * =========================
+ */
+
+@media (max-width: 768px) {
+  .categoryRow {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+
+    gap: 12px;
+  }
+
+
+  .primaryOption {
+    grid-column: 2;
+
+    justify-self: start;
+  }
+
+
+  .sectionHeader {
+    flex-direction: column;
+
+    gap: 8px;
+  }
+
+
+  .selectedCount {
+    align-self: flex-start;
+  }
+
+
+  .selectedCard {
+    flex: 1 1 160px;
+  }
+}
+
+
+@media (max-width: 480px) {
+  .container {
+    gap: 20px;
+  }
+
+
+  .categoryRow {
+    padding: 12px;
+  }
+
+
+  .selectedGrid {
+    flex-direction: column;
+  }
+
+
+  .selectedCard {
+    width: 100%;
+
+    min-width: 0;
+  }
+
+
+  .actions {
+    flex-direction: column-reverse;
+
+    align-items: stretch;
+  }
+}

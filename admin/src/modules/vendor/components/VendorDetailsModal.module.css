@@ -1,0 +1,521 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+
+/*
+ * =========================
+ * LOADING / EMPTY STATE
+ * =========================
+ */
+
+.stateMessage {
+  padding: 40px 0;
+
+  text-align: center;
+
+  font-size: 14px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * HEADER
+ * =========================
+ */
+
+.vendorHeader {
+  padding: 16px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  background: #f9fafb;
+}
+
+
+.headerContent {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  flex-wrap: wrap;
+
+  gap: 16px;
+}
+
+
+.vendorIdentity {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  min-width: 0;
+}
+
+
+.vendorIcon {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  flex-shrink: 0;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  color: #374151;
+}
+
+
+.vendorMain {
+  min-width: 0;
+}
+
+
+.vendorName {
+  font-size: 16px;
+
+  font-weight: 600;
+
+  line-height: 1.4;
+
+  color: #111827;
+
+  word-break: break-word;
+}
+
+
+.displayName {
+  margin-top: 4px;
+
+  font-size: 14px;
+
+  color: #6b7280;
+}
+
+
+.badges {
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  margin-top: 12px;
+}
+
+
+.verified {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  font-size: 14px;
+
+  font-weight: 500;
+
+  color: #374151;
+}
+
+
+/*
+ * =========================
+ * SECTION
+ * =========================
+ */
+
+.sectionTitle {
+  margin: 0 0 16px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #111827;
+}
+
+
+.sectionTitleIcon {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  margin: 0 0 16px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #111827;
+}
+
+
+.divider {
+  height: 1px;
+
+  width: 100%;
+
+  background: #f3f4f6;
+}
+
+
+/*
+ * =========================
+ * INFORMATION GRID
+ * =========================
+ */
+
+.infoGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  column-gap: 24px;
+
+  row-gap: 20px;
+}
+
+
+.infoItem {
+  min-width: 0;
+}
+
+
+.infoLabel {
+  margin-bottom: 4px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  line-height: 1.4;
+
+  letter-spacing: 0.04em;
+
+  text-transform: uppercase;
+
+  color: #6b7280;
+}
+
+
+.infoValue {
+  min-width: 0;
+
+  font-size: 14px;
+
+  font-weight: 500;
+
+  line-height: 1.5;
+
+  color: #111827;
+
+  overflow-wrap: anywhere;
+}
+
+
+/*
+ * =========================
+ * ICON VALUES
+ * =========================
+ */
+
+.iconValue {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+
+.iconValue svg,
+.websiteLink svg {
+  flex-shrink: 0;
+
+  color: #9ca3af;
+}
+
+
+.websiteLink {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  max-width: 100%;
+
+  color: #111827;
+
+  text-decoration: none;
+
+  overflow-wrap: anywhere;
+}
+
+
+.websiteLink:hover {
+  text-decoration: underline;
+}
+
+
+/*
+ * =========================
+ * ADDRESS
+ * =========================
+ */
+
+.addressCard {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  padding: 16px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+}
+
+
+.cardIcon {
+  margin-top: 2px;
+
+  flex-shrink: 0;
+
+  color: #9ca3af;
+}
+
+
+.addressText {
+  font-size: 14px;
+
+  line-height: 1.6;
+
+  color: #374151;
+
+  overflow-wrap: anywhere;
+}
+
+
+.addressMeta {
+  margin-top: 4px;
+
+  font-size: 12px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * CATEGORY / SERVICE CARDS
+ * =========================
+ */
+
+.cardGrid {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+}
+
+
+.tagCard,
+.serviceCard {
+  min-width: 150px;
+
+  padding: 10px 12px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 8px;
+}
+
+
+.tagCard {
+  background: #f9fafb;
+}
+
+
+.serviceCard {
+  background: #ffffff;
+}
+
+
+.tagName {
+  font-size: 14px;
+
+  font-weight: 500;
+
+  color: #1f2937;
+}
+
+
+.tagCode {
+  margin-top: 4px;
+
+  font-size: 12px;
+
+  color: #6b7280;
+}
+
+
+.primaryLabel {
+  margin-left: 8px;
+
+  font-size: 11px;
+
+  font-weight: 500;
+
+  color: #6b7280;
+}
+
+
+.emptyCard {
+  padding: 16px;
+
+  border: 1px dashed #d1d5db;
+
+  border-radius: 8px;
+
+  font-size: 14px;
+
+  color: #6b7280;
+}
+
+
+/*
+ * =========================
+ * REMARKS
+ * =========================
+ */
+
+.remarks {
+  padding: 16px;
+
+  border-radius: 8px;
+
+  background: #f9fafb;
+
+  white-space: pre-wrap;
+
+  font-size: 14px;
+
+  line-height: 1.6;
+
+  color: #374151;
+
+  overflow-wrap: anywhere;
+}
+
+
+/*
+ * =========================
+ * FOOTER
+ * =========================
+ */
+
+.footer {
+  display: flex;
+
+  justify-content: flex-end;
+
+  padding-top: 16px;
+
+  border-top: 1px solid #f3f4f6;
+}
+
+
+/*
+ * =========================
+ * RESPONSIVE
+ * =========================
+ */
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .headerContent {
+    flex-direction: column;
+  }
+
+
+  .verified {
+    margin-left: 54px;
+  }
+
+
+  .tagCard,
+  .serviceCard {
+    flex: 1 1 160px;
+  }
+}
+
+
+@media (max-width: 480px) {
+  .container {
+    gap: 20px;
+  }
+
+
+  .vendorHeader {
+    padding: 14px;
+  }
+
+
+  .vendorIdentity {
+    width: 100%;
+  }
+
+
+  .verified {
+    margin-left: 0;
+  }
+
+
+  .cardGrid {
+    flex-direction: column;
+  }
+
+
+  .tagCard,
+  .serviceCard {
+    width: 100%;
+
+    min-width: 0;
+  }
+}

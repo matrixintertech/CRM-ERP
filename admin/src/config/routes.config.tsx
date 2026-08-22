@@ -55,6 +55,9 @@ import PortalRoute from "@/shared/components/guards/PortalRoute";
 
 import MyTaskPage from "@/modules/project-task/pages/MyTaskPage";
 
+import VendorListPage from "@/modules/vendor/pages/VendorListPage";
+import VendorCategoryPage from "@/modules/vendor/pages/VendorCategoryPage";
+
 
 export interface AppRoute {
   path: string;
@@ -196,6 +199,40 @@ export const protectedRoutes:
     </PortalRoute>
   ),
 },
+
+
+{
+  path:
+    "/platform/vendors",
+
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.vendor.view"
+      >
+        <VendorListPage />
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
+
+
+{
+  path:
+    "/platform/vendor-categories",
+
+  element: (
+    <PortalRoute portal="PLATFORM">
+      <PermissionRoute
+        permission="platform.vendor_category.view"
+      >
+        <VendorCategoryPage />
+      </PermissionRoute>
+    </PortalRoute>
+  ),
+},
+
+
 
 
   {

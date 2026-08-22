@@ -25,7 +25,9 @@ import {
   Users,
   UsersRound,
   ClipboardList,
-  ListChecks
+  ListChecks,
+  Store,
+  Tags,
 } from "lucide-react";
 
 
@@ -172,6 +174,68 @@ export const menu:
           "platform.subscription_plan.view",
         ],
   },
+
+  {
+  id:
+    "vendors",
+
+  title:
+    "Vendors",
+
+  path:
+    "#",
+
+  icon:
+    Store,
+
+  portals:
+    PLATFORM_PORTAL,
+
+  children: [
+    {
+      id:
+        "vendor-list",
+
+      title:
+        "All Vendors",
+
+      path:
+        "/platform/vendors",
+
+      icon:
+        Store,
+
+      portals:
+        PLATFORM_PORTAL,
+
+      permissions: [
+        "platform.vendor.view",
+      ],
+    },
+
+
+    {
+      id:
+        "vendor-categories",
+
+      title:
+        "Vendor Categories",
+
+      path:
+        "/platform/vendor-categories",
+
+      icon:
+        Tags,
+
+      portals:
+        PLATFORM_PORTAL,
+
+      permissions: [
+        "platform.vendor_category.view",
+      ],
+    },
+  ],
+},
 
 
   {
